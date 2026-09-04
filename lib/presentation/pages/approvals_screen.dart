@@ -6,6 +6,7 @@ import '../../domain/entities/leave_request.dart';
 import '../blocs/leave/leave_bloc.dart';
 import '../blocs/leave/leave_event.dart';
 import '../blocs/leave/leave_state.dart';
+import 'review_request_dialog.dart';
 
 class ApprovalsScreen extends StatefulWidget {
   const ApprovalsScreen({super.key});
@@ -23,8 +24,13 @@ class _ApprovalsScreenState extends State<ApprovalsScreen> {
   @override
   void initState() {
     super.initState();
-    context.read<LeaveBloc>().add(LoadLeaveRequestsEvent());
+    WidgetsBinding.instance.addPostFrameCallback((_) {
+      if (mounted) {
+        context.read<LeaveBloc>().add(const LoadLeaveRequestsEvent(status: 'PENDING'));
+      }
+    });
   }
+
 
   @override
   void dispose() {
@@ -57,16 +63,6 @@ class _ApprovalsScreenState extends State<ApprovalsScreen> {
       context: context,
       builder: (ctx) => ReviewRequestDialog(
         request: item,
-        onDecision: (bool isApproved, String remarks) {
-          final newStatus = isApproved ? 'Approved' : 'Rejected';
-          context.read<LeaveBloc>().add(
-                UpdateRequestStatusEvent(
-                  requestId: item.id,
-                  status: newStatus,
-                  remarks: remarks.isNotEmpty ? remarks : null,
-                ),
-              );
-        },
       ),
     );
   }
@@ -100,20 +96,28 @@ class _ApprovalsScreenState extends State<ApprovalsScreen> {
           final allRequests =
               state is LeaveLoadedState ? state.requests : <LeaveRequest>[];
 
-          // Separate Pending & Completed
-          final pendingList =
-              allRequests.where((r) => r.status == 'Pending').toList();
-          final completedList =
-              allRequests.where((r) => r.status != 'Pending').toList();
+          // Separate Pending & Completed (case-insensitive for API PENDING/APPROVED)
+          final pendingList = allRequests
+              .where((r) => r.status.toUpperCase() == 'PENDING')
+              .toList();
+          final completedList = allRequests
+              .where((r) => r.status.toUpperCase() != 'PENDING')
+              .toList();
 
           // Apply Completed sub-filter (All, Reject, Approve)
           List<LeaveRequest> filteredCompleted = completedList;
           if (_completedFilterIndex == 1) {
-            filteredCompleted =
-                completedList.where((r) => r.status == 'Rejected').toList();
+            filteredCompleted = completedList
+                .where((r) =>
+                    r.status.toUpperCase() == 'REJECTED' ||
+                    r.status.toUpperCase() == 'REJECT')
+                .toList();
           } else if (_completedFilterIndex == 2) {
-            filteredCompleted =
-                completedList.where((r) => r.status == 'Approved').toList();
+            filteredCompleted = completedList
+                .where((r) =>
+                    r.status.toUpperCase() == 'APPROVED' ||
+                    r.status.toUpperCase() == 'APPROVE')
+                .toList();
           }
 
           // Apply Search Query
@@ -126,23 +130,31 @@ class _ApprovalsScreenState extends State<ApprovalsScreen> {
             activeList = activeList.where((r) {
               return r.title.toLowerCase().contains(q) ||
                   r.reason.toLowerCase().contains(q) ||
-                  r.requestType.toLowerCase().contains(q);
+                  r.requestType.toLowerCase().contains(q) ||
+                  r.employeeName.toLowerCase().contains(q) ||
+                  r.employeeId.toLowerCase().contains(q) ||
+                  r.requestId.toLowerCase().contains(q);
             }).toList();
           }
 
           // Dynamic Metrics
           final totalPending = pendingList.length;
-          final wfhPending =
-              pendingList.where((r) => r.requestType.contains('WFH')).length;
+          final wfhPending = pendingList
+              .where((r) => r.requestType.toUpperCase().contains('WFH'))
+              .length;
           final regPending = pendingList
               .where((r) =>
-                  r.requestType.contains('Adjustment') ||
-                  r.requestType.contains('Leave'))
+                  r.requestType.toUpperCase().contains('ADJUSTMENT') ||
+                  r.requestType.toUpperCase().contains('LEAVE'))
               .length;
 
           return RefreshIndicator(
             onRefresh: () async {
-              context.read<LeaveBloc>().add(LoadLeaveRequestsEvent());
+              context.read<LeaveBloc>().add(
+                    LoadLeaveRequestsEvent(
+                      status: _selectedTabIndex == 0 ? 'PENDING' : null,
+                    ),
+                  );
             },
             color: AppColors.primaryNavy,
             child: SingleChildScrollView(
@@ -259,6 +271,7 @@ class _ApprovalsScreenState extends State<ApprovalsScreen> {
                       itemBuilder: (context, index) {
                         final item = activeList[index];
                         if (_selectedTabIndex == 0) {
+                          print("nvhdfvhb ${item}");
                           return _buildPendingCard(item);
                         } else {
                           return _buildCompletedCard(item);
@@ -379,7 +392,12 @@ class _ApprovalsScreenState extends State<ApprovalsScreen> {
         children: [
           Expanded(
             child: GestureDetector(
-              onTap: () => setState(() => _selectedTabIndex = 0),
+              onTap: () {
+                if (_selectedTabIndex != 0) {
+                  setState(() => _selectedTabIndex = 0);
+                  context.read<LeaveBloc>().add(const LoadLeaveRequestsEvent(status: 'PENDING'));
+                }
+              },
               child: Container(
                 decoration: BoxDecoration(
                   color: _selectedTabIndex == 0 ? Colors.white : Colors.transparent,
@@ -412,7 +430,12 @@ class _ApprovalsScreenState extends State<ApprovalsScreen> {
           ),
           Expanded(
             child: GestureDetector(
-              onTap: () => setState(() => _selectedTabIndex = 1),
+              onTap: () {
+                if (_selectedTabIndex != 1) {
+                  setState(() => _selectedTabIndex = 1);
+                  context.read<LeaveBloc>().add(const LoadLeaveRequestsEvent());
+                }
+              },
               child: Container(
                 decoration: BoxDecoration(
                   color: _selectedTabIndex == 1 ? Colors.white : Colors.transparent,
@@ -523,9 +546,34 @@ class _ApprovalsScreenState extends State<ApprovalsScreen> {
     );
   }
 
+  String _formatDate(dynamic date) {
+    if (date == null) return '--';
+    if (date is DateTime) {
+      return DateFormat('MMM dd, yyyy').format(date);
+    }
+    final str = date.toString();
+    if (str.isEmpty) return '--';
+    try {
+      final parsed = DateTime.parse(str);
+      return DateFormat('MMM dd, yyyy').format(parsed);
+    } catch (_) {
+      return str;
+    }
+  }
+
+  String _formatTime(String? time) {
+    if (time == null || time.trim().isEmpty) {
+      return '--:--';
+    }
+    try {
+      final dateTime = DateTime.parse(time);
+      return DateFormat('hh:mm a').format(dateTime);
+    } catch (_) {
+      return time;
+    }
+  }
+
   Widget _buildPendingCard(LeaveRequest item) {
-    final dateRangeStr =
-        '${DateFormat('MMM dd, yyyy').format(item.startDate)} - ${DateFormat('MMM dd, yyyy').format(item.endDate)}';
     final initials = _getInitials(item.title);
     final icon = _getTypeIcon(item.requestType);
 
@@ -599,6 +647,17 @@ class _ApprovalsScreenState extends State<ApprovalsScreen> {
               ),
             ],
           ),
+          if (item.employeeId.isNotEmpty) ...[
+            const SizedBox(height: 8),
+            Text(
+              "EMP-${item.employeeId}",
+              style: const TextStyle(
+                fontSize: 13,
+                fontWeight: FontWeight.w500,
+                color: AppColors.textMuted,
+              ),
+            ),
+          ],
           const SizedBox(height: 10),
           Row(
             children: [
@@ -609,25 +668,38 @@ class _ApprovalsScreenState extends State<ApprovalsScreen> {
               ),
               const SizedBox(width: 6),
               Text(
-                dateRangeStr,
+                _formatDate(item.startDate),
                 style: const TextStyle(
                   fontSize: 12,
                   fontWeight: FontWeight.w500,
                   color: AppColors.textDark,
                 ),
               ),
+
             ],
           ),
-          if (item.reason.isNotEmpty) ...[
-            const SizedBox(height: 6),
-            Text(
-              item.reason,
-              style: const TextStyle(
-                fontSize: 13,
-                color: AppColors.textMuted,
-              ),
-            ),
-          ],
+            const SizedBox(height: 10),
+         Row(
+           crossAxisAlignment: CrossAxisAlignment.start ,
+           children: [
+           const Icon(
+             Icons.access_time_rounded,
+             size: 14,
+             color: AppColors.textLight,
+           ),
+           const SizedBox(width: 6),
+           Expanded(
+             child: Text(
+               'In: ${_formatTime(item.timeIn)}  •  Out: ${_formatTime(item.timeOut)}',
+               style: const TextStyle(
+                 fontSize: 12,
+                 fontWeight: FontWeight.w500,
+                 color: AppColors.textDark,
+               ),
+               overflow: TextOverflow.ellipsis,
+             ),
+           ),
+         ],),
           const SizedBox(height: 14),
           SizedBox(
             width: double.infinity,
@@ -657,7 +729,8 @@ class _ApprovalsScreenState extends State<ApprovalsScreen> {
   }
 
   Widget _buildCompletedCard(LeaveRequest item) {
-    final bool isApproved = item.status == 'Approved';
+    final bool isApproved = item.status.toUpperCase() == 'APPROVED' ||
+        item.status.toUpperCase() == 'APPROVE';
     final Color badgeBgColor =
         isApproved ? AppColors.successBg : AppColors.dangerBg;
     final Color badgeTextColor =
@@ -666,7 +739,7 @@ class _ApprovalsScreenState extends State<ApprovalsScreen> {
         isApproved ? Icons.check_circle_outline_rounded : Icons.cancel_outlined;
 
     final dateRangeStr =
-        '${DateFormat('MMM dd, yyyy').format(item.startDate)} - ${DateFormat('MMM dd, yyyy').format(item.endDate)}';
+        '${_formatDate(item.startDate)} - ${_formatDate(item.endDate)}';
     final initials = _getInitials(item.title);
 
     return Container(
@@ -738,6 +811,17 @@ class _ApprovalsScreenState extends State<ApprovalsScreen> {
               ),
             ],
           ),
+          if (item.employeeId.isNotEmpty) ...[
+            const SizedBox(height: 8),
+            Text(
+              "EMP-${item.employeeId}",
+              style: const TextStyle(
+                fontSize: 13,
+                fontWeight: FontWeight.w500,
+                color: AppColors.textMuted,
+              ),
+            ),
+          ],
           const SizedBox(height: 10),
           Row(
             children: [
@@ -748,224 +832,44 @@ class _ApprovalsScreenState extends State<ApprovalsScreen> {
               ),
               const SizedBox(width: 6),
               Text(
-                dateRangeStr,
+                _formatDate(item.startDate),
                 style: const TextStyle(
                   fontSize: 12,
                   fontWeight: FontWeight.w500,
                   color: AppColors.textDark,
                 ),
               ),
+
             ],
           ),
-          if (item.reason.isNotEmpty) ...[
-            const SizedBox(height: 6),
-            Text(
-              item.reason,
-              style: const TextStyle(
-                fontSize: 13,
-                color: AppColors.textMuted,
-              ),
-            ),
-          ],
-        ],
-      ),
-    );
-  }
-}
-
-// ==========================================
-// REVIEW REQUEST DIALOG
-// ==========================================
-class ReviewRequestDialog extends StatefulWidget {
-  final LeaveRequest request;
-  final Function(bool isApproved, String remarks) onDecision;
-
-  const ReviewRequestDialog({
-    super.key,
-    required this.request,
-    required this.onDecision,
-  });
-
-  @override
-  State<ReviewRequestDialog> createState() => _ReviewRequestDialogState();
-}
-
-class _ReviewRequestDialogState extends State<ReviewRequestDialog> {
-  final TextEditingController _controller = TextEditingController();
-
-  @override
-  void dispose() {
-    _controller.dispose();
-    super.dispose();
-  }
-
-  @override
-  Widget build(BuildContext context) {
-    return Dialog(
-      elevation: 8,
-      insetPadding: const EdgeInsets.symmetric(horizontal: 24),
-      shape: RoundedRectangleBorder(
-        borderRadius: BorderRadius.circular(16),
-      ),
-      backgroundColor: Colors.white,
-      clipBehavior: Clip.antiAlias,
-      child: Column(
-        mainAxisSize: MainAxisSize.min,
-        crossAxisAlignment: CrossAxisAlignment.start,
-        children: [
-          Padding(
-            padding: const EdgeInsets.fromLTRB(20, 20, 20, 16),
-            child: Row(
-              mainAxisAlignment: MainAxisAlignment.spaceBetween,
-              children: [
-                const Text(
-                  'Review Request',
-                  style: TextStyle(
-                    fontSize: 18,
-                    fontWeight: FontWeight.bold,
-                    color: AppColors.textDark,
-                  ),
+          const SizedBox(height: 10),
+          Row(
+            crossAxisAlignment: CrossAxisAlignment.start,
+            children: [
+              if (item.timeIn != null || item.timeOut != null) ...[
+                const Icon(
+                  Icons.access_time_rounded,
+                  size: 14,
+                  color: AppColors.textLight,
                 ),
-                IconButton(
-                  icon: const Icon(Icons.close, size: 20),
-                  onPressed: () => Navigator.of(context).pop(),
-                  padding: EdgeInsets.zero,
-                  constraints: const BoxConstraints(),
-                ),
-              ],
-            ),
-          ),
-          const Divider(height: 1, color: AppColors.borderGrey),
-          Padding(
-            padding: const EdgeInsets.all(20),
-            child: Column(
-              crossAxisAlignment: CrossAxisAlignment.start,
-              children: [
-                Text(
-                  widget.request.title,
-                  style: const TextStyle(
-                    fontSize: 15,
-                    fontWeight: FontWeight.bold,
-                    color: AppColors.textDark,
-                  ),
-                ),
-                const SizedBox(height: 4),
-                Text(
-                  widget.request.reason,
-                  style: const TextStyle(
-                    fontSize: 13,
-                    color: AppColors.textMuted,
-                  ),
-                ),
-                const SizedBox(height: 16),
-                const Text(
-                  'DECISION NOTES / REMARKS',
-                  style: TextStyle(
-                    fontSize: 11,
-                    fontWeight: FontWeight.bold,
-                    color: AppColors.textMuted,
-                    letterSpacing: 0.5,
-                  ),
-                ),
-                const SizedBox(height: 8),
-                Container(
-                  height: 100,
-                  decoration: BoxDecoration(
-                    color: const Color(0xFFF8FAFC),
-                    borderRadius: BorderRadius.circular(10),
-                    border: Border.all(color: AppColors.borderGrey),
-                  ),
-                  child: TextField(
-                    controller: _controller,
-                    maxLines: null,
-                    expands: true,
+                const SizedBox(width: 6),
+                Expanded(
+                  child: Text(
+                    'In: ${_formatTime(item.timeIn)}  •  Out: ${_formatTime(item.timeOut)}',
                     style: const TextStyle(
-                      fontSize: 13,
+                      fontSize: 12,
+                      fontWeight: FontWeight.w500,
                       color: AppColors.textDark,
                     ),
-                    decoration: const InputDecoration(
-                      hintText: 'Add an optional reason or note for your decision...',
-                      hintStyle: TextStyle(
-                        color: AppColors.textLight,
-                        fontSize: 13,
-                        height: 1.4,
-                      ),
-                      border: InputBorder.none,
-                      contentPadding: EdgeInsets.all(12),
-                    ),
+                    overflow: TextOverflow.ellipsis,
                   ),
                 ),
               ],
-            ),
-          ),
-          Container(
-            padding: const EdgeInsets.all(16),
-            decoration: const BoxDecoration(
-              color: Color(0xFFF8FAFC),
-              border: Border(
-                top: BorderSide(color: Color(0xFFF1F5F9)),
-              ),
-            ),
-            child: Row(
-              children: [
-                Expanded(
-                  child: SizedBox(
-                    height: 44,
-                    child: OutlinedButton(
-                      onPressed: () {
-                        Navigator.of(context).pop();
-                        widget.onDecision(false, _controller.text.trim());
-                      },
-                      style: OutlinedButton.styleFrom(
-                        side: const BorderSide(color: AppColors.dangerRose),
-                        backgroundColor: Colors.white,
-                        foregroundColor: AppColors.dangerRose,
-                        shape: RoundedRectangleBorder(
-                          borderRadius: BorderRadius.circular(10),
-                        ),
-                      ),
-                      child: const Text(
-                        'Reject',
-                        style: TextStyle(
-                          fontSize: 14,
-                          fontWeight: FontWeight.bold,
-                        ),
-                      ),
-                    ),
-                  ),
-                ),
-                const SizedBox(width: 12),
-                Expanded(
-                  child: SizedBox(
-                    height: 44,
-                    child: ElevatedButton(
-                      onPressed: () {
-                        Navigator.of(context).pop();
-                        widget.onDecision(true, _controller.text.trim());
-                      },
-                      style: ElevatedButton.styleFrom(
-                        backgroundColor: AppColors.primaryNavy,
-                        foregroundColor: Colors.white,
-                        shape: RoundedRectangleBorder(
-                          borderRadius: BorderRadius.circular(10),
-                        ),
-                        elevation: 0,
-                      ),
-                      child: const Text(
-                        'Approve',
-                        style: TextStyle(
-                          fontSize: 14,
-                          fontWeight: FontWeight.bold,
-                        ),
-                      ),
-                    ),
-                  ),
-                ),
-              ],
-            ),
+            ],
           ),
         ],
       ),
     );
   }
 }
+

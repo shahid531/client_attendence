@@ -104,6 +104,8 @@ class AttendanceRemoteDataSourceImpl implements AttendanceRemoteDataSource {
         );
 
         final data = response.data;
+        print('[AttendanceRemoteDataSource] Check-In response: $data');
+
         if (data is Map<String, dynamic>) {
           if (data['success'] == false) {
             throw ServerException(data['message']?.toString() ?? 'Attendance time-in failed');
@@ -116,6 +118,7 @@ class AttendanceRemoteDataSourceImpl implements AttendanceRemoteDataSource {
           }
         }
       } on DioException catch (e) {
+        print('[AttendanceRemoteDataSource] Check-In DioException: ${e.response?.data ?? e.message}');
         if (e.response != null && e.response?.data is Map<String, dynamic>) {
           final errMap = e.response!.data as Map<String, dynamic>;
           final message = errMap['message'] ?? 'Attendance time-in failed (${e.response?.statusCode})';
@@ -123,6 +126,7 @@ class AttendanceRemoteDataSourceImpl implements AttendanceRemoteDataSource {
         }
         throw ServerException(e.message ?? 'Network connection error during time-in');
       } catch (e) {
+        print('[AttendanceRemoteDataSource] Check-In Exception: $e');
         if (e is ServerException) rethrow;
         throw ServerException(e.toString());
       }
@@ -181,6 +185,8 @@ class AttendanceRemoteDataSourceImpl implements AttendanceRemoteDataSource {
         );
 
         final data = response.data;
+        print('[AttendanceRemoteDataSource] Check-Out response: $data');
+
         if (data is Map<String, dynamic>) {
           if (data['success'] == false) {
             throw ServerException(data['message']?.toString() ?? 'Attendance time-out failed');
@@ -193,6 +199,7 @@ class AttendanceRemoteDataSourceImpl implements AttendanceRemoteDataSource {
           }
         }
       } on DioException catch (e) {
+        print('[AttendanceRemoteDataSource] Check-Out DioException: ${e.response?.data ?? e.message}');
         if (e.response != null && e.response?.data is Map<String, dynamic>) {
           final errMap = e.response!.data as Map<String, dynamic>;
           final message = errMap['message'] ?? 'Attendance time-out failed (${e.response?.statusCode})';
@@ -200,10 +207,12 @@ class AttendanceRemoteDataSourceImpl implements AttendanceRemoteDataSource {
         }
         throw ServerException(e.message ?? 'Network connection error during time-out');
       } catch (e) {
+        print('[AttendanceRemoteDataSource] Check-Out Exception: $e');
         if (e is ServerException) rethrow;
         throw ServerException(e.toString());
       }
     }
+
 
     if (_todayRecord == null) {
       throw const ServerException('No active check-in record found for today');

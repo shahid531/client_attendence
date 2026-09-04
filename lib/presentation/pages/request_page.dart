@@ -1,11 +1,4 @@
 import 'package:flutter/material.dart';
-import 'package:flutter_bloc/flutter_bloc.dart';
-import 'package:intl/intl.dart';
-import '../../core/constants/app_colors.dart';
-import '../../domain/entities/leave_request.dart';
-import '../blocs/leave/leave_bloc.dart';
-import '../blocs/leave/leave_event.dart';
-import '../blocs/leave/leave_state.dart';
 
 // class RequestPage extends StatefulWidget {
 //   const RequestPage({super.key});
@@ -273,8 +266,6 @@ class _RequestsScreenState extends State<RequestPage> {
 
   @override
   Widget build(BuildContext context) {
-    const primaryNavy = Color(0xFF002379);
-
     return SingleChildScrollView(
       padding: const EdgeInsets.all(16.0),
       child: Column(

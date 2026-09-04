@@ -7,7 +7,15 @@ abstract class LeaveEvent extends Equatable {
   List<Object?> get props => [];
 }
 
-class LoadLeaveRequestsEvent extends LeaveEvent {}
+class LoadLeaveRequestsEvent extends LeaveEvent {
+  final String? status;
+
+  const LoadLeaveRequestsEvent({this.status});
+
+  @override
+  List<Object?> get props => [status];
+}
+
 
 class SubmitLeaveRequestEvent extends LeaveEvent {
   final String title;

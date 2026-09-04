@@ -35,14 +35,17 @@ class LeaveRepositoryImpl implements LeaveRepository {
   }
 
   @override
-  Future<Either<Failure, List<LeaveRequest>>> getLeaveRequests() async {
+  Future<Either<Failure, List<LeaveRequest>>> getLeaveRequests({String? status}) async {
     try {
-      final requests = await remoteDataSource.getLeaveRequests();
+      final requests = await remoteDataSource.getLeaveRequests(status: status);
       return Right(requests);
+    } on ServerException catch (e) {
+      return Left(ServerFailure(e.message));
     } catch (e) {
       return Left(ServerFailure(e.toString()));
     }
   }
+
 
   @override
   Future<Either<Failure, void>> updateRequestStatus({

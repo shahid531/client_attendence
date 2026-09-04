@@ -1,7 +1,11 @@
 import 'package:flutter/material.dart';
+import 'package:flutter_bloc/flutter_bloc.dart';
 import '../../core/constants/app_colors.dart';
+import '../blocs/attendance/attendance_bloc.dart';
+import '../blocs/attendance/attendance_event.dart';
+import '../blocs/leave/leave_bloc.dart';
+import '../blocs/leave/leave_event.dart';
 import 'approvals_screen.dart';
-import 'dashboard_page.dart';
 import 'history_page.dart';
 import 'home_page.dart';
 import 'profile_page.dart';
@@ -22,43 +26,33 @@ class _MainNavigationPageState extends State<MainNavigationPage> {
     ApprovalsScreen(),
     HistoryPage(),
     RequestPage(),
-    //DashboardPage(),
-
     ProfilePage(),
-  ];
-
-  final List<String> _titles = const [
-    'Clock In / Out',
-    'Attendance History',
-    'Requests & Approvals',
-    'Performance Dashboard',
-    'My Profile',
   ];
 
   @override
   Widget build(BuildContext context) {
     return Scaffold(
-      // appBar: AppBar(
-      //   // title: Text(_titles[_currentIndex]),
-      //   actions: [
-      //     IconButton(
-      //       icon: const Icon(Icons.notifications_none_rounded),
-      //       onPressed: () {
-      //         ScaffoldMessenger.of(context).showSnackBar(
-      //           const SnackBar(content: Text('No new notifications')),
-      //         );
-      //       },
-      //     ),
-      //     const SizedBox(width: 8),
-      //   ],
-      // ),
-      body:SafeArea(child:  IndexedStack(
-        index: _currentIndex,
-        children: _pages,
-      )),
+      body: SafeArea(
+        child: IndexedStack(
+          index: _currentIndex,
+          children: _pages,
+        ),
+      ),
       bottomNavigationBar: BottomNavigationBar(
         currentIndex: _currentIndex,
-        onTap: (index) => setState(() => _currentIndex = index),
+        onTap: (index) {
+          setState(() => _currentIndex = index);
+          if (index == 0) {
+            context.read<AttendanceBloc>().add(LoadTodayAttendanceEvent());
+          } else if (index == 1) {
+            context.read<LeaveBloc>().add(const LoadLeaveRequestsEvent(status: 'PENDING'));
+          } else if (index == 2) {
+            context.read<AttendanceBloc>().add(LoadAttendanceHistoryEvent());
+          } else if (index == 3) {
+            context.read<LeaveBloc>().add(const LoadLeaveRequestsEvent());
+          }
+        },
+
         type: BottomNavigationBarType.fixed,
         selectedItemColor: AppColors.primaryNavy,
         unselectedItemColor: AppColors.textLight,

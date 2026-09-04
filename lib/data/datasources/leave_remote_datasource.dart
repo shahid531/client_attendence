@@ -1,3 +1,6 @@
+import 'package:dio/dio.dart';
+import 'package:shared_preferences/shared_preferences.dart';
+import '../../core/errors/exceptions.dart';
 import '../models/dashboard_stats_model.dart';
 import '../models/leave_request_model.dart';
 
@@ -10,7 +13,7 @@ abstract class LeaveRemoteDataSource {
     required String reason,
   });
 
-  Future<List<LeaveRequestModel>> getLeaveRequests();
+  Future<List<LeaveRequestModel>> getLeaveRequests({String? status});
   Future<DashboardStatsModel> getDashboardStats();
   Future<void> updateRequestStatus({
     required String requestId,
@@ -20,58 +23,83 @@ abstract class LeaveRemoteDataSource {
 }
 
 class LeaveRemoteDataSourceImpl implements LeaveRemoteDataSource {
-  final List<LeaveRequestModel> _mockLeaveRequests = [
-    LeaveRequestModel(
-      id: 'req_001',
-      title: 'John Smith - Casual Leave',
-      requestType: 'Leave',
-      startDate: DateTime.now().add(const Duration(days: 3)),
-      endDate: DateTime.now().add(const Duration(days: 4)),
-      reason: 'Personal family event in hometown.',
-      status: 'Pending',
-      submittedAt: DateTime.now().subtract(const Duration(hours: 3)),
-    ),
-    LeaveRequestModel(
-      id: 'req_002',
-      title: 'Sarah Lee - WFH Remote Request',
-      requestType: 'WFH',
-      startDate: DateTime.now().add(const Duration(days: 1)),
-      endDate: DateTime.now().add(const Duration(days: 2)),
-      reason: 'Client deliverables sprint and remote sprint planning.',
-      status: 'Pending',
-      submittedAt: DateTime.now().subtract(const Duration(hours: 6)),
-    ),
-    LeaveRequestModel(
-      id: 'req_003',
-      title: 'Jane Doe - Attendance Regularization',
-      requestType: 'Attendance Adjustment',
-      startDate: DateTime.now().subtract(const Duration(days: 2)),
-      endDate: DateTime.now().subtract(const Duration(days: 2)),
-      reason: 'Biometric device offline during evening clock-out.',
-      status: 'Pending',
-      submittedAt: DateTime.now().subtract(const Duration(hours: 12)),
-    ),
-    LeaveRequestModel(
-      id: 'req_004',
-      title: 'Michael Scott - Annual Vacation',
-      requestType: 'Leave',
-      startDate: DateTime.now().subtract(const Duration(days: 10)),
-      endDate: DateTime.now().subtract(const Duration(days: 7)),
-      reason: 'Family trip approved in advance.',
-      status: 'Approved',
-      submittedAt: DateTime.now().subtract(const Duration(days: 12)),
-    ),
-    LeaveRequestModel(
-      id: 'req_005',
-      title: 'Dwight Schrute - Emergency Missed Punch',
-      requestType: 'Attendance Adjustment',
-      startDate: DateTime.now().subtract(const Duration(days: 14)),
-      endDate: DateTime.now().subtract(const Duration(days: 14)),
-      reason: 'Server maintenance during clock-in time.',
-      status: 'Rejected',
-      submittedAt: DateTime.now().subtract(const Duration(days: 15)),
-    ),
-  ];
+  final Dio? dio;
+  final SharedPreferences? sharedPreferences;
+
+  static const String _baseUrl = 'https://clause-unpinned-wikipedia.ngrok-free.dev/api';
+
+  LeaveRemoteDataSourceImpl({
+    this.dio,
+    this.sharedPreferences,
+  });
+
+  final List<LeaveRequestModel> _mockLeaveRequests = [];
+
+  @override
+  Future<List<LeaveRequestModel>> getLeaveRequests({String? status}) async {
+    if (dio != null && sharedPreferences != null) {
+      try {
+        final cachedToken = sharedPreferences!.getString('auth_bearer_token');
+        final headers = <String, String>{
+          'Accept': '*/*',
+          'ngrok-skip-browser-warning': 'true',
+        };
+        if (cachedToken != null && cachedToken.isNotEmpty) {
+          headers['Authorization'] = 'Bearer $cachedToken';
+        }
+
+        final queryParams = <String, dynamic>{};
+        if (status != null && status.isNotEmpty) {
+          queryParams['status'] = status.toUpperCase();
+        }
+
+        final response = await dio!.get(
+          '$_baseUrl/admin/requests',
+          queryParameters: queryParams.isNotEmpty ? queryParams : null,
+          options: Options(headers: headers),
+        );
+
+        final data = response.data;
+        print('[LeaveRemoteDataSource] GET /admin/requests response: $data');
+
+        if (data is Map<String, dynamic>) {
+          if (data['success'] == false) {
+            throw ServerException(data['message']?.toString() ?? 'Failed to retrieve requests');
+          }
+
+          final list = data['data'];
+          if (list is List) {
+            final parsed = list
+                .map((item) => LeaveRequestModel.fromJson(item as Map<String, dynamic>))
+                .toList();
+            print('[LeaveRemoteDataSource] Successfully parsed ${parsed.length} requests');
+            return parsed;
+          }
+        }
+        return [];
+      } on DioException catch (e) {
+        print('[LeaveRemoteDataSource] DioException on GET /admin/requests: ${e.response?.data ?? e.message}');
+        if (e.response != null && e.response?.data is Map<String, dynamic>) {
+          final errMap = e.response!.data as Map<String, dynamic>;
+          final message = errMap['message'] ?? 'Failed to fetch requests (${e.response?.statusCode})';
+          throw ServerException(message.toString());
+        }
+        throw ServerException(e.message ?? 'Network error while fetching requests');
+      } catch (e) {
+        print('[LeaveRemoteDataSource] Exception on GET /admin/requests: $e');
+        if (e is ServerException) rethrow;
+        throw ServerException(e.toString());
+      }
+    }
+
+    await Future.delayed(const Duration(milliseconds: 300));
+    if (status != null && status.isNotEmpty) {
+      return _mockLeaveRequests
+          .where((r) => r.status.toUpperCase() == status.toUpperCase())
+          .toList();
+    }
+    return List<LeaveRequestModel>.from(_mockLeaveRequests);
+  }
 
   @override
   Future<LeaveRequestModel> submitLeaveRequest({
@@ -89,7 +117,7 @@ class LeaveRemoteDataSourceImpl implements LeaveRemoteDataSource {
       startDate: startDate,
       endDate: endDate,
       reason: reason,
-      status: 'Pending',
+      status: 'PENDING',
       submittedAt: DateTime.now(),
     );
 
@@ -98,23 +126,72 @@ class LeaveRemoteDataSourceImpl implements LeaveRemoteDataSource {
   }
 
   @override
-  Future<List<LeaveRequestModel>> getLeaveRequests() async {
-    await Future.delayed(const Duration(milliseconds: 300));
-    return List<LeaveRequestModel>.from(_mockLeaveRequests);
-  }
-
-  @override
   Future<void> updateRequestStatus({
     required String requestId,
     required String status,
     String? remarks,
   }) async {
+    if (dio != null && sharedPreferences != null) {
+      try {
+        final cachedToken = sharedPreferences!.getString('auth_bearer_token');
+        final headers = <String, String>{
+          'Content-Type': 'application/json',
+          'Accept': '*/*',
+          'ngrok-skip-browser-warning': 'true',
+        };
+        if (cachedToken != null && cachedToken.isNotEmpty) {
+          headers['Authorization'] = 'Bearer $cachedToken';
+        }
+
+        final action = (status.toUpperCase() == 'APPROVED' || status.toUpperCase() == 'APPROVE')
+            ? 'approve'
+            : 'reject';
+
+        print('[LeaveRemoteDataSource] POST /admin/requests/$requestId/$action with comments: $remarks');
+
+        final response = await dio!.post(
+          '$_baseUrl/admin/requests/$requestId/$action',
+          data: {
+            'comments': remarks ?? '',
+          },
+          options: Options(headers: headers),
+        );
+
+        final data = response.data;
+        print('[LeaveRemoteDataSource] POST /admin/requests/$requestId/$action response: $data');
+
+        if (data is Map<String, dynamic>) {
+          if (data['success'] == false) {
+            throw ServerException(data['message']?.toString() ?? 'Failed to update request');
+          }
+        }
+        return;
+      } on DioException catch (e) {
+        print('[LeaveRemoteDataSource] DioException on POST /admin/requests/$requestId: ${e.response?.data ?? e.message}');
+        if (e.response != null && e.response?.data is Map<String, dynamic>) {
+          final errMap = e.response!.data as Map<String, dynamic>;
+          final message = errMap['message'] ?? 'Failed to update request (${e.response?.statusCode})';
+          throw ServerException(message.toString());
+        }
+        throw ServerException(e.message ?? 'Network connection error while updating request status');
+      } catch (e) {
+        print('[LeaveRemoteDataSource] Exception on POST /admin/requests/$requestId: $e');
+        if (e is ServerException) rethrow;
+        throw ServerException(e.toString());
+      }
+    }
+
+
     await Future.delayed(const Duration(milliseconds: 300));
-    final index = _mockLeaveRequests.indexWhere((r) => r.id == requestId);
+    final index = _mockLeaveRequests.indexWhere((r) => r.id == requestId || r.requestId == requestId);
     if (index != -1) {
       final old = _mockLeaveRequests[index];
       _mockLeaveRequests[index] = LeaveRequestModel(
         id: old.id,
+        requestId: old.requestId,
+        employeeId: old.employeeId,
+        employeeName: old.employeeName,
+        attendanceId: old.attendanceId,
         title: old.title,
         requestType: old.requestType,
         startDate: old.startDate,
@@ -122,14 +199,20 @@ class LeaveRemoteDataSourceImpl implements LeaveRemoteDataSource {
         reason: remarks != null && remarks.isNotEmpty ? '${old.reason} (Note: $remarks)' : old.reason,
         status: status,
         submittedAt: old.submittedAt,
+        requestedTimeOut: old.requestedTimeOut,
+        assignedApproverName: old.assignedApproverName,
+        timeIn: old.timeIn,
+        timeOut: old.timeOut,
       );
     }
   }
 
+
+
   @override
   Future<DashboardStatsModel> getDashboardStats() async {
     await Future.delayed(const Duration(milliseconds: 300));
-    final pending = _mockLeaveRequests.where((r) => r.status == 'Pending').length;
+    final pending = _mockLeaveRequests.where((r) => r.status.toUpperCase() == 'PENDING').length;
     return DashboardStatsModel(
       totalHoursThisMonth: 164.5,
       daysPresent: 20,
@@ -139,3 +222,4 @@ class LeaveRemoteDataSourceImpl implements LeaveRemoteDataSource {
     );
   }
 }
+

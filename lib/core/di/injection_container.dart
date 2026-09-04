@@ -45,7 +45,39 @@ Future<void> initServiceLocator() async {
       receiveTimeout: const Duration(seconds: 15),
     ),
   );
+
+  dio.interceptors.add(
+    InterceptorsWrapper(
+      onRequest: (options, handler) {
+        print('\n==================== [API REQUEST] ====================');
+        print('--> ${options.method.toUpperCase()} ${options.uri}');
+        print('Headers: ${options.headers}');
+        if (options.data != null) {
+          print('Body: ${options.data}');
+        }
+        print('=======================================================\n');
+        return handler.next(options);
+      },
+      onResponse: (response, handler) {
+        print('\n==================== [API RESPONSE] ====================');
+        print('<-- ${response.statusCode} ${response.requestOptions.uri}');
+        print('Response Data: ${response.data}');
+        print('========================================================\n');
+        return handler.next(response);
+      },
+      onError: (DioException e, handler) {
+        print('\n==================== [API ERROR] ====================');
+        print('<-- ERROR ${e.response?.statusCode} ${e.requestOptions.uri}');
+        print('Error Message: ${e.message}');
+        print('Error Data: ${e.response?.data}');
+        print('=====================================================\n');
+        return handler.next(e);
+      },
+    ),
+  );
+
   sl.registerLazySingleton<Dio>(() => dio);
+
 
   //! Data Sources
   sl.registerLazySingleton<AuthRemoteDataSource>(
@@ -61,8 +93,12 @@ Future<void> initServiceLocator() async {
     ),
   );
   sl.registerLazySingleton<LeaveRemoteDataSource>(
-    () => LeaveRemoteDataSourceImpl(),
+    () => LeaveRemoteDataSourceImpl(
+      dio: sl(),
+      sharedPreferences: sl(),
+    ),
   );
+
 
   //! Repositories
   sl.registerLazySingleton<AuthRepository>(
