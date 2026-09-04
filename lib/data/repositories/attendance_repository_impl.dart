@@ -49,10 +49,24 @@ class AttendanceRepositoryImpl implements AttendanceRepository {
   }
 
   @override
-  Future<Either<Failure, List<AttendanceRecord>>> getAttendanceHistory() async {
+  Future<Either<Failure, List<AttendanceRecord>>> getAttendanceHistory({
+    String? startDate,
+    String? endDate,
+    String? filter,
+    int page = 0,
+    int size = 20,
+  }) async {
     try {
-      final records = await remoteDataSource.getAttendanceHistory();
+      final records = await remoteDataSource.getAttendanceHistory(
+        startDate: startDate,
+        endDate: endDate,
+        filter: filter,
+        page: page,
+        size: size,
+      );
       return Right(records);
+    } on ServerException catch (e) {
+      return Left(ServerFailure(e.message));
     } catch (e) {
       return Left(ServerFailure(e.toString()));
     }

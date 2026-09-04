@@ -29,3 +29,5 @@ class LoginSubmittedEvent extends AuthEvent {
 }
 
 class LogoutRequestedEvent extends AuthEvent {}
+
+class LoadUserProfileEvent extends AuthEvent {}

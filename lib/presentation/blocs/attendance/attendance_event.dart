@@ -9,7 +9,24 @@ abstract class AttendanceEvent extends Equatable {
 
 class LoadTodayAttendanceEvent extends AttendanceEvent {}
 
-class LoadAttendanceHistoryEvent extends AttendanceEvent {}
+class LoadAttendanceHistoryEvent extends AttendanceEvent {
+  final String? startDate;
+  final String? endDate;
+  final String? filter;
+  final int page;
+  final int size;
+
+  const LoadAttendanceHistoryEvent({
+    this.startDate,
+    this.endDate,
+    this.filter,
+    this.page = 0,
+    this.size = 20,
+  });
+
+  @override
+  List<Object?> get props => [startDate, endDate, filter, page, size];
+}
 
 class CheckInRequestedEvent extends AttendanceEvent {
   final String workType;

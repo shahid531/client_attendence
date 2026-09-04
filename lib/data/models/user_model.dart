@@ -7,17 +7,44 @@ class UserModel extends User {
     required super.email,
     required super.role,
     required super.company,
+    super.contactNumber,
+    super.reportingManagerName,
+    super.locationName,
+    super.status,
     super.avatarUrl,
     required super.firstLogin,
   });
 
   factory UserModel.fromJson(Map<String, dynamic> json) {
+    final empId = json['employeeId']?.toString() ??
+        json['username']?.toString() ??
+        json['id']?.toString() ??
+        'EMP001';
+
+    final fullName = json['fullName']?.toString() ??
+        json['name']?.toString() ??
+        'User';
+
+    final email = json['email']?.toString() ??
+        '$empId@clientsite.com';
+
+    final role = json['role']?.toString() ?? 'Employee';
+
+    final company = json['clientName']?.toString() ??
+        json['company']?.toString() ??
+        json['locationName']?.toString() ??
+        'ClientSite HQ';
+
     return UserModel(
-      id: json['employeeId']?.toString() ?? json['username']?.toString() ?? json['id']?.toString() ?? '',
-      name: json['fullName']?.toString() ?? json['name']?.toString() ?? '',
-      email: json['email']?.toString() ?? '${json['username'] ?? 'user'}@clientsite.com',
-      role: json['role']?.toString() ?? 'Employee',
-      company: json['company']?.toString() ?? 'Acme Corp',
+      id: empId,
+      name: fullName,
+      email: email,
+      role: role,
+      company: company,
+      contactNumber: json['contactNumber']?.toString(),
+      reportingManagerName: json['reportingManagerName']?.toString(),
+      locationName: json['locationName']?.toString(),
+      status: json['status']?.toString() ?? 'ACTIVE',
       avatarUrl: json['avatarUrl']?.toString(),
       firstLogin: json['firstLogin'] == true,
     );
@@ -25,11 +52,15 @@ class UserModel extends User {
 
   Map<String, dynamic> toJson() {
     return {
-      'id': id,
-      'name': name,
+      'employeeId': id,
+      'fullName': name,
       'email': email,
       'role': role,
-      'company': company,
+      'clientName': company,
+      'contactNumber': contactNumber,
+      'reportingManagerName': reportingManagerName,
+      'locationName': locationName,
+      'status': status,
       'avatarUrl': avatarUrl,
       'firstLogin': firstLogin,
     };

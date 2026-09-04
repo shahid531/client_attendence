@@ -56,7 +56,13 @@ class MockAttendanceRepository implements AttendanceRepository {
   }
 
   @override
-  Future<Either<Failure, List<AttendanceRecord>>> getAttendanceHistory() async {
+  Future<Either<Failure, List<AttendanceRecord>>> getAttendanceHistory({
+    String? startDate,
+    String? endDate,
+    String? filter,
+    int page = 0,
+    int size = 20,
+  }) async {
     return Right(_history);
   }
 
@@ -149,6 +155,22 @@ void main() {
     await expectation;
     await failingBloc.close();
   });
+
+  test('should emit [AttendanceLoadingState, AttendanceLoadedState] with filtered history when LoadAttendanceHistoryEvent is added', () async {
+    final expectation = expectLater(
+      bloc.stream,
+      emitsInOrder([
+        AttendanceLoadingState(),
+        const AttendanceLoadedState(history: []),
+      ]),
+    );
+
+    bloc.add(const LoadAttendanceHistoryEvent(
+      startDate: '2026-09-01',
+      endDate: '2026-09-30',
+    ));
+    await expectation;
+  });
 }
 
 class FailingAttendanceRepository implements AttendanceRepository {
@@ -174,7 +196,13 @@ class FailingAttendanceRepository implements AttendanceRepository {
   }
 
   @override
-  Future<Either<Failure, List<AttendanceRecord>>> getAttendanceHistory() async {
+  Future<Either<Failure, List<AttendanceRecord>>> getAttendanceHistory({
+    String? startDate,
+    String? endDate,
+    String? filter,
+    int page = 0,
+    int size = 20,
+  }) async {
     return const Right([]);
   }
 

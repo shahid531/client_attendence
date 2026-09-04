@@ -113,6 +113,47 @@ class AuthRemoteDataSourceImpl implements AuthRemoteDataSource {
 
   @override
   Future<UserModel?> getCurrentUser() async {
+    final cachedToken = sharedPreferences.getString('auth_bearer_token');
+    if (cachedToken != null && cachedToken.isNotEmpty) {
+      try {
+        final headers = <String, String>{
+          'Content-Type': 'application/json',
+          'Accept': '*/*',
+          'ngrok-skip-browser-warning': 'true',
+          'Authorization': 'Bearer $cachedToken',
+        };
+
+        final response = await dio.get(
+          '$_baseUrl/employee/profile',
+          options: Options(headers: headers),
+        );
+
+        final data = response.data;
+        if (data is Map<String, dynamic> && data['success'] == true) {
+          final profileData = data['data'] is Map<String, dynamic>
+              ? data['data'] as Map<String, dynamic>
+              : data;
+
+          final user = UserModel.fromJson(profileData);
+
+          if (user.id.isNotEmpty) {
+            await sharedPreferences.setString('cached_user_id', user.id);
+          }
+          if (user.email.isNotEmpty) {
+            await sharedPreferences.setString('cached_user_email', user.email);
+          }
+          if (user.name.isNotEmpty) {
+            await sharedPreferences.setString('cached_user_name', user.name);
+          }
+          await sharedPreferences.setBool('cached_first_login', user.firstLogin);
+
+          return user;
+        }
+      } catch (e) {
+        // Fallback to cached preferences if network fails
+      }
+    }
+
     final userId = sharedPreferences.getString('cached_user_id');
     final userEmail = sharedPreferences.getString('cached_user_email');
     final userName = sharedPreferences.getString('cached_user_name');

@@ -15,24 +15,65 @@ class HistoryPage extends StatefulWidget {
 }
 
 class _HistoryPageState extends State<HistoryPage> {
+  // Dropdown State
   String _selectedPeriod = 'This Month';
-  final List<String> _periodOptions = [
-    'This Month',
-    'Last Month',
-    'All Time',
-    'Custom'
-  ];
+  final List<String> _periodOptions = ['This Month', 'Last Month', 'Custom'];
 
-  String _selectedWorkTypeFilter = 'All';
-  final List<String> _workTypeFilters = ['All', 'GPS', 'WFH', 'Half Day'];
-
-  DateTime _fromDate = DateTime.now().subtract(const Duration(days: 30));
-  DateTime _toDate = DateTime.now();
+  // Date Pickers State
+  late DateTime _fromDate;
+  late DateTime _toDate;
+  String _displayRangeStr = '';
 
   @override
   void initState() {
     super.initState();
-    context.read<AttendanceBloc>().add(LoadAttendanceHistoryEvent());
+    final now = DateTime.now();
+    _fromDate = DateTime(now.year, now.month, 1);
+    _toDate = now;
+    WidgetsBinding.instance.addPostFrameCallback((_) {
+      _applyPeriod('This Month');
+    });
+  }
+
+  void _applyPeriod(String period) {
+    final now = DateTime.now();
+    String startParam;
+    String endParam;
+
+    if (period == 'This Month') {
+      final start = DateTime(now.year, now.month, 1);
+      final end = DateTime(now.year, now.month + 1, 0);
+      startParam = DateFormat('yyyy-MM-dd').format(start);
+      endParam = DateFormat('yyyy-MM-dd').format(end);
+      setState(() {
+        _displayRangeStr =
+            "${DateFormat('dd/MM/yyyy').format(start)} - ${DateFormat('dd/MM/yyyy').format(end)}";
+      });
+    } else if (period == 'Last Month') {
+      final start = DateTime(now.year, now.month - 1, 1);
+      final end = DateTime(now.year, now.month, 0);
+      startParam = DateFormat('yyyy-MM-dd').format(start);
+      endParam = DateFormat('yyyy-MM-dd').format(end);
+      setState(() {
+        _displayRangeStr =
+            "${DateFormat('dd/MM/yyyy').format(start)} - ${DateFormat('dd/MM/yyyy').format(end)}";
+      });
+    } else {
+      // Custom Range
+      startParam = DateFormat('yyyy-MM-dd').format(_fromDate);
+      endParam = DateFormat('yyyy-MM-dd').format(_toDate);
+      setState(() {
+        _displayRangeStr =
+            "${DateFormat('dd/MM/yyyy').format(_fromDate)} - ${DateFormat('dd/MM/yyyy').format(_toDate)}";
+      });
+    }
+
+    context.read<AttendanceBloc>().add(
+          LoadAttendanceHistoryEvent(
+            startDate: startParam,
+            endDate: endParam,
+          ),
+        );
   }
 
   Future<void> _selectDate(BuildContext context, bool isFromDate) async {
@@ -40,533 +81,608 @@ class _HistoryPageState extends State<HistoryPage> {
       context: context,
       initialDate: isFromDate ? _fromDate : _toDate,
       firstDate: DateTime(2020),
-      lastDate: DateTime(2030),
-      builder: (context, child) {
-        return Theme(
-          data: Theme.of(context).copyWith(
-            colorScheme: const ColorScheme.light(
-              primary: AppColors.primaryNavy,
-              onPrimary: Colors.white,
-              onSurface: AppColors.textDark,
-            ),
-          ),
-          child: child!,
-        );
-      },
+      lastDate: DateTime(2035),
     );
     if (picked != null) {
       setState(() {
         if (isFromDate) {
           _fromDate = picked;
+          if (_toDate.isBefore(_fromDate)) {
+            _toDate = _fromDate;
+          }
         } else {
           _toDate = picked;
+          if (_fromDate.isAfter(_toDate)) {
+            _fromDate = _toDate;
+          }
         }
       });
     }
   }
 
   String _formatDate(DateTime date) {
-    return DateFormat('MM/dd/yyyy').format(date);
-  }
-
-  String _formatTime(String? timeStr) {
-    if (timeStr == null || timeStr.isEmpty) return '--:--';
-    try {
-      if (timeStr.contains('T') || timeStr.contains('-')) {
-        final parsed = DateTime.parse(timeStr);
-        return DateFormat('hh:mm a').format(parsed);
-      }
-      return timeStr;
-    } catch (_) {
-      return timeStr;
-    }
-  }
-
-  String _getDayLabel(DateTime date) {
-    final now = DateTime.now();
-    final today = DateTime(now.year, now.month, now.day);
-    final recordDate = DateTime(date.year, date.month, date.day);
-
-    if (recordDate == today) return 'TODAY';
-    if (recordDate == today.subtract(const Duration(days: 1))) return 'YESTERDAY';
-    return DateFormat('EEE').format(date).toUpperCase();
-  }
-
-  List<AttendanceRecord> _filterRecords(List<AttendanceRecord> records) {
-    final now = DateTime.now();
-
-    return records.where((record) {
-      // 1. Period filter
-      if (_selectedPeriod == 'This Month') {
-        if (record.date.month != now.month || record.date.year != now.year) {
-          return false;
-        }
-      } else if (_selectedPeriod == 'Last Month') {
-        final lastMonth = DateTime(now.year, now.month - 1, 1);
-        if (record.date.month != lastMonth.month ||
-            record.date.year != lastMonth.year) {
-          return false;
-        }
-      } else if (_selectedPeriod == 'Custom') {
-        final recordDay =
-            DateTime(record.date.year, record.date.month, record.date.day);
-        final startDay =
-            DateTime(_fromDate.year, _fromDate.month, _fromDate.day);
-        final endDay = DateTime(_toDate.year, _toDate.month, _toDate.day);
-        if (recordDay.isBefore(startDay) || recordDay.isAfter(endDay)) {
-          return false;
-        }
-      }
-
-      // 2. Work type filter
-      if (_selectedWorkTypeFilter == 'GPS' && record.workType != 'GPS') {
-        return false;
-      }
-      if (_selectedWorkTypeFilter == 'WFH' && record.workType != 'WFH') {
-        return false;
-      }
-      if (_selectedWorkTypeFilter == 'Half Day' &&
-          record.status != 'Half Day') {
-        return false;
-      }
-
-      return true;
-    }).toList();
+    return DateFormat('dd/MM/yyyy').format(date);
   }
 
   @override
   Widget build(BuildContext context) {
-    return Scaffold(
-      backgroundColor: AppColors.backgroundLight,
-      body: BlocBuilder<AttendanceBloc, AttendanceState>(
-        builder: (context, state) {
-          final isLoading = state is AttendanceLoadingState;
-          final allHistory =
-              state is AttendanceLoadedState ? state.history : <AttendanceRecord>[];
-          final filteredHistory = _filterRecords(allHistory);
+    const primaryNavy = AppColors.primaryNavy;
 
-          // Calculate summary metrics
-          final presentCount = filteredHistory
-              .where((r) => r.status == 'Present' || r.status == 'Half Day')
-              .length;
-          final wfhCount =
-              filteredHistory.where((r) => r.workType == 'WFH').length;
-          final totalHours = filteredHistory.fold<double>(
-              0.0, (sum, r) => sum + r.totalHours);
-
-          return RefreshIndicator(
-            onRefresh: () async {
-              context.read<AttendanceBloc>().add(LoadAttendanceHistoryEvent());
-            },
-            color: AppColors.primaryNavy,
-            child: SingleChildScrollView(
-              physics: const AlwaysScrollableScrollPhysics(),
-              padding: const EdgeInsets.all(16.0),
-              child: Column(
-                crossAxisAlignment: CrossAxisAlignment.start,
-                children: [
-                  // Header Row: Title & Export Button
-                  Row(
-                    mainAxisAlignment: MainAxisAlignment.spaceBetween,
-                    children: [
-                      const Text(
-                        'Attendance Log',
-                        style: TextStyle(
-                          fontSize: 22,
-                          fontWeight: FontWeight.bold,
-                          color: AppColors.textDark,
-                        ),
-                      ),
-                      ElevatedButton.icon(
-                        onPressed: () {
-                          ScaffoldMessenger.of(context).showSnackBar(
-                            const SnackBar(
-                              content: Text('Attendance log exported successfully!'),
-                              backgroundColor: AppColors.successEmerald,
-                              behavior: SnackBarBehavior.floating,
-                            ),
-                          );
-                        },
-                        icon: const Icon(
-                          Icons.download_rounded,
-                          size: 16,
-                          color: AppColors.primaryNavy,
-                        ),
-                        label: const Text(
-                          'Export',
-                          style: TextStyle(
-                            color: AppColors.primaryNavy,
-                            fontWeight: FontWeight.w600,
-                            fontSize: 13,
-                          ),
-                        ),
-                        style: ElevatedButton.styleFrom(
-                          backgroundColor: const Color(0xFFEEF2FF),
-                          elevation: 0,
-                          shape: RoundedRectangleBorder(
-                            borderRadius: BorderRadius.circular(8),
-                          ),
-                          padding: const EdgeInsets.symmetric(
-                            horizontal: 12,
-                            vertical: 8,
-                          ),
-                        ),
-                      ),
-                    ],
+    return RefreshIndicator(
+      onRefresh: () async {
+        _applyPeriod(_selectedPeriod);
+      },
+      child: SingleChildScrollView(
+        physics: const AlwaysScrollableScrollPhysics(),
+        padding: const EdgeInsets.all(16.0),
+        child: Column(
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: [
+            // Header Row: Title & Export Button
+            Row(
+              mainAxisAlignment: MainAxisAlignment.spaceBetween,
+              children: [
+                const Text(
+                  'Attendance Log',
+                  style: TextStyle(
+                    fontSize: 22,
+                    fontWeight: FontWeight.bold,
+                    color: Color(0xFF1E293B),
                   ),
-                  const SizedBox(height: 12),
-
-                  // Period Dropdown and Work Type Filter Row
-                  Row(
-                    children: [
-                      Container(
-                        padding: const EdgeInsets.symmetric(
-                          horizontal: 12,
-                          vertical: 2,
-                        ),
-                        decoration: BoxDecoration(
-                          color: const Color(0xFFEEF2FF),
-                          borderRadius: BorderRadius.circular(20),
-                        ),
-                        child: DropdownButtonHideUnderline(
-                          child: DropdownButton<String>(
-                            value: _selectedPeriod,
-                            icon: const Icon(
-                              Icons.keyboard_arrow_down_rounded,
-                              color: AppColors.textMuted,
-                              size: 18,
-                            ),
-                            style: const TextStyle(
-                              color: AppColors.textDark,
-                              fontWeight: FontWeight.w600,
-                              fontSize: 13,
-                            ),
-                            onChanged: (String? newValue) {
-                              if (newValue != null) {
-                                setState(() {
-                                  _selectedPeriod = newValue;
-                                });
-                              }
-                            },
-                            items: _periodOptions
-                                .map<DropdownMenuItem<String>>((String value) {
-                              return DropdownMenuItem<String>(
-                                value: value,
-                                child: Text(value),
-                              );
-                            }).toList(),
-                          ),
-                        ),
+                ),
+                ElevatedButton.icon(
+                  onPressed: () {
+                    ScaffoldMessenger.of(context).showSnackBar(
+                      const SnackBar(
+                        content: Text('Exporting attendance report...'),
+                        duration: Duration(seconds: 2),
                       ),
-                      const SizedBox(width: 8),
-                      Expanded(
-                        child: SingleChildScrollView(
-                          scrollDirection: Axis.horizontal,
-                          child: Row(
-                            children: _workTypeFilters.map((filter) {
-                              final isSelected =
-                                  _selectedWorkTypeFilter == filter;
-                              return Padding(
-                                padding: const EdgeInsets.only(right: 6.0),
-                                child: ChoiceChip(
-                                  label: Text(filter),
-                                  selected: isSelected,
-                                  onSelected: (selected) {
-                                    if (selected) {
-                                      setState(() {
-                                        _selectedWorkTypeFilter = filter;
-                                      });
-                                    }
-                                  },
-                                  selectedColor: AppColors.primaryNavy,
-                                  labelStyle: TextStyle(
-                                    color: isSelected
-                                        ? Colors.white
-                                        : AppColors.textDark,
-                                    fontSize: 12,
-                                    fontWeight: isSelected
-                                        ? FontWeight.bold
-                                        : FontWeight.normal,
-                                  ),
-                                  backgroundColor: Colors.white,
-                                  shape: RoundedRectangleBorder(
-                                    borderRadius: BorderRadius.circular(16),
-                                    side: BorderSide(
-                                      color: isSelected
-                                          ? AppColors.primaryNavy
-                                          : AppColors.borderGrey,
-                                    ),
-                                  ),
-                                  padding: const EdgeInsets.symmetric(
-                                    horizontal: 8,
-                                    vertical: 4,
-                                  ),
-                                ),
-                              );
-                            }).toList(),
-                          ),
-                        ),
-                      ),
-                    ],
+                    );
+                  },
+                  icon: const Icon(Icons.download, size: 16, color: primaryNavy),
+                  label: const Text(
+                    'Export',
+                    style: TextStyle(
+                      color: primaryNavy,
+                      fontWeight: FontWeight.w600,
+                      fontSize: 13,
+                    ),
                   ),
-                  const SizedBox(height: 14),
+                  style: ElevatedButton.styleFrom(
+                    backgroundColor: const Color(0xFFEEF2FF),
+                    elevation: 0,
+                    shape: RoundedRectangleBorder(
+                      borderRadius: BorderRadius.circular(8),
+                    ),
+                    padding: const EdgeInsets.symmetric(
+                        horizontal: 12, vertical: 8),
+                  ),
+                ),
+              ],
+            ),
+            const SizedBox(height: 12),
 
-                  // Conditional Custom Date Range Picker Card
-                  if (_selectedPeriod == 'Custom') ...[
-                    Container(
-                      padding: const EdgeInsets.all(16),
+            // Filter Dropdown and Date Range Info
+            Row(
+              children: [
+                Container(
+                  padding:
+                      const EdgeInsets.symmetric(horizontal: 14, vertical: 0),
+                  decoration: BoxDecoration(
+                    color: const Color(0xFFEEF2FF),
+                    borderRadius: BorderRadius.circular(20),
+                  ),
+                  child: DropdownButtonHideUnderline(
+                    child: DropdownButton<String>(
+                      value: _selectedPeriod,
+                      icon: const Icon(Icons.keyboard_arrow_down,
+                          color: Color(0xFF475569)),
+                      style: const TextStyle(
+                        color: Color(0xFF1E293B),
+                        fontWeight: FontWeight.w600,
+                        fontSize: 14,
+                      ),
+                      onChanged: (String? newValue) {
+                        if (newValue != null) {
+                          setState(() {
+                            _selectedPeriod = newValue;
+                          });
+                          _applyPeriod(newValue);
+                        }
+                      },
+                      items: _periodOptions
+                          .map<DropdownMenuItem<String>>((String value) {
+                        return DropdownMenuItem<String>(
+                          value: value,
+                          child: Text(value),
+                        );
+                      }).toList(),
+                    ),
+                  ),
+                ),
+                const SizedBox(width: 10),
+                if (_displayRangeStr.isNotEmpty)
+                  Expanded(
+                    child: Container(
+                      padding: const EdgeInsets.symmetric(
+                          horizontal: 10, vertical: 8),
                       decoration: BoxDecoration(
-                        color: Colors.white,
-                        borderRadius: BorderRadius.circular(16),
-                        border: Border.all(color: AppColors.borderGrey),
-                        boxShadow: [
-                          BoxShadow(
-                            color: Colors.black.withOpacity(0.02),
-                            blurRadius: 8,
-                            offset: const Offset(0, 2),
-                          ),
-                        ],
+                        color: Colors.grey.shade100,
+                        borderRadius: BorderRadius.circular(12),
                       ),
-                      child: Column(
-                        crossAxisAlignment: CrossAxisAlignment.start,
+                      child: Row(
                         children: [
-                          Row(
-                            mainAxisAlignment: MainAxisAlignment.spaceBetween,
-                            children: [
-                              const Text(
-                                'Select Date Range',
-                                style: TextStyle(
-                                  fontWeight: FontWeight.bold,
-                                  fontSize: 14,
-                                  color: AppColors.textDark,
-                                ),
+                          const Icon(Icons.date_range,
+                              size: 14, color: Color(0xFF64748B)),
+                          const SizedBox(width: 6),
+                          Expanded(
+                            child: Text(
+                              _displayRangeStr,
+                              style: const TextStyle(
+                                fontSize: 11,
+                                fontWeight: FontWeight.w500,
+                                color: Color(0xFF475569),
                               ),
-                              GestureDetector(
-                                onTap: () {
-                                  setState(() {
-                                    _selectedPeriod = 'This Month';
-                                  });
-                                },
-                                child: const CircleAvatar(
-                                  radius: 10,
-                                  backgroundColor: Color(0xFFCBD5E1),
-                                  child: Icon(
-                                    Icons.close,
-                                    size: 12,
-                                    color: Colors.white,
-                                  ),
-                                ),
-                              ),
-                            ],
-                          ),
-                          const SizedBox(height: 12),
-                          Row(
-                            children: [
-                              Expanded(
-                                child: Column(
-                                  crossAxisAlignment: CrossAxisAlignment.start,
-                                  children: [
-                                    const Text(
-                                      'FROM',
-                                      style: TextStyle(
-                                        fontSize: 10,
-                                        fontWeight: FontWeight.bold,
-                                        color: AppColors.textMuted,
-                                      ),
-                                    ),
-                                    const SizedBox(height: 4),
-                                    InkWell(
-                                      onTap: () => _selectDate(context, true),
-                                      child: Container(
-                                        padding: const EdgeInsets.symmetric(
-                                          horizontal: 10,
-                                          vertical: 8,
-                                        ),
-                                        decoration: BoxDecoration(
-                                          color: const Color(0xFFEDF2F7),
-                                          borderRadius: BorderRadius.circular(8),
-                                        ),
-                                        child: Row(
-                                          mainAxisAlignment:
-                                              MainAxisAlignment.spaceBetween,
-                                          children: [
-                                            Text(
-                                              _formatDate(_fromDate),
-                                              style: const TextStyle(
-                                                fontSize: 12,
-                                                color: AppColors.textDark,
-                                                fontWeight: FontWeight.w600,
-                                              ),
-                                            ),
-                                            const Icon(
-                                              Icons.calendar_month_outlined,
-                                              size: 14,
-                                              color: AppColors.primaryNavy,
-                                            ),
-                                          ],
-                                        ),
-                                      ),
-                                    ),
-                                  ],
-                                ),
-                              ),
-                              const SizedBox(width: 10),
-                              Expanded(
-                                child: Column(
-                                  crossAxisAlignment: CrossAxisAlignment.start,
-                                  children: [
-                                    const Text(
-                                      'TO',
-                                      style: TextStyle(
-                                        fontSize: 10,
-                                        fontWeight: FontWeight.bold,
-                                        color: AppColors.textMuted,
-                                      ),
-                                    ),
-                                    const SizedBox(height: 4),
-                                    InkWell(
-                                      onTap: () => _selectDate(context, false),
-                                      child: Container(
-                                        padding: const EdgeInsets.symmetric(
-                                          horizontal: 10,
-                                          vertical: 8,
-                                        ),
-                                        decoration: BoxDecoration(
-                                          color: const Color(0xFFEDF2F7),
-                                          borderRadius: BorderRadius.circular(8),
-                                        ),
-                                        child: Row(
-                                          mainAxisAlignment:
-                                              MainAxisAlignment.spaceBetween,
-                                          children: [
-                                            Text(
-                                              _formatDate(_toDate),
-                                              style: const TextStyle(
-                                                fontSize: 12,
-                                                color: AppColors.textDark,
-                                                fontWeight: FontWeight.w600,
-                                              ),
-                                            ),
-                                            const Icon(
-                                              Icons.calendar_month_outlined,
-                                              size: 14,
-                                              color: AppColors.primaryNavy,
-                                            ),
-                                          ],
-                                        ),
-                                      ),
-                                    ),
-                                  ],
-                                ),
-                              ),
-                            ],
+                              overflow: TextOverflow.ellipsis,
+                            ),
                           ),
                         ],
                       ),
                     ),
-                    const SizedBox(height: 14),
-                  ],
+                  ),
+              ],
+            ),
+            const SizedBox(height: 16),
 
-                  // Dynamic Summary Stats Card
-                  Container(
-                    padding: const EdgeInsets.symmetric(vertical: 14),
-                    decoration: BoxDecoration(
-                      color: const Color(0xFFEEF2FF),
-                      borderRadius: BorderRadius.circular(16),
-                      border: Border.all(color: const Color(0xFFC7D2FE)),
+            // Conditional Date Range Card (Displayed ONLY when 'Custom' is selected)
+            if (_selectedPeriod == 'Custom') ...[
+              Container(
+                padding: const EdgeInsets.all(16),
+                decoration: BoxDecoration(
+                  color: Colors.white,
+                  borderRadius: BorderRadius.circular(16),
+                  boxShadow: [
+                    BoxShadow(
+                      color: Colors.black.withOpacity(0.04),
+                      blurRadius: 10,
+                      offset: const Offset(0, 2),
                     ),
-                    child: Row(
+                  ],
+                ),
+                child: Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    Row(
+                      mainAxisAlignment: MainAxisAlignment.spaceBetween,
                       children: [
-                        _buildStatItem(
-                          '$presentCount',
-                          'Present',
-                          AppColors.primaryBlue,
+                        const Text(
+                          'Select Date Range',
+                          style: TextStyle(
+                            fontWeight: FontWeight.bold,
+                            fontSize: 15,
+                            color: Color(0xFF1E293B),
+                          ),
                         ),
-                        _buildDivider(),
-                        _buildStatItem(
-                          '$wfhCount',
-                          'WFH',
-                          AppColors.textDark,
-                        ),
-                        _buildDivider(),
-                        _buildStatItem(
-                          '${totalHours.toStringAsFixed(1)}h',
-                          'Total Hours',
-                          AppColors.successEmerald,
+                        GestureDetector(
+                          onTap: () {
+                            setState(() {
+                              _selectedPeriod = 'This Month';
+                            });
+                            _applyPeriod('This Month');
+                          },
+                          child: const CircleAvatar(
+                            radius: 11,
+                            backgroundColor: Color(0xFFCBD5E1),
+                            child: Icon(Icons.close,
+                                size: 14, color: Colors.white),
+                          ),
                         ),
                       ],
                     ),
-                  ),
-                  const SizedBox(height: 16),
-
-                  // History Records List / Empty State / Loading
-                  if (isLoading)
-                    const Padding(
-                      padding: EdgeInsets.symmetric(vertical: 40),
-                      child: Center(
-                        child: CircularProgressIndicator(
-                          color: AppColors.primaryNavy,
+                    const SizedBox(height: 14),
+                    Row(
+                      children: [
+                        Expanded(
+                          child: Column(
+                            crossAxisAlignment: CrossAxisAlignment.start,
+                            children: [
+                              const Text(
+                                'FROM',
+                                style: TextStyle(
+                                  fontSize: 11,
+                                  fontWeight: FontWeight.bold,
+                                  color: Color(0xFF64748B),
+                                ),
+                              ),
+                              const SizedBox(height: 6),
+                              InkWell(
+                                onTap: () => _selectDate(context, true),
+                                child: Container(
+                                  padding: const EdgeInsets.symmetric(
+                                      horizontal: 10, vertical: 10),
+                                  decoration: BoxDecoration(
+                                    color: const Color(0xFFEDF2F7),
+                                    borderRadius: BorderRadius.circular(8),
+                                  ),
+                                  child: Row(
+                                    mainAxisAlignment:
+                                        MainAxisAlignment.spaceBetween,
+                                    children: [
+                                      const Icon(
+                                          Icons.calendar_today_outlined,
+                                          size: 16,
+                                          color: Color(0xFF64748B)),
+                                      Text(
+                                        _formatDate(_fromDate),
+                                        style: const TextStyle(
+                                          fontSize: 13,
+                                          color: Color(0xFF1E293B),
+                                          fontWeight: FontWeight.w500,
+                                        ),
+                                      ),
+                                      const Icon(Icons.calendar_month,
+                                          size: 16, color: Color(0xFF1E293B)),
+                                    ],
+                                  ),
+                                ),
+                              ),
+                            ],
+                          ),
+                        ),
+                        const SizedBox(width: 12),
+                        Expanded(
+                          child: Column(
+                            crossAxisAlignment: CrossAxisAlignment.start,
+                            children: [
+                              const Text(
+                                'TO',
+                                style: TextStyle(
+                                  fontSize: 11,
+                                  fontWeight: FontWeight.bold,
+                                  color: Color(0xFF64748B),
+                                ),
+                              ),
+                              const SizedBox(height: 6),
+                              InkWell(
+                                onTap: () => _selectDate(context, false),
+                                child: Container(
+                                  padding: const EdgeInsets.symmetric(
+                                      horizontal: 10, vertical: 10),
+                                  decoration: BoxDecoration(
+                                    color: const Color(0xFFEDF2F7),
+                                    borderRadius: BorderRadius.circular(8),
+                                  ),
+                                  child: Row(
+                                    mainAxisAlignment:
+                                        MainAxisAlignment.spaceBetween,
+                                    children: [
+                                      const Icon(
+                                          Icons.calendar_today_outlined,
+                                          size: 16,
+                                          color: Color(0xFF64748B)),
+                                      Text(
+                                        _formatDate(_toDate),
+                                        style: const TextStyle(
+                                          fontSize: 13,
+                                          color: Color(0xFF1E293B),
+                                          fontWeight: FontWeight.w500,
+                                        ),
+                                      ),
+                                      const Icon(Icons.calendar_month,
+                                          size: 16, color: Color(0xFF1E293B)),
+                                    ],
+                                  ),
+                                ),
+                              ),
+                            ],
+                          ),
+                        ),
+                      ],
+                    ),
+                    const SizedBox(height: 16),
+                    SizedBox(
+                      width: double.infinity,
+                      height: 42,
+                      child: ElevatedButton(
+                        onPressed: () => _applyPeriod('Custom'),
+                        style: ElevatedButton.styleFrom(
+                          backgroundColor: primaryNavy,
+                          shape: RoundedRectangleBorder(
+                            borderRadius: BorderRadius.circular(8),
+                          ),
+                          elevation: 0,
+                        ),
+                        child: const Text(
+                          'Apply Range',
+                          style: TextStyle(
+                            color: Colors.white,
+                            fontWeight: FontWeight.bold,
+                            fontSize: 14,
+                          ),
                         ),
                       ),
                     )
-                  else if (filteredHistory.isEmpty)
+                  ],
+                ),
+              ),
+              const SizedBox(height: 16),
+            ],
+
+            // Bloc Consumer for Stats and Attendance List
+            BlocBuilder<AttendanceBloc, AttendanceState>(
+              builder: (context, state) {
+                List<AttendanceRecord> records = [];
+                if (state is AttendanceLoadedState) {
+                  records = state.history;
+                }
+
+                int presentCount = records.where((r) {
+                  final s = r.status.toLowerCase();
+                  return s == 'present' || s == 'half day' || (!s.contains('absent') && !s.contains('leave'));
+                }).length;
+
+                int wfhCount = records.where((r) {
+                  return r.workType.toUpperCase() == 'WFH';
+                }).length;
+
+                int absentCount = records.where((r) {
+                  final s = r.status.toLowerCase();
+                  return s.contains('absent') || s.contains('leave');
+                }).length;
+
+                return Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    // Summary Stats Card
                     Container(
-                      width: double.infinity,
-                      padding: const EdgeInsets.symmetric(
-                        horizontal: 20,
-                        vertical: 48,
-                      ),
+                      padding: const EdgeInsets.symmetric(vertical: 16),
                       decoration: BoxDecoration(
-                        color: Colors.white,
+                        color: const Color(0xFFEEF2FF),
                         borderRadius: BorderRadius.circular(16),
-                        border: Border.all(color: AppColors.borderGrey),
                       ),
-                      child: Column(
-                        mainAxisAlignment: MainAxisAlignment.center,
-                        children: const [
-                          Icon(
-                            Icons.history_rounded,
-                            size: 48,
-                            color: AppColors.textLight,
-                          ),
-                          SizedBox(height: 12),
-                          Text(
-                            'No Attendance Records Found',
-                            style: TextStyle(
-                              fontSize: 16,
-                              fontWeight: FontWeight.bold,
-                              color: AppColors.textDark,
-                            ),
-                          ),
-                          SizedBox(height: 4),
-                          Text(
-                            'Try changing the period or filter criteria above.',
-                            style: TextStyle(
-                              fontSize: 13,
-                              color: AppColors.textMuted,
-                            ),
-                            textAlign: TextAlign.center,
-                          ),
+                      child: Row(
+                        children: [
+                          _buildStatItem(
+                              '$presentCount', 'Present', const Color(0xFF2563EB)),
+                          _buildDivider(),
+                          _buildStatItem(
+                              '$wfhCount', 'WFH', const Color(0xFF1E293B)),
+                          _buildDivider(),
+                          _buildStatItem(
+                              '$absentCount', 'Absent', const Color(0xFFDC2626)),
                         ],
                       ),
-                    )
-                  else
-                    ListView.builder(
-                      shrinkWrap: true,
-                      physics: const NeverScrollableScrollPhysics(),
-                      itemCount: filteredHistory.length,
-                      itemBuilder: (context, index) {
-                        final record = filteredHistory[index];
-                        return _buildAttendanceCard(record);
-                      },
                     ),
-                  const SizedBox(height: 16),
-                ],
+                    const SizedBox(height: 16),
+
+                    if (state is AttendanceLoadingState) ...[
+                      const Padding(
+                        padding: EdgeInsets.symmetric(vertical: 40),
+                        child: Center(
+                          child: Column(
+                            children: [
+                              CircularProgressIndicator(color: primaryNavy),
+                              SizedBox(height: 12),
+                              Text(
+                                'Loading attendance history...',
+                                style: TextStyle(
+                                  color: Color(0xFF64748B),
+                                  fontWeight: FontWeight.w500,
+                                ),
+                              ),
+                            ],
+                          ),
+                        ),
+                      ),
+                    ] else if (state is AttendanceErrorState) ...[
+                      Container(
+                        padding: const EdgeInsets.all(16),
+                        margin: const EdgeInsets.only(bottom: 16),
+                        decoration: BoxDecoration(
+                          color: const Color(0xFFFEF2F2),
+                          borderRadius: BorderRadius.circular(12),
+                          border: Border.all(color: const Color(0xFFFCA5A5)),
+                        ),
+                        child: Column(
+                          children: [
+                            Row(
+                              children: [
+                                const Icon(Icons.error_outline,
+                                    color: Color(0xFFDC2626)),
+                                const SizedBox(width: 8),
+                                Expanded(
+                                  child: Text(
+                                    state.message,
+                                    style: const TextStyle(
+                                      color: Color(0xFFB91C1C),
+                                      fontWeight: FontWeight.w500,
+                                    ),
+                                  ),
+                                ),
+                              ],
+                            ),
+                            const SizedBox(height: 10),
+                            Align(
+                              alignment: Alignment.centerRight,
+                              child: TextButton(
+                                onPressed: () => _applyPeriod(_selectedPeriod),
+                                child: const Text(
+                                  'Retry',
+                                  style: TextStyle(
+                                    color: Color(0xFFDC2626),
+                                    fontWeight: FontWeight.bold,
+                                  ),
+                                ),
+                              ),
+                            ),
+                          ],
+                        ),
+                      ),
+                    ] else if (records.isEmpty) ...[
+                      Container(
+                        width: double.infinity,
+                        padding: const EdgeInsets.symmetric(
+                            vertical: 48, horizontal: 24),
+                        decoration: BoxDecoration(
+                          color: Colors.white,
+                          borderRadius: BorderRadius.circular(16),
+                          border: Border.all(color: const Color(0xFFE2E8F0)),
+                        ),
+                        child: const Column(
+                          mainAxisAlignment: MainAxisAlignment.center,
+                          children: [
+                            Icon(Icons.event_busy_outlined,
+                                size: 48, color: Color(0xFF94A3B8)),
+                            SizedBox(height: 12),
+                            Text(
+                              'No attendance records found',
+                              style: TextStyle(
+                                fontSize: 16,
+                                fontWeight: FontWeight.bold,
+                                color: Color(0xFF1E293B),
+                              ),
+                            ),
+                            SizedBox(height: 6),
+                            Text(
+                              'No attendance data found for the selected date range.',
+                              textAlign: TextAlign.center,
+                              style: TextStyle(
+                                fontSize: 13,
+                                color: Color(0xFF64748B),
+                              ),
+                            ),
+                          ],
+                        ),
+                      ),
+                    ] else ...[
+                      // Attendance Logs List
+                      ...records.map((record) => _buildRecordCard(record, primaryNavy)),
+                    ],
+                  ],
+                );
+              },
+            ),
+            const SizedBox(height: 12),
+
+            // Load Older Records Button
+            Center(
+              child: TextButton.icon(
+                onPressed: () => _applyPeriod(_selectedPeriod),
+                icon: const Icon(Icons.refresh, size: 18, color: primaryNavy),
+                label: const Text(
+                  'Refresh Records',
+                  style: TextStyle(
+                    color: primaryNavy,
+                    fontWeight: FontWeight.w600,
+                    fontSize: 14,
+                  ),
+                ),
+                style: TextButton.styleFrom(
+                  backgroundColor: const Color(0xFFE0E7FF),
+                  shape: RoundedRectangleBorder(
+                    borderRadius: BorderRadius.circular(20),
+                  ),
+                  padding: const EdgeInsets.symmetric(
+                      horizontal: 20, vertical: 10),
+                ),
               ),
             ),
-          );
-        },
+            const SizedBox(height: 16),
+          ],
+        ),
       ),
+    );
+  }
+
+  Widget _buildRecordCard(AttendanceRecord record, Color primaryNavy) {
+    final now = DateTime.now();
+    final isToday = now.year == record.date.year &&
+        now.month == record.date.month &&
+        now.day == record.date.day;
+    final yesterday = now.subtract(const Duration(days: 1));
+    final isYesterday = yesterday.year == record.date.year &&
+        yesterday.month == record.date.month &&
+        yesterday.day == record.date.day;
+
+    final dayLabel = isToday
+        ? 'TODAY'
+        : isYesterday
+            ? 'YESTERDAY'
+            : DateFormat('EEE').format(record.date).toUpperCase();
+    final dateStr = DateFormat('MMM dd, yyyy').format(record.date);
+
+    final statusLower = record.status.toLowerCase();
+    final isAbsent = statusLower.contains('absent') || statusLower.contains('leave');
+    final isWFH = record.workType.toUpperCase() == 'WFH';
+    final isHalfDay = statusLower.contains('half');
+
+    Color accentColor = const Color(0xFF2563EB); // Present
+    Widget statusBadge;
+
+    if (isAbsent) {
+      accentColor = const Color(0xFFDC2626);
+      statusBadge = _buildStatusBadge(
+        label: 'Absent',
+        icon: Icons.cancel_outlined,
+        bgColor: const Color(0xFFFEE2E2),
+        textColor: const Color(0xFFB91C1C),
+      );
+    } else if (isWFH) {
+      accentColor = const Color(0xFFD97706);
+      statusBadge = _buildStatusBadge(
+        label: 'WFH',
+        icon: Icons.home_outlined,
+        bgColor: const Color(0xFFFEF3C7),
+        textColor: const Color(0xFFB45309),
+      );
+    } else if (isHalfDay) {
+      accentColor = const Color(0xFF475569);
+      statusBadge = _buildStatusBadge(
+        label: 'Half Day',
+        icon: Icons.timelapse,
+        bgColor: const Color(0xFFE0E7FF),
+        textColor: primaryNavy,
+      );
+    } else {
+      accentColor = const Color(0xFF2563EB);
+      statusBadge = _buildStatusBadge(
+        label: 'Present',
+        icon: Icons.check_circle_outline,
+        bgColor: const Color(0xFFDCFCE7),
+        textColor: const Color(0xFF15803D),
+      );
+    }
+
+    final locationStr = record.location.isNotEmpty
+        ? record.location
+        : (isWFH ? 'Remote Setup (Home Office)' : 'HQ Office');
+
+    return _buildAttendanceCard(
+      accentColor: accentColor,
+      dayLabel: dayLabel,
+      dateStr: dateStr,
+      clientStr: locationStr,
+      statusBadge: statusBadge,
+      inTime: record.checkInTime,
+      outTime: record.checkOutTime,
+      isNoRecord: isAbsent,
+      customOutWidget: (record.checkOutTime == null || record.checkOutTime!.isEmpty) && !isAbsent
+          ? const Row(
+              children: [
+                Icon(Icons.warning_amber_rounded,
+                    size: 16, color: Color(0xFFDC2626)),
+                SizedBox(width: 4),
+                Text(
+                  'Missing Out',
+                  style: TextStyle(
+                    color: Color(0xFFDC2626),
+                    fontWeight: FontWeight.w500,
+                    fontSize: 13,
+                  ),
+                ),
+              ],
+            )
+          : null,
     );
   }
 
@@ -578,7 +694,7 @@ class _HistoryPageState extends State<HistoryPage> {
           Text(
             count,
             style: TextStyle(
-              fontSize: 18,
+              fontSize: 20,
               fontWeight: FontWeight.bold,
               color: color,
             ),
@@ -587,8 +703,8 @@ class _HistoryPageState extends State<HistoryPage> {
           Text(
             label,
             style: const TextStyle(
-              fontSize: 12,
-              color: AppColors.textMuted,
+              fontSize: 13,
+              color: Color(0xFF64748B),
             ),
           ),
         ],
@@ -604,44 +720,54 @@ class _HistoryPageState extends State<HistoryPage> {
     );
   }
 
-  // Dynamic Card Item Builder
-  Widget _buildAttendanceCard(AttendanceRecord record) {
-    Color accentColor = AppColors.primaryBlue;
-    Color badgeBg = AppColors.successBg;
-    Color badgeTextColor = AppColors.successEmerald;
-    IconData badgeIcon = Icons.check_circle_outline_rounded;
-    String badgeLabel = record.status;
+  // Status Badge Builder
+  Widget _buildStatusBadge({
+    required String label,
+    required IconData icon,
+    required Color bgColor,
+    required Color textColor,
+  }) {
+    return Container(
+      padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 5),
+      decoration: BoxDecoration(
+        color: bgColor,
+        borderRadius: BorderRadius.circular(16),
+      ),
+      child: Row(
+        mainAxisSize: MainAxisSize.min,
+        children: [
+          Icon(icon, size: 14, color: textColor),
+          const SizedBox(width: 4),
+          Text(
+            label,
+            style: TextStyle(
+              color: textColor,
+              fontSize: 12,
+              fontWeight: FontWeight.bold,
+            ),
+          ),
+        ],
+      ),
+    );
+  }
 
-    if (record.workType == 'WFH') {
-      accentColor = AppColors.warningAmber;
-      badgeBg = AppColors.warningBg;
-      badgeTextColor = AppColors.warningAmber;
-      badgeIcon = Icons.home_rounded;
-      badgeLabel = 'WFH';
-    } else if (record.status == 'Half Day') {
-      accentColor = const Color(0xFF8B5CF6);
-      badgeBg = const Color(0xFFF3E8FF);
-      badgeTextColor = const Color(0xFF7C3AED);
-      badgeIcon = Icons.timelapse_rounded;
-      badgeLabel = 'Half Day';
-    } else if (record.status == 'Absent') {
-      accentColor = AppColors.dangerRose;
-      badgeBg = AppColors.dangerBg;
-      badgeTextColor = AppColors.dangerRose;
-      badgeIcon = Icons.cancel_outlined;
-      badgeLabel = 'Absent';
-    }
-
-    final dateStr = DateFormat('MMM dd, yyyy').format(record.date);
-    final dayLabel = _getDayLabel(record.date);
-    final isClockOutMissing = record.checkOutTime == null;
-
+  // Card Item Builder
+  Widget _buildAttendanceCard({
+    required Color accentColor,
+    required String dayLabel,
+    required String dateStr,
+    required String clientStr,
+    required Widget statusBadge,
+    String? inTime,
+    String? outTime,
+    Widget? customOutWidget,
+    bool isNoRecord = false,
+  }) {
     return Container(
       margin: const EdgeInsets.only(bottom: 12),
       decoration: BoxDecoration(
         color: Colors.white,
-        borderRadius: BorderRadius.circular(14),
-        border: Border.all(color: AppColors.borderGrey),
+        borderRadius: BorderRadius.circular(12),
         boxShadow: [
           BoxShadow(
             color: Colors.black.withOpacity(0.02),
@@ -675,163 +801,87 @@ class _HistoryPageState extends State<HistoryPage> {
                             Text(
                               dayLabel,
                               style: const TextStyle(
-                                fontSize: 11,
+                                fontSize: 12,
                                 fontWeight: FontWeight.bold,
-                                color: AppColors.textLight,
-                                letterSpacing: 0.5,
+                                color: Color(0xFF94A3B8),
                               ),
                             ),
                             const SizedBox(height: 2),
                             Text(
                               dateStr,
                               style: const TextStyle(
-                                fontSize: 15,
+                                fontSize: 16,
                                 fontWeight: FontWeight.bold,
-                                color: AppColors.textDark,
+                                color: Color(0xFF1E293B),
                               ),
                             ),
                           ],
                         ),
-                        Container(
-                          padding: const EdgeInsets.symmetric(
-                            horizontal: 10,
-                            vertical: 4,
-                          ),
-                          decoration: BoxDecoration(
-                            color: badgeBg,
-                            borderRadius: BorderRadius.circular(12),
-                          ),
-                          child: Row(
-                            mainAxisSize: MainAxisSize.min,
-                            children: [
-                              Icon(
-                                badgeIcon,
-                                size: 13,
-                                color: badgeTextColor,
-                              ),
-                              const SizedBox(width: 4),
-                              Text(
-                                badgeLabel,
-                                style: TextStyle(
-                                  color: badgeTextColor,
-                                  fontSize: 11,
-                                  fontWeight: FontWeight.bold,
-                                ),
-                              ),
-                            ],
-                          ),
-                        ),
+                        statusBadge,
                       ],
                     ),
                     const SizedBox(height: 8),
-                    Row(
-                      children: [
-                        Icon(
-                          record.workType == 'GPS'
-                              ? Icons.location_on_outlined
-                              : Icons.home_work_outlined,
-                          size: 14,
-                          color: AppColors.textMuted,
-                        ),
-                        const SizedBox(width: 4),
-                        Expanded(
-                          child: Text(
-                            record.location.isNotEmpty
-                                ? record.location
-                                : 'Client Site',
-                            style: const TextStyle(
-                              fontSize: 12,
-                              color: AppColors.textMuted,
-                            ),
-                            maxLines: 1,
-                            overflow: TextOverflow.ellipsis,
-                          ),
-                        ),
-                      ],
-                    ),
-                    if (record.description.isNotEmpty) ...[
-                      const SizedBox(height: 6),
-                      Text(
-                        record.description,
-                        style: const TextStyle(
-                          fontSize: 12,
-                          color: AppColors.textMuted,
-                          fontStyle: FontStyle.italic,
-                        ),
-                        maxLines: 2,
-                        overflow: TextOverflow.ellipsis,
+                    Text(
+                      clientStr,
+                      style: const TextStyle(
+                        fontSize: 13,
+                        color: Color(0xFF64748B),
                       ),
-                    ],
+                    ),
                     const SizedBox(height: 12),
-                    Row(
-                      children: [
-                        const Icon(
-                          Icons.login_rounded,
-                          size: 15,
-                          color: AppColors.textLight,
-                        ),
-                        const SizedBox(width: 4),
-                        Text(
-                          _formatTime(record.checkInTime),
-                          style: const TextStyle(
-                            fontSize: 13,
-                            fontWeight: FontWeight.w600,
-                            color: AppColors.textDark,
-                          ),
-                        ),
-                        const SizedBox(width: 14),
-                        Container(
-                          height: 12,
-                          width: 1,
-                          color: AppColors.borderGrey,
-                        ),
-                        const SizedBox(width: 14),
-                        const Icon(
-                          Icons.logout_rounded,
-                          size: 15,
-                          color: AppColors.textLight,
-                        ),
-                        const SizedBox(width: 4),
-                        if (isClockOutMissing)
-                          const Text(
-                            'Active / Missing',
-                            style: TextStyle(
-                              fontSize: 12,
-                              fontWeight: FontWeight.w600,
-                              color: AppColors.warningAmber,
-                            ),
-                          )
-                        else
+                    if (isNoRecord)
+                      const Row(
+                        children: [
                           Text(
-                            _formatTime(record.checkOutTime),
+                            '—  ',
+                            style: TextStyle(color: Color(0xFF94A3B8)),
+                          ),
+                          Text(
+                            'No Record',
+                            style: TextStyle(
+                              color: Color(0xFF94A3B8),
+                              fontSize: 13,
+                            ),
+                          ),
+                        ],
+                      )
+                    else
+                      Row(
+                        children: [
+                          const Icon(Icons.login_rounded,
+                              size: 16, color: Color(0xFF64748B)),
+                          const SizedBox(width: 4),
+                          Text(
+                            inTime ?? '--:--',
                             style: const TextStyle(
                               fontSize: 13,
-                              fontWeight: FontWeight.w600,
-                              color: AppColors.textDark,
+                              fontWeight: FontWeight.w500,
+                              color: Color(0xFF1E293B),
                             ),
                           ),
-                        const Spacer(),
-                        if (record.totalHours > 0)
+                          const SizedBox(width: 16),
                           Container(
-                            padding: const EdgeInsets.symmetric(
-                              horizontal: 8,
-                              vertical: 2,
-                            ),
-                            decoration: BoxDecoration(
-                              color: const Color(0xFFF1F5F9),
-                              borderRadius: BorderRadius.circular(6),
-                            ),
-                            child: Text(
-                              '${record.totalHours.toStringAsFixed(1)} hrs',
+                              height: 12,
+                              width: 1,
+                              color: const Color(0xFFCBD5E1)),
+                          const SizedBox(width: 16),
+                          if (customOutWidget != null)
+                            customOutWidget
+                          else ...[
+                            const Icon(Icons.logout_rounded,
+                                size: 16, color: Color(0xFF64748B)),
+                            const SizedBox(width: 4),
+                            Text(
+                              outTime ?? '--:--',
                               style: const TextStyle(
-                                fontSize: 11,
-                                fontWeight: FontWeight.bold,
-                                color: AppColors.primaryNavy,
+                                fontSize: 13,
+                                fontWeight: FontWeight.w500,
+                                color: Color(0xFF1E293B),
                               ),
                             ),
-                          ),
-                      ],
-                    ),
+                          ],
+                        ],
+                      ),
                   ],
                 ),
               ),

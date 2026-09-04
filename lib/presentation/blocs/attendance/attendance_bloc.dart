@@ -1,5 +1,7 @@
 import 'package:flutter_bloc/flutter_bloc.dart';
+import 'package:intl/intl.dart';
 import '../../../core/usecases/usecase.dart';
+import '../../../domain/entities/attendance_record.dart';
 import '../../../domain/usecases/attendance/check_in_usecase.dart';
 import '../../../domain/usecases/attendance/check_out_usecase.dart';
 import '../../../domain/usecases/attendance/get_attendance_history_usecase.dart';
@@ -29,17 +31,56 @@ class AttendanceBloc extends Bloc<AttendanceEvent, AttendanceState> {
     LoadTodayAttendanceEvent event,
     Emitter<AttendanceState> emit,
   ) async {
-    emit(AttendanceLoadingState());
     final todayResult = await getTodayAttendanceUseCase(NoParams());
-    final historyResult = await getAttendanceHistoryUseCase(NoParams());
+    AttendanceRecord? activeTodayRecord = todayResult.fold((_) => null, (r) => r);
 
-    todayResult.fold(
-      (failure) => emit(AttendanceErrorState(failure.message)),
-      (todayRecord) {
-        historyResult.fold(
-          (failure) => emit(AttendanceLoadedState(todayRecord: todayRecord)),
-          (history) => emit(AttendanceLoadedState(todayRecord: todayRecord, history: history)),
-        );
+    if (activeTodayRecord != null) {
+      emit(AttendanceLoadedState(todayRecord: activeTodayRecord));
+    } else {
+      emit(AttendanceLoadingState());
+    }
+
+    final now = DateTime.now();
+    final startOfMonth = DateTime(now.year, now.month, 1);
+    final endOfMonth = DateTime(now.year, now.month + 1, 0);
+    final startDateStr = DateFormat('yyyy-MM-dd').format(startOfMonth);
+    final endDateStr = DateFormat('yyyy-MM-dd').format(endOfMonth);
+
+    final historyResult = await getAttendanceHistoryUseCase(
+      GetAttendanceHistoryParams(
+        startDate: startDateStr,
+        endDate: endDateStr,
+      ),
+    );
+
+    historyResult.fold(
+      (failure) {
+        if (activeTodayRecord != null) {
+          emit(AttendanceLoadedState(todayRecord: activeTodayRecord));
+        } else {
+          emit(AttendanceLoadedState(todayRecord: null, history: const []));
+        }
+      },
+      (history) {
+        if (history.isNotEmpty) {
+          final todayStr = DateFormat('yyyy-MM-dd').format(now);
+          final matches = history.where((r) {
+            final rDateStr = DateFormat('yyyy-MM-dd').format(r.date);
+            return rDateStr == todayStr;
+          });
+          if (matches.isNotEmpty) {
+            final matched = matches.first;
+            final current = activeTodayRecord;
+            if (current == null) {
+              activeTodayRecord = matched;
+            } else if (current.checkOutTime == null && matched.checkOutTime != null) {
+              activeTodayRecord = matched;
+            } else if (current.id.startsWith('att_') && !matched.id.startsWith('att_')) {
+              activeTodayRecord = matched;
+            }
+          }
+        }
+        emit(AttendanceLoadedState(todayRecord: activeTodayRecord, history: history));
       },
     );
   }
@@ -49,7 +90,16 @@ class AttendanceBloc extends Bloc<AttendanceEvent, AttendanceState> {
     Emitter<AttendanceState> emit,
   ) async {
     final currentState = state;
-    final historyResult = await getAttendanceHistoryUseCase(NoParams());
+    emit(AttendanceLoadingState());
+    final historyResult = await getAttendanceHistoryUseCase(
+      GetAttendanceHistoryParams(
+        startDate: event.startDate,
+        endDate: event.endDate,
+        filter: event.filter,
+        page: event.page,
+        size: event.size,
+      ),
+    );
 
     historyResult.fold(
       (failure) => emit(AttendanceErrorState(failure.message)),
@@ -80,7 +130,15 @@ class AttendanceBloc extends Bloc<AttendanceEvent, AttendanceState> {
     await result.fold(
       (failure) async => emit(AttendanceErrorState(failure.message)),
       (newRecord) async {
-        final historyResult = await getAttendanceHistoryUseCase(NoParams());
+        final now = DateTime.now();
+        final startOfMonth = DateTime(now.year, now.month, 1);
+        final endOfMonth = DateTime(now.year, now.month + 1, 0);
+        final historyResult = await getAttendanceHistoryUseCase(
+          GetAttendanceHistoryParams(
+            startDate: DateFormat('yyyy-MM-dd').format(startOfMonth),
+            endDate: DateFormat('yyyy-MM-dd').format(endOfMonth),
+          ),
+        );
         final history = historyResult.getOrElse(() => []);
         emit(AttendanceLoadedState(
           todayRecord: newRecord,
@@ -107,7 +165,15 @@ class AttendanceBloc extends Bloc<AttendanceEvent, AttendanceState> {
     await result.fold(
       (failure) async => emit(AttendanceErrorState(failure.message)),
       (updatedRecord) async {
-        final historyResult = await getAttendanceHistoryUseCase(NoParams());
+        final now = DateTime.now();
+        final startOfMonth = DateTime(now.year, now.month, 1);
+        final endOfMonth = DateTime(now.year, now.month + 1, 0);
+        final historyResult = await getAttendanceHistoryUseCase(
+          GetAttendanceHistoryParams(
+            startDate: DateFormat('yyyy-MM-dd').format(startOfMonth),
+            endDate: DateFormat('yyyy-MM-dd').format(endOfMonth),
+          ),
+        );
         final history = historyResult.getOrElse(() => []);
         emit(AttendanceLoadedState(
           todayRecord: updatedRecord,
@@ -118,3 +184,4 @@ class AttendanceBloc extends Bloc<AttendanceEvent, AttendanceState> {
     );
   }
 }
+

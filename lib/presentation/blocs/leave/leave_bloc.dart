@@ -26,7 +26,9 @@ class LeaveBloc extends Bloc<LeaveEvent, LeaveState> {
     Emitter<LeaveState> emit,
   ) async {
     emit(LeaveLoadingState());
-    final result = await getLeaveRequestsUseCase(NoParams());
+    final result = await getLeaveRequestsUseCase(
+      GetLeaveRequestsParams(status: event.status),
+    );
     result.fold(
       (failure) => emit(LeaveErrorState(failure.message)),
       (requests) => emit(LeaveLoadedState(requests: requests)),
@@ -51,7 +53,9 @@ class LeaveBloc extends Bloc<LeaveEvent, LeaveState> {
     await result.fold(
       (failure) async => emit(LeaveErrorState(failure.message)),
       (newRequest) async {
-        final listResult = await getLeaveRequestsUseCase(NoParams());
+        final listResult = await getLeaveRequestsUseCase(
+          const GetLeaveRequestsParams(),
+        );
         final requests = listResult.getOrElse(() => [newRequest]);
         emit(LeaveLoadedState(
           requests: requests,
@@ -77,7 +81,9 @@ class LeaveBloc extends Bloc<LeaveEvent, LeaveState> {
     await result.fold(
       (failure) async => emit(LeaveErrorState(failure.message)),
       (_) async {
-        final listResult = await getLeaveRequestsUseCase(NoParams());
+        final listResult = await getLeaveRequestsUseCase(
+          const GetLeaveRequestsParams(),
+        );
         final requests = listResult.getOrElse(() => []);
         emit(LeaveLoadedState(
           requests: requests,

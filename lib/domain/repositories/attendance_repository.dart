@@ -14,6 +14,13 @@ abstract class AttendanceRepository {
     required String description,
   });
 
-  Future<Either<Failure, List<AttendanceRecord>>> getAttendanceHistory();
+  Future<Either<Failure, List<AttendanceRecord>>> getAttendanceHistory({
+    String? startDate,
+    String? endDate,
+    String? filter,
+    int page = 0,
+    int size = 20,
+  });
   Future<Either<Failure, AttendanceRecord?>> getTodayAttendance();
 }
+

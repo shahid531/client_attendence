@@ -19,6 +19,7 @@ class AuthBloc extends Bloc<AuthEvent, AuthState> {
     on<AppStartedEvent>(_onAppStarted);
     on<LoginSubmittedEvent>(_onLoginSubmitted);
     on<LogoutRequestedEvent>(_onLogoutRequested);
+    on<LoadUserProfileEvent>(_onLoadUserProfile);
   }
 
   Future<void> _onAppStarted(
@@ -34,6 +35,21 @@ class AuthBloc extends Bloc<AuthEvent, AuthState> {
           emit(AuthenticatedState(user));
         } else {
           emit(UnauthenticatedState());
+        }
+      },
+    );
+  }
+
+  Future<void> _onLoadUserProfile(
+    LoadUserProfileEvent event,
+    Emitter<AuthState> emit,
+  ) async {
+    final result = await getCurrentUserUseCase(NoParams());
+    result.fold(
+      (failure) => emit(AuthFailureState(failure.message)),
+      (user) {
+        if (user != null) {
+          emit(AuthenticatedState(user));
         }
       },
     );

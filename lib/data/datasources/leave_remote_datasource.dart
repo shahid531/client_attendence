@@ -1,3 +1,6 @@
+import 'package:dio/dio.dart';
+import 'package:shared_preferences/shared_preferences.dart';
+import '../../core/errors/exceptions.dart';
 import '../models/dashboard_stats_model.dart';
 import '../models/leave_request_model.dart';
 
@@ -10,7 +13,7 @@ abstract class LeaveRemoteDataSource {
     required String reason,
   });
 
-  Future<List<LeaveRequestModel>> getLeaveRequests();
+  Future<List<LeaveRequestModel>> getLeaveRequests({String? status});
   Future<DashboardStatsModel> getDashboardStats();
   Future<void> updateRequestStatus({
     required String requestId,
@@ -20,6 +23,16 @@ abstract class LeaveRemoteDataSource {
 }
 
 class LeaveRemoteDataSourceImpl implements LeaveRemoteDataSource {
+  final Dio? dio;
+  final SharedPreferences? sharedPreferences;
+
+  static const String _baseUrl = 'https://clause-unpinned-wikipedia.ngrok-free.dev/api';
+
+  LeaveRemoteDataSourceImpl({
+    this.dio,
+    this.sharedPreferences,
+  });
+
   final List<LeaveRequestModel> _mockLeaveRequests = [
     LeaveRequestModel(
       id: 'req_001',
@@ -98,8 +111,67 @@ class LeaveRemoteDataSourceImpl implements LeaveRemoteDataSource {
   }
 
   @override
-  Future<List<LeaveRequestModel>> getLeaveRequests() async {
+  Future<List<LeaveRequestModel>> getLeaveRequests({String? status}) async {
+    if (dio != null && sharedPreferences != null) {
+      try {
+        final token = sharedPreferences!.getString('auth_bearer_token');
+        final headers = <String, String>{
+          'Content-Type': 'application/json',
+          'Accept': '*/*',
+          'ngrok-skip-browser-warning': 'true',
+        };
+        if (token != null && token.isNotEmpty) {
+          headers['Authorization'] = 'Bearer $token';
+        }
+
+        final queryParams = <String, dynamic>{};
+        if (status != null && status.isNotEmpty) {
+          queryParams['status'] = status.toUpperCase();
+        }
+
+        final response = await dio!.get(
+          '$_baseUrl/requests',
+          queryParameters: queryParams.isNotEmpty ? queryParams : null,
+          options: Options(headers: headers),
+        );
+
+        final data = response.data;
+        if (data is Map<String, dynamic>) {
+          if (data['success'] == false) {
+            throw ServerException(data['message']?.toString() ?? 'Failed to fetch requests');
+          }
+          final resData = data['data'];
+          if (resData is List) {
+            return resData
+                .map((item) => LeaveRequestModel.fromJson(item as Map<String, dynamic>))
+                .toList();
+          } else if (resData is Map<String, dynamic> && resData['content'] is List) {
+            final contentList = resData['content'] as List;
+            return contentList
+                .map((item) => LeaveRequestModel.fromJson(item as Map<String, dynamic>))
+                .toList();
+          }
+          return [];
+        }
+      } on DioException catch (e) {
+        if (e.response != null && e.response?.data is Map<String, dynamic>) {
+          final errMap = e.response!.data as Map<String, dynamic>;
+          final message = errMap['message'] ?? 'Failed to load requests (${e.response?.statusCode})';
+          throw ServerException(message.toString());
+        }
+        throw ServerException(e.message ?? 'Network error while fetching requests');
+      } catch (e) {
+        if (e is ServerException) rethrow;
+        throw ServerException(e.toString());
+      }
+    }
+
     await Future.delayed(const Duration(milliseconds: 300));
+    if (status != null && status.isNotEmpty) {
+      return _mockLeaveRequests
+          .where((r) => r.status.toLowerCase() == status.toLowerCase())
+          .toList();
+    }
     return List<LeaveRequestModel>.from(_mockLeaveRequests);
   }
 
@@ -110,7 +182,7 @@ class LeaveRemoteDataSourceImpl implements LeaveRemoteDataSource {
     String? remarks,
   }) async {
     await Future.delayed(const Duration(milliseconds: 300));
-    final index = _mockLeaveRequests.indexWhere((r) => r.id == requestId);
+    final index = _mockLeaveRequests.indexWhere((r) => r.id == requestId || r.requestId == requestId);
     if (index != -1) {
       final old = _mockLeaveRequests[index];
       _mockLeaveRequests[index] = LeaveRequestModel(
@@ -122,6 +194,11 @@ class LeaveRemoteDataSourceImpl implements LeaveRemoteDataSource {
         reason: remarks != null && remarks.isNotEmpty ? '${old.reason} (Note: $remarks)' : old.reason,
         status: status,
         submittedAt: old.submittedAt,
+        employeeName: old.employeeName,
+        employeeId: old.employeeId,
+        requestId: old.requestId,
+        requestedTimeOut: old.requestedTimeOut,
+        assignedApproverName: old.assignedApproverName,
       );
     }
   }
@@ -139,3 +216,4 @@ class LeaveRemoteDataSourceImpl implements LeaveRemoteDataSource {
     );
   }
 }
+

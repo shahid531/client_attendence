@@ -61,7 +61,10 @@ Future<void> initServiceLocator() async {
     ),
   );
   sl.registerLazySingleton<LeaveRemoteDataSource>(
-    () => LeaveRemoteDataSourceImpl(),
+    () => LeaveRemoteDataSourceImpl(
+      dio: sl(),
+      sharedPreferences: sl(),
+    ),
   );
 
   //! Repositories
