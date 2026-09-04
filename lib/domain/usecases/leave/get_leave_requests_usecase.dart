@@ -14,15 +14,13 @@ class GetLeaveRequestsParams extends Equatable {
   List<Object?> get props => [status];
 }
 
-class GetLeaveRequestsUseCase
-    implements UseCase<List<LeaveRequest>, GetLeaveRequestsParams> {
+class GetLeaveRequestsUseCase implements UseCase<List<LeaveRequest>, GetLeaveRequestsParams> {
   final LeaveRepository repository;
 
   GetLeaveRequestsUseCase(this.repository);
 
   @override
-  Future<Either<Failure, List<LeaveRequest>>> call(
-      GetLeaveRequestsParams params) async {
+  Future<Either<Failure, List<LeaveRequest>>> call(GetLeaveRequestsParams params) async {
     return await repository.getLeaveRequests(status: params.status);
   }
 }

@@ -63,7 +63,7 @@ class AuthRemoteDataSourceImpl implements AuthRemoteDataSource {
       );
 
       final data = response.data;
-      print('dataData: ${data}');
+      print('[AuthRemoteDataSource] Login response: $data');
       if (data is Map<String, dynamic>) {
         if (data['success'] == false) {
           throw ServerException(data['message'] ?? 'Authentication failed');
@@ -90,6 +90,7 @@ class AuthRemoteDataSourceImpl implements AuthRemoteDataSource {
 
       throw const ServerException('Invalid server response format');
     } on DioException catch (e) {
+      print('[AuthRemoteDataSource] Login DioException: ${e.response?.data ?? e.message}');
       if (e.response != null && e.response?.data is Map<String, dynamic>) {
         final errMap = e.response!.data as Map<String, dynamic>;
         final message = errMap['message'] ?? 'Authentication failed (${e.response?.statusCode})';
@@ -97,6 +98,7 @@ class AuthRemoteDataSourceImpl implements AuthRemoteDataSource {
       }
       throw ServerException(e.message ?? 'Network connection error. Please check backend connection.');
     } catch (e) {
+      print('[AuthRemoteDataSource] Login Exception: $e');
       if (e is ServerException) rethrow;
       throw ServerException(e.toString());
     }
@@ -199,6 +201,7 @@ class AuthRemoteDataSourceImpl implements AuthRemoteDataSource {
       );
 
       final data = response.data;
+      print('[AuthRemoteDataSource] Change-Password response: $data');
       if (data is Map<String, dynamic>) {
         if (data['success'] == false) {
           throw ServerException(data['message'] ?? 'Password update failed');
@@ -207,6 +210,7 @@ class AuthRemoteDataSourceImpl implements AuthRemoteDataSource {
 
       await sharedPreferences.setBool('cached_first_login', false);
     } on DioException catch (e) {
+      print('[AuthRemoteDataSource] Change-Password DioException: ${e.response?.data ?? e.message}');
       if (e.response != null && e.response?.data is Map<String, dynamic>) {
         final errMap = e.response!.data as Map<String, dynamic>;
         final message = errMap['message'] ?? 'Password update failed (${e.response?.statusCode})';
@@ -214,6 +218,8 @@ class AuthRemoteDataSourceImpl implements AuthRemoteDataSource {
       }
       throw ServerException(e.message ?? 'Network connection error while changing password.');
     } catch (e) {
+      print('[AuthRemoteDataSource] Change-Password Exception: $e');
+
       if (e is ServerException) rethrow;
       throw ServerException(e.toString());
     }

@@ -18,3 +18,4 @@ abstract class LeaveRepository {
     String? remarks,
   });
 }
+

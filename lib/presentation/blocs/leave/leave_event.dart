@@ -16,6 +16,7 @@ class LoadLeaveRequestsEvent extends LeaveEvent {
   List<Object?> get props => [status];
 }
 
+
 class SubmitLeaveRequestEvent extends LeaveEvent {
   final String title;
   final String requestType;

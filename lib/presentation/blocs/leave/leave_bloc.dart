@@ -1,5 +1,4 @@
 import 'package:flutter_bloc/flutter_bloc.dart';
-import '../../../core/usecases/usecase.dart';
 import '../../../domain/usecases/leave/get_leave_requests_usecase.dart';
 import '../../../domain/usecases/leave/submit_leave_request_usecase.dart';
 import '../../../domain/usecases/leave/update_request_status_usecase.dart';
@@ -82,7 +81,7 @@ class LeaveBloc extends Bloc<LeaveEvent, LeaveState> {
       (failure) async => emit(LeaveErrorState(failure.message)),
       (_) async {
         final listResult = await getLeaveRequestsUseCase(
-          const GetLeaveRequestsParams(),
+          const GetLeaveRequestsParams(status: 'PENDING'),
         );
         final requests = listResult.getOrElse(() => []);
         emit(LeaveLoadedState(
@@ -93,3 +92,4 @@ class LeaveBloc extends Bloc<LeaveEvent, LeaveState> {
     );
   }
 }
+

@@ -3,6 +3,10 @@ import '../../domain/entities/leave_request.dart';
 class LeaveRequestModel extends LeaveRequest {
   const LeaveRequestModel({
     required super.id,
+    super.requestId = '',
+    super.employeeId = '',
+    super.employeeName = '',
+    super.attendanceId = '',
     required super.title,
     required super.requestType,
     required super.startDate,
@@ -10,74 +14,68 @@ class LeaveRequestModel extends LeaveRequest {
     required super.reason,
     required super.status,
     required super.submittedAt,
-    super.employeeName,
-    super.employeeId,
-    super.requestId,
     super.requestedTimeOut,
     super.assignedApproverName,
+    super.timeIn,
+    super.timeOut,
   });
 
   factory LeaveRequestModel.fromJson(Map<String, dynamic> json) {
-    DateTime parsedStartDate = DateTime.now();
-    DateTime parsedEndDate = DateTime.now();
-    DateTime parsedSubmittedAt = DateTime.now();
+    final idStr = (json['id'] ?? json['requestId'] ?? '').toString();
+    final reqIdStr = json['requestId']?.toString() ?? idStr;
+    final empName = json['employeeName']?.toString() ?? '';
+    final empId = json['employeeId']?.toString() ?? '';
+    final type = json['requestType']?.toString() ?? 'Leave';
 
-    final rawStartDate = json['requestDate'] ?? json['startDate'] ?? json['createdAt'];
-    if (rawStartDate != null) {
-      parsedStartDate = DateTime.tryParse(rawStartDate.toString()) ?? DateTime.now();
-    }
-
-    final rawEndDate = json['endDate'] ?? json['requestedTimeOut'] ?? rawStartDate;
-    if (rawEndDate != null) {
-      parsedEndDate = DateTime.tryParse(rawEndDate.toString()) ?? parsedStartDate;
-    }
-
-    final rawCreatedAt = json['createdAt'] ?? json['submittedAt'];
-    if (rawCreatedAt != null) {
-      parsedSubmittedAt = DateTime.tryParse(rawCreatedAt.toString()) ?? DateTime.now();
-    }
-
-    final empName = json['employeeName']?.toString();
-    final reqType = (json['requestType'] ?? 'Leave').toString();
-    String calculatedTitle = json['title']?.toString() ?? '';
-    if (calculatedTitle.isEmpty) {
-      if (empName != null && empName.isNotEmpty) {
-        calculatedTitle = '$empName - $reqType Request';
+    String titleStr = json['title']?.toString() ?? '';
+    if (titleStr.isEmpty) {
+      if (empName.isNotEmpty) {
+        titleStr = '$empName - $type';
       } else {
-        calculatedTitle = '$reqType Request';
+        titleStr = 'Request #$idStr';
       }
     }
 
-    String rawStatus = (json['status'] ?? 'Pending').toString();
-    String normalizedStatus = rawStatus;
-    if (rawStatus.toUpperCase() == 'PENDING') {
-      normalizedStatus = 'Pending';
-    } else if (rawStatus.toUpperCase() == 'APPROVED') {
-      normalizedStatus = 'Approved';
-    } else if (rawStatus.toUpperCase() == 'REJECTED') {
-      normalizedStatus = 'Rejected';
+    DateTime parseDate(dynamic value) {
+      if (value == null) return DateTime.now();
+      try {
+        return DateTime.parse(value.toString());
+      } catch (_) {
+        return DateTime.now();
+      }
     }
 
+    final startDate = parseDate(json['requestDate'] ?? json['startDate'] ?? json['createdAt']);
+    final endDate = parseDate(json['requestDate'] ?? json['endDate'] ?? json['requestedTimeOut'] ?? json['createdAt']);
+    final submittedAt = parseDate(json['createdAt'] ?? json['submittedAt']);
+
     return LeaveRequestModel(
-      id: (json['id'] ?? json['requestId'] ?? 'req_${parsedStartDate.millisecondsSinceEpoch}').toString(),
-      title: calculatedTitle,
-      requestType: reqType,
-      startDate: parsedStartDate,
-      endDate: parsedEndDate,
-      reason: (json['reason'] ?? '').toString(),
-      status: normalizedStatus,
-      submittedAt: parsedSubmittedAt,
+      id: idStr,
+      requestId: reqIdStr,
+      employeeId: empId,
       employeeName: empName,
-      employeeId: json['employeeId']?.toString(),
-      requestId: json['requestId']?.toString(),
+      attendanceId: json['attendanceId']?.toString() ?? '',
+      title: titleStr,
+      requestType: type,
+      startDate: startDate,
+      endDate: endDate,
+      reason: json['reason']?.toString() ?? '',
+      status: json['status']?.toString() ?? 'PENDING',
+      submittedAt: submittedAt,
       requestedTimeOut: json['requestedTimeOut']?.toString(),
       assignedApproverName: json['assignedApproverName']?.toString(),
+      timeIn: json['timeIn']?.toString(),
+      timeOut: json['timeOut']?.toString(),
     );
   }
 
   Map<String, dynamic> toJson() {
     return {
       'id': id,
+      'requestId': requestId,
+      'employeeId': employeeId,
+      'employeeName': employeeName,
+      'attendanceId': attendanceId,
       'title': title,
       'requestType': requestType,
       'startDate': startDate.toIso8601String(),
@@ -85,12 +83,12 @@ class LeaveRequestModel extends LeaveRequest {
       'reason': reason,
       'status': status,
       'submittedAt': submittedAt.toIso8601String(),
-      'employeeName': employeeName,
-      'employeeId': employeeId,
-      'requestId': requestId,
       'requestedTimeOut': requestedTimeOut,
       'assignedApproverName': assignedApproverName,
+      'timeIn': timeIn,
+      'timeOut': timeOut,
     };
   }
 }
+
 
