@@ -55,3 +55,5 @@ class CheckOutRequestedEvent extends AttendanceEvent {
   @override
   List<Object?> get props => [recordId, description];
 }
+
+class ResetAttendanceEvent extends AttendanceEvent {}

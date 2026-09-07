@@ -84,6 +84,9 @@ class AuthRemoteDataSourceImpl implements AuthRemoteDataSource {
         await sharedPreferences.setString('cached_user_email', user.email);
         await sharedPreferences.setString('cached_user_name', user.name);
         await sharedPreferences.setString('cached_user_role', user.role);
+        await sharedPreferences.setString('cached_user_company', user.company);
+        if (user.locationName != null) await sharedPreferences.setString('cached_user_location_name', user.locationName!);
+        if (user.address != null) await sharedPreferences.setString('cached_user_address', user.address!);
         await sharedPreferences.setBool('cached_first_login', user.firstLogin);
         if (user.latitude != null) await sharedPreferences.setDouble('cached_user_lat', user.latitude!);
         if (user.longitude != null) await sharedPreferences.setDouble('cached_user_lng', user.longitude!);
@@ -110,15 +113,7 @@ class AuthRemoteDataSourceImpl implements AuthRemoteDataSource {
 
   @override
   Future<void> logout() async {
-    await sharedPreferences.remove('auth_bearer_token');
-    await sharedPreferences.remove('cached_user_id');
-    await sharedPreferences.remove('cached_user_email');
-    await sharedPreferences.remove('cached_user_name');
-    await sharedPreferences.remove('cached_user_role');
-    await sharedPreferences.remove('cached_first_login');
-    await sharedPreferences.remove('cached_user_lat');
-    await sharedPreferences.remove('cached_user_lng');
-    await sharedPreferences.remove('cached_user_radius');
+    await sharedPreferences.clear();
   }
 
   @override
@@ -158,6 +153,15 @@ class AuthRemoteDataSourceImpl implements AuthRemoteDataSource {
           if (user.role.isNotEmpty) {
             await sharedPreferences.setString('cached_user_role', user.role);
           }
+          if (user.company.isNotEmpty) {
+            await sharedPreferences.setString('cached_user_company', user.company);
+          }
+          if (user.locationName != null) {
+            await sharedPreferences.setString('cached_user_location_name', user.locationName!);
+          }
+          if (user.address != null) {
+            await sharedPreferences.setString('cached_user_address', user.address!);
+          }
           await sharedPreferences.setBool('cached_first_login', user.firstLogin);
           if (user.latitude != null) await sharedPreferences.setDouble('cached_user_lat', user.latitude!);
           if (user.longitude != null) await sharedPreferences.setDouble('cached_user_lng', user.longitude!);
@@ -174,6 +178,9 @@ class AuthRemoteDataSourceImpl implements AuthRemoteDataSource {
     final userEmail = sharedPreferences.getString('cached_user_email');
     final userName = sharedPreferences.getString('cached_user_name');
     final userRole = sharedPreferences.getString('cached_user_role');
+    final userCompany = sharedPreferences.getString('cached_user_company');
+    final userLocationName = sharedPreferences.getString('cached_user_location_name');
+    final userAddress = sharedPreferences.getString('cached_user_address');
     final firstLogin = sharedPreferences.getBool('cached_first_login') ?? false;
     final userLat = sharedPreferences.getDouble('cached_user_lat');
     final userLng = sharedPreferences.getDouble('cached_user_lng');
@@ -185,7 +192,9 @@ class AuthRemoteDataSourceImpl implements AuthRemoteDataSource {
         name: userName ?? 'User',
         email: userEmail ?? '$userId@clientsite.com',
         role: userRole ?? 'RM',
-        company: 'ClientSite HQ',
+        company: userCompany ?? 'ClientSite HQ',
+        locationName: userLocationName,
+        address: userAddress,
         firstLogin: firstLogin,
         latitude: userLat,
         longitude: userLng,

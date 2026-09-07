@@ -25,6 +25,7 @@ abstract class AttendanceRemoteDataSource {
     int size = 20,
   });
   Future<AttendanceRecordModel?> getTodayAttendance();
+  void clearCache();
 }
 
 class AttendanceRemoteDataSourceImpl implements AttendanceRemoteDataSource {
@@ -36,11 +37,25 @@ class AttendanceRemoteDataSourceImpl implements AttendanceRemoteDataSource {
   static const String _todayWorkTypePrefKey = 'today_attendance_work_type';
   static const String _todayIsClockedInPrefKey = 'today_attendance_is_clocked_in';
   static const String _todayDatePrefKey = 'today_attendance_date';
+  static const String _todayUserIdPrefKey = 'cached_attendance_user_id';
 
   AttendanceRemoteDataSourceImpl({
     this.dio,
     this.sharedPreferences,
   });
+
+  @override
+  void clearCache() {
+    _todayRecord = null;
+    if (sharedPreferences != null) {
+      sharedPreferences!.remove(_todayRecordPrefKey);
+      sharedPreferences!.remove(_todayDatePrefKey);
+      sharedPreferences!.remove(_todayWorkTypePrefKey);
+      sharedPreferences!.remove(_todayIsClockedInPrefKey);
+      sharedPreferences!.remove(_todayUserIdPrefKey);
+      sharedPreferences!.remove('selected_work_type_index');
+    }
+  }
 
   final List<AttendanceRecordModel> _mockRecords = [
     AttendanceRecordModel(
@@ -89,6 +104,7 @@ class AttendanceRemoteDataSourceImpl implements AttendanceRemoteDataSource {
         final isClockedIn = record.checkOutTime == null ||
             record.checkOutTime!.isEmpty ||
             record.checkOutTime == '--:--';
+        final currentUserId = sharedPreferences!.getString('cached_user_id') ?? '';
 
         await sharedPreferences!.setString(
           _todayRecordPrefKey,
@@ -97,11 +113,15 @@ class AttendanceRemoteDataSourceImpl implements AttendanceRemoteDataSource {
         await sharedPreferences!.setString(_todayDatePrefKey, todayStr);
         await sharedPreferences!.setString(_todayWorkTypePrefKey, record.workType);
         await sharedPreferences!.setBool(_todayIsClockedInPrefKey, isClockedIn);
+        if (currentUserId.isNotEmpty) {
+          await sharedPreferences!.setString(_todayUserIdPrefKey, currentUserId);
+        }
       } else {
         await sharedPreferences!.remove(_todayRecordPrefKey);
         await sharedPreferences!.remove(_todayDatePrefKey);
         await sharedPreferences!.remove(_todayWorkTypePrefKey);
         await sharedPreferences!.remove(_todayIsClockedInPrefKey);
+        await sharedPreferences!.remove(_todayUserIdPrefKey);
       }
     }
   }
@@ -109,14 +129,18 @@ class AttendanceRemoteDataSourceImpl implements AttendanceRemoteDataSource {
   AttendanceRecordModel? _loadSavedTodayRecord() {
     if (sharedPreferences != null) {
       final savedDate = sharedPreferences!.getString(_todayDatePrefKey);
+      final savedUserId = sharedPreferences!.getString(_todayUserIdPrefKey);
+      final currentUserId = sharedPreferences!.getString('cached_user_id');
       final now = DateTime.now();
       final todayStr = DateFormat('yyyy-MM-dd').format(now);
 
-      if (savedDate != null && savedDate != todayStr) {
+      if ((savedDate != null && savedDate != todayStr) ||
+          (savedUserId != null && currentUserId != null && currentUserId.isNotEmpty && savedUserId != currentUserId)) {
         sharedPreferences!.remove(_todayRecordPrefKey);
         sharedPreferences!.remove(_todayDatePrefKey);
         sharedPreferences!.remove(_todayWorkTypePrefKey);
         sharedPreferences!.remove(_todayIsClockedInPrefKey);
+        sharedPreferences!.remove(_todayUserIdPrefKey);
         return null;
       }
 
@@ -134,6 +158,7 @@ class AttendanceRemoteDataSourceImpl implements AttendanceRemoteDataSource {
               sharedPreferences!.remove(_todayDatePrefKey);
               sharedPreferences!.remove(_todayWorkTypePrefKey);
               sharedPreferences!.remove(_todayIsClockedInPrefKey);
+              sharedPreferences!.remove(_todayUserIdPrefKey);
             }
           }
         } catch (_) {}
@@ -152,7 +177,7 @@ class AttendanceRemoteDataSourceImpl implements AttendanceRemoteDataSource {
     String timeStr = DateFormat('hh:mm a').format(now);
     String assignedId = 'att_${now.millisecondsSinceEpoch}';
 
-    if (dio != null && sharedPreferences != null) {
+    if (dio != null && sharedPreferences != null && workType == 'WFH') {
       try {
         final token = sharedPreferences!.getString('auth_bearer_token');
         final headers = <String, String>{
@@ -164,9 +189,7 @@ class AttendanceRemoteDataSourceImpl implements AttendanceRemoteDataSource {
           headers['Authorization'] = 'Bearer $token';
         }
 
-        final endpoint = workType == 'WFH'
-            ? '$_baseUrl/attendance/wfh/time-in'
-            : '$_baseUrl/attendance/check-in';
+        final endpoint = '$_baseUrl/attendance/wfh/time-in';
 
         final response = await dio!.post(
           endpoint,
@@ -231,6 +254,7 @@ class AttendanceRemoteDataSourceImpl implements AttendanceRemoteDataSource {
   }) async {
     final now = DateTime.now();
     String timeStr = DateFormat('hh:mm a').format(now);
+    double computedHours = 0.0;
 
     if (_todayRecord == null) {
       _todayRecord = _loadSavedTodayRecord();
@@ -239,7 +263,7 @@ class AttendanceRemoteDataSourceImpl implements AttendanceRemoteDataSource {
     final currentRecord = _todayRecord;
     final workType = currentRecord?.workType ?? 'WFH';
 
-    if (dio != null && sharedPreferences != null) {
+    if (dio != null && sharedPreferences != null && workType == 'WFH') {
       try {
         final token = sharedPreferences!.getString('auth_bearer_token');
         final headers = <String, String>{
@@ -251,9 +275,7 @@ class AttendanceRemoteDataSourceImpl implements AttendanceRemoteDataSource {
           headers['Authorization'] = 'Bearer $token';
         }
 
-        final endpoint = workType == 'WFH'
-            ? '$_baseUrl/attendance/wfh/time-out'
-            : '$_baseUrl/attendance/check-out';
+        final endpoint = '$_baseUrl/attendance/wfh/time-out';
 
         final response = await dio!.post(
           endpoint,
@@ -276,6 +298,10 @@ class AttendanceRemoteDataSourceImpl implements AttendanceRemoteDataSource {
               timeStr = parsed != null
                   ? DateFormat('hh:mm a').format(parsed)
                   : resData['timeOut'].toString();
+            }
+            if (resData['totalHours'] != null || resData['hours'] != null) {
+              final rawH = resData['totalHours'] ?? resData['hours'];
+              computedHours = double.tryParse(rawH.toString()) ?? 0.0;
             }
           }
         }
@@ -304,7 +330,6 @@ class AttendanceRemoteDataSourceImpl implements AttendanceRemoteDataSource {
       status: 'Present',
     );
 
-    double computedHours = 0.0;
     try {
       DateTime? inDt;
       DateTime? outDt;
@@ -330,10 +355,10 @@ class AttendanceRemoteDataSourceImpl implements AttendanceRemoteDataSource {
         } catch (_) {}
       }
 
-      if (inDt != null && outDt != null) {
-        final diffMins = outDt.difference(inDt).inMinutes;
-        if (diffMins > 0) {
-          computedHours = diffMins / 60.0;
+      if (computedHours <= 0.0 && inDt != null && outDt != null) {
+        final diffSecs = outDt.difference(inDt).inSeconds;
+        if (diffSecs > 0) {
+          computedHours = diffSecs / 3600.0;
         }
       }
     } catch (_) {}
@@ -421,9 +446,9 @@ class AttendanceRemoteDataSourceImpl implements AttendanceRemoteDataSource {
               r.date.day == now.day).toList();
           if (todayMatches.isNotEmpty) {
             final latestToday = todayMatches.first;
-            if (_todayRecord == null || (_todayRecord!.checkOutTime == null && latestToday.checkOutTime != null)) {
-              await _saveTodayRecord(latestToday);
-            }
+            await _saveTodayRecord(latestToday);
+          } else {
+            await _saveTodayRecord(null);
           }
 
           return historyList;
@@ -453,6 +478,13 @@ class AttendanceRemoteDataSourceImpl implements AttendanceRemoteDataSource {
   Future<AttendanceRecordModel?> getTodayAttendance() async {
     final now = DateTime.now();
     final todayStr = DateFormat('yyyy-MM-dd').format(now);
+    final currentUserId = sharedPreferences?.getString('cached_user_id');
+    final savedUserId = sharedPreferences?.getString(_todayUserIdPrefKey);
+
+    if (savedUserId != null && currentUserId != null && currentUserId.isNotEmpty && savedUserId != currentUserId) {
+      clearCache();
+      return null;
+    }
 
     if (_todayRecord != null) {
       final recordDateStr = DateFormat('yyyy-MM-dd').format(_todayRecord!.date);

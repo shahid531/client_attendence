@@ -1,3 +1,4 @@
+import 'dart:async';
 import 'dart:convert';
 import 'package:flutter/material.dart';
 import 'package:flutter_bloc/flutter_bloc.dart';
@@ -30,6 +31,9 @@ class _HomePageState extends State<HomePage> {
   String? _localRecordId;
   final TextEditingController _descriptionController = TextEditingController();
 
+  // Live Timer for Work Duration
+  Timer? _liveTimer;
+
   // Geofence & Location State
   Position? _currentPosition;
   bool _isLocating = false;
@@ -42,6 +46,20 @@ class _HomePageState extends State<HomePage> {
     _loadPreferences();
     _checkLocationRange();
     context.read<AttendanceBloc>().add(LoadTodayAttendanceEvent());
+  }
+
+  void _startLiveTimer() {
+    if (_liveTimer != null && _liveTimer!.isActive) return;
+    _liveTimer = Timer.periodic(const Duration(seconds: 1), (_) {
+      if (mounted) {
+        setState(() {});
+      }
+    });
+  }
+
+  void _stopLiveTimer() {
+    _liveTimer?.cancel();
+    _liveTimer = null;
   }
 
   Future<void> _checkLocationRange({bool showSnackBar = false}) async {
@@ -120,15 +138,19 @@ class _HomePageState extends State<HomePage> {
       );
 
       final authState = authBloc.state;
-      // Default to user's current GPS location if backend coordinates are not set
-      double officeLat = position.latitude;
-      double officeLng = position.longitude;
+      // Fixed office geofence coordinates from backend login response / Pune HQ
+      double officeLat = 18.58742586542344;
+      double officeLng = 73.73845322922567;
       double officeRadius = 100.0;
 
       if (authState is AuthenticatedState) {
         if (authState.user.latitude != null) officeLat = authState.user.latitude!;
         if (authState.user.longitude != null) officeLng = authState.user.longitude!;
-        if (authState.user.radius != null) officeRadius = authState.user.radius!;
+        if (authState.user.allowedRadius != null) {
+          officeRadius = authState.user.allowedRadius!;
+        } else if (authState.user.radius != null) {
+          officeRadius = authState.user.radius!;
+        }
       }
 
       final distance = Geolocator.distanceBetween(
@@ -147,12 +169,13 @@ class _HomePageState extends State<HomePage> {
         });
 
         if (showSnackBar) {
+          final distStr = _formatDistance(distance);
           ScaffoldMessenger.of(context).showSnackBar(
             SnackBar(
               content: Text(
                 _isInRange
-                    ? 'Location verified: In Range (${distance.toStringAsFixed(0)}m away)'
-                    : 'Location updated: Out of Range (${distance.toStringAsFixed(0)}m away)',
+                    ? 'Location verified: In Range ($distStr)'
+                    : 'Location updated: Out of Range ($distStr from office)',
               ),
               backgroundColor: _isInRange ? AppColors.successEmerald : AppColors.dangerRose,
               behavior: SnackBarBehavior.floating,
@@ -184,6 +207,7 @@ class _HomePageState extends State<HomePage> {
     required double officeLng,
     required double officeRadius,
     required String officeName,
+    String? officeAddress,
   }) {
     showModalBottomSheet(
       context: parentContext,
@@ -241,7 +265,7 @@ class _HomePageState extends State<HomePage> {
                         FlutterMap(
                           options: MapOptions(
                             initialCenter: officeLatLng,
-                            initialZoom: 16.5,
+                            initialZoom: 17.0,
                             minZoom: 4.0,
                             maxZoom: 19.0,
                           ),
@@ -398,6 +422,22 @@ class _HomePageState extends State<HomePage> {
                                       color: AppColors.textDark,
                                     ),
                                   ),
+                                  if (officeAddress != null && officeAddress.isNotEmpty) ...[
+                                    const SizedBox(height: 2),
+                                    Row(
+                                      children: [
+                                        const Icon(Icons.place_outlined, size: 14, color: AppColors.textMuted),
+                                        const SizedBox(width: 4),
+                                        Text(
+                                          officeAddress,
+                                          style: const TextStyle(
+                                            fontSize: 12,
+                                            color: AppColors.textMuted,
+                                          ),
+                                        ),
+                                      ],
+                                    ),
+                                  ],
                                   const SizedBox(height: 2),
                                   Text(
                                     'Allowed Radius: ${officeRadius.toStringAsFixed(0)} meters',
@@ -436,7 +476,7 @@ class _HomePageState extends State<HomePage> {
                             const SizedBox(width: 6),
                             Text(
                               _distanceToOffice != null
-                                  ? 'Distance to Office: ${_distanceToOffice!.toStringAsFixed(1)} m'
+                                  ? 'Distance to Office: ${_formatDistance(_distanceToOffice)}'
                                   : 'Distance: Calculating...',
                               style: const TextStyle(
                                 fontSize: 13,
@@ -499,10 +539,23 @@ class _HomePageState extends State<HomePage> {
   Future<void> _loadPreferences() async {
     try {
       final prefs = await SharedPreferences.getInstance();
+      if (!mounted) return;
       final savedDate = prefs.getString('today_attendance_date');
+      final savedUserId = prefs.getString('cached_attendance_user_id');
       final todayStr = DateFormat('yyyy-MM-dd').format(DateTime.now());
 
-      if (savedDate == todayStr) {
+      String currentUserId = '';
+      final authState = context.read<AuthBloc>().state;
+      if (authState is AuthenticatedState) {
+        currentUserId = authState.user.id;
+      }
+      if (currentUserId.isEmpty) {
+        currentUserId = prefs.getString('cached_user_id') ?? '';
+      }
+
+      final isSameUser = (savedUserId == null || savedUserId.isEmpty || savedUserId == currentUserId);
+
+      if (savedDate == todayStr && isSameUser) {
         final isClockedIn = prefs.getBool('today_attendance_is_clocked_in') ?? false;
         final workType = prefs.getString('today_attendance_work_type') ?? 'GPS';
         final savedIndex = prefs.getInt('selected_work_type_index');
@@ -524,6 +577,11 @@ class _HomePageState extends State<HomePage> {
         if (mounted) {
           setState(() {
             _isLocalClockedIn = isClockedIn;
+            if (isClockedIn) {
+              _startLiveTimer();
+            } else {
+              _stopLiveTimer();
+            }
             if (workType.toUpperCase() == 'WFH') {
               _selectedWorkTypeIndex = 1;
             } else if (savedIndex != null) {
@@ -532,11 +590,13 @@ class _HomePageState extends State<HomePage> {
           });
         }
       } else {
-        // New day: Reset all today attendance data for HomePage
+        // Different user or new day: Reset all today attendance data for HomePage
+        _stopLiveTimer();
         await prefs.remove('today_attendance_record_data');
         await prefs.remove('today_attendance_date');
         await prefs.remove('today_attendance_work_type');
         await prefs.remove('today_attendance_is_clocked_in');
+        await prefs.remove('cached_attendance_user_id');
         await prefs.remove('selected_work_type_index');
 
         if (mounted) {
@@ -566,12 +626,69 @@ class _HomePageState extends State<HomePage> {
 
   @override
   void dispose() {
+    _stopLiveTimer();
     _descriptionController.dispose();
     super.dispose();
   }
 
+  DateTime? _parseTimeString(String? dateTimeStr) {
+    if (dateTimeStr == null || dateTimeStr.isEmpty || dateTimeStr == '--:--') return null;
+    if (dateTimeStr.contains('T') || (dateTimeStr.contains('-') && dateTimeStr.contains(':'))) {
+      final parsed = DateTime.tryParse(dateTimeStr);
+      if (parsed != null) return parsed.toLocal();
+    }
+    try {
+      final now = DateTime.now();
+      final parsed = DateFormat('hh:mm a').parse(dateTimeStr);
+      return DateTime(now.year, now.month, now.day, parsed.hour, parsed.minute);
+    } catch (_) {
+      try {
+        final now = DateTime.now();
+        final parsed = DateFormat('HH:mm').parse(dateTimeStr);
+        return DateTime(now.year, now.month, now.day, parsed.hour, parsed.minute);
+      } catch (_) {
+        return null;
+      }
+    }
+  }
+
+  String _formatLiveDuration(Duration duration) {
+    if (duration.isNegative) duration = Duration.zero;
+    final hours = duration.inHours;
+    final minutes = duration.inMinutes.remainder(60);
+    final seconds = duration.inSeconds.remainder(60);
+    return '${hours.toString().padLeft(2, '0')}h ${minutes.toString().padLeft(2, '0')}m ${seconds.toString().padLeft(2, '0')}s';
+  }
+
+  String _calculateAndFormatDuration(String? inStr, String? outStr) {
+    final inDt = _parseTimeString(inStr);
+    final outDt = _parseTimeString(outStr);
+    if (inDt != null && outDt != null) {
+      final diff = outDt.difference(inDt);
+      if (!diff.isNegative) {
+        final hours = diff.inHours;
+        final minutes = diff.inMinutes.remainder(60);
+        final seconds = diff.inSeconds.remainder(60);
+        if (hours > 0 || minutes > 0) {
+          return '${hours.toString().padLeft(2, '0')}h ${minutes.toString().padLeft(2, '0')}m';
+        } else if (seconds > 0) {
+          return '${seconds}s';
+        }
+      }
+    }
+    return '-- h --';
+  }
+
+  String _formatDistance(double? meters) {
+    if (meters == null) return 'Calculating...';
+    if (meters >= 1000) {
+      return '${(meters / 1000).toStringAsFixed(1)} km away';
+    }
+    return '${meters.toStringAsFixed(0)}m away';
+  }
+
   String _formatTime(String? dateTimeStr) {
-    if (dateTimeStr == null || dateTimeStr.isEmpty) return '--:--';
+    if (dateTimeStr == null || dateTimeStr.isEmpty || dateTimeStr == '--:--') return '-';
     try {
       if (dateTimeStr.contains('T') || dateTimeStr.contains('-')) {
         final parsed = DateTime.parse(dateTimeStr);
@@ -586,16 +703,16 @@ class _HomePageState extends State<HomePage> {
   String _formatTotalHours(double? hours) {
     if (hours == null || hours <= 0.0) return '-- h --';
     final totalMinutes = (hours * 60).round();
-    if (totalMinutes <= 0) return '-- h --';
     final wholeHours = totalMinutes ~/ 60;
     final minutes = totalMinutes % 60;
-    if (wholeHours > 0 && minutes > 0) {
-      return '${wholeHours}h ${minutes.toString().padLeft(2, '0')}m';
-    } else if (wholeHours > 0) {
-      return '${wholeHours}h 00m';
-    } else {
-      return '${minutes}m';
+    if (wholeHours > 0 || minutes > 0) {
+      return '${wholeHours.toString().padLeft(2, '0')}h ${minutes.toString().padLeft(2, '0')}m';
     }
+    final totalSeconds = (hours * 3600).round();
+    if (totalSeconds > 0) {
+      return '${totalSeconds}s';
+    }
+    return '-- h --';
   }
 
   void _onConfirmPressed({
@@ -654,6 +771,11 @@ class _HomePageState extends State<HomePage> {
             _localOutTime = state.todayRecord!.checkOutTime;
             _localTotalHours = state.todayRecord!.totalHours;
             _localRecordId = state.todayRecord!.id;
+            if (isRecordClockedIn) {
+              _startLiveTimer();
+            } else {
+              _stopLiveTimer();
+            }
             if (state.todayRecord!.workType.toUpperCase() == 'WFH') {
               _selectedWorkTypeIndex = 1;
               _saveSelectedWorkType(1);
@@ -661,6 +783,13 @@ class _HomePageState extends State<HomePage> {
               _selectedWorkTypeIndex = 0;
               _saveSelectedWorkType(0);
             }
+          } else {
+            _stopLiveTimer();
+            _isLocalClockedIn = false;
+            _localInTime = null;
+            _localOutTime = null;
+            _localTotalHours = 0.0;
+            _localRecordId = null;
           }
           if (state.successMessage != null) {
             ScaffoldMessenger.of(context).showSnackBar(
@@ -671,6 +800,15 @@ class _HomePageState extends State<HomePage> {
               ),
             );
           }
+        } else if (state is AttendanceInitialState) {
+          _stopLiveTimer();
+          _isLocalClockedIn = false;
+          _localInTime = null;
+          _localOutTime = null;
+          _localTotalHours = 0.0;
+          _localRecordId = null;
+          _selectedWorkTypeIndex = 0;
+          _descriptionController.clear();
         } else if (state is AttendanceErrorState) {
           ScaffoldMessenger.of(context).showSnackBar(
             SnackBar(
@@ -683,18 +821,23 @@ class _HomePageState extends State<HomePage> {
       },
       builder: (context, state) {
         final isLoading = state is AttendanceLoadingState;
-        final todayRecord =
-            state is AttendanceLoadedState ? state.todayRecord : null;
-        final isClockedIn = todayRecord != null
-            ? (todayRecord.checkOutTime == null ||
-                todayRecord.checkOutTime!.isEmpty ||
-                todayRecord.checkOutTime == '--:--')
-            : _isLocalClockedIn;
+        final isLoaded = state is AttendanceLoadedState;
+        final todayRecord = isLoaded ? state.todayRecord : null;
+        final isClockedIn = isLoaded
+            ? (todayRecord != null &&
+                (todayRecord.checkOutTime == null ||
+                    todayRecord.checkOutTime!.isEmpty ||
+                    todayRecord.checkOutTime == '--:--'))
+            : (todayRecord != null
+                ? (todayRecord.checkOutTime == null ||
+                    todayRecord.checkOutTime!.isEmpty ||
+                    todayRecord.checkOutTime == '--:--')
+                : _isLocalClockedIn);
 
-        final displayInTime = todayRecord?.checkInTime ?? _localInTime;
-        final displayOutTime = todayRecord?.checkOutTime ?? _localOutTime;
-        final displayTotalHours = todayRecord?.totalHours ?? _localTotalHours;
-        final activeRecordId = todayRecord?.id ?? _localRecordId;
+        final displayInTime = isLoaded ? todayRecord?.checkInTime : (todayRecord?.checkInTime ?? _localInTime);
+        final displayOutTime = isLoaded ? todayRecord?.checkOutTime : (todayRecord?.checkOutTime ?? _localOutTime);
+        final displayTotalHours = isLoaded ? (todayRecord?.totalHours ?? 0.0) : (todayRecord?.totalHours ?? _localTotalHours);
+        final activeRecordId = isLoaded ? todayRecord?.id : (todayRecord?.id ?? _localRecordId);
 
         final isCompletedToday = !isClockedIn &&
             (displayOutTime != null &&
@@ -702,6 +845,15 @@ class _HomePageState extends State<HomePage> {
                 displayOutTime.isNotEmpty);
 
         final hasMarkedToday = isClockedIn || isCompletedToday;
+
+        if (isClockedIn) {
+          _startLiveTimer();
+        } else if (isCompletedToday) {
+          _stopLiveTimer();
+        }
+
+        final inDt = isClockedIn ? _parseTimeString(displayInTime) : null;
+        final liveDuration = inDt != null ? DateTime.now().difference(inDt) : Duration.zero;
 
         // Auto sync work type if already checked in or recorded for today
         if (todayRecord != null) {
@@ -726,9 +878,7 @@ class _HomePageState extends State<HomePage> {
                     ? (_selectedWorkTypeIndex == 1
                         ? 'Day Completed (WFH)'
                         : 'Day Completed (GPS)')
-                    : (isClockedIn
-                        ? (_selectedWorkTypeIndex == 1 ? 'Time Out' : 'Clock Out')
-                        : (_selectedWorkTypeIndex == 1 ? 'Time In' : 'Clock In')),
+                    : (isClockedIn ? 'Time Out' : 'Time In'),
                 style: const TextStyle(
                   fontSize: 26,
                   fontWeight: FontWeight.bold,
@@ -757,7 +907,9 @@ class _HomePageState extends State<HomePage> {
                 decoration: BoxDecoration(
                   color: Colors.white,
                   borderRadius: BorderRadius.circular(16),
-                  border: Border.all(color: AppColors.borderGrey),
+                  border: Border.all(
+                    color: isClockedIn ? const Color(0xFFC7D2FE) : AppColors.borderGrey,
+                  ),
                   boxShadow: [
                     BoxShadow(
                       color: Colors.black.withOpacity(0.03),
@@ -770,17 +922,29 @@ class _HomePageState extends State<HomePage> {
                   children: [
                     Row(
                       mainAxisAlignment: MainAxisAlignment.center,
-                      children: const [
-                        Icon(
-                          Icons.timer_outlined,
-                          color: AppColors.primaryNavy,
-                          size: 20,
-                        ),
-                        SizedBox(width: 8),
-                        Text(
-                          'TOTAL HOURS WORKED',
-                          style: TextStyle(
+                      children: [
+                        if (isClockedIn) ...[
+                          Container(
+                            width: 8,
+                            height: 8,
+                            decoration: const BoxDecoration(
+                              color: AppColors.successEmerald,
+                              shape: BoxShape.circle,
+                            ),
+                          ),
+                          const SizedBox(width: 8),
+                        ] else ...[
+                          const Icon(
+                            Icons.timer_outlined,
                             color: AppColors.primaryNavy,
+                            size: 20,
+                          ),
+                          const SizedBox(width: 8),
+                        ],
+                        Text(
+                          isClockedIn ? 'TOTAL HOURS WORKED (LIVE)' : 'TOTAL HOURS WORKED',
+                          style: TextStyle(
+                            color: isClockedIn ? AppColors.successEmerald : AppColors.primaryNavy,
                             fontWeight: FontWeight.bold,
                             fontSize: 13,
                             letterSpacing: 0.5,
@@ -790,11 +954,18 @@ class _HomePageState extends State<HomePage> {
                     ),
                     const SizedBox(height: 14),
                     Text(
-                      _formatTotalHours(displayTotalHours),
-                      style: const TextStyle(
-                        fontSize: 28,
-                        fontWeight: FontWeight.w600,
-                        color: AppColors.textDark,
+                      isClockedIn
+                          ? _formatLiveDuration(liveDuration)
+                          : (isCompletedToday
+                              ? (displayTotalHours > 0
+                                  ? _formatTotalHours(displayTotalHours)
+                                  : _calculateAndFormatDuration(displayInTime, displayOutTime))
+                              : '-- h --'),
+                      style: TextStyle(
+                        fontSize: isClockedIn ? 28 : 28,
+                        fontWeight: FontWeight.bold,
+                        color: isClockedIn ? AppColors.primaryNavy : AppColors.textDark,
+                        letterSpacing: isClockedIn ? 0.5 : 0.0,
                       ),
                     ),
                     const SizedBox(height: 16),
@@ -841,7 +1012,7 @@ class _HomePageState extends State<HomePage> {
                               ),
                               const SizedBox(height: 4),
                               Text(
-                                _formatTime(displayOutTime),
+                                isClockedIn ? '-' : _formatTime(displayOutTime),
                                 style: const TextStyle(
                                   color: AppColors.textDark,
                                   fontSize: 15,
@@ -938,20 +1109,33 @@ class _HomePageState extends State<HomePage> {
                     final authState = context.watch<AuthBloc>().state;
                     final officeLat = (authState is AuthenticatedState && authState.user.latitude != null)
                         ? authState.user.latitude!
-                        : (_currentPosition?.latitude ?? 19.0760);
+                        : 18.58742586542344;
                     final officeLng = (authState is AuthenticatedState && authState.user.longitude != null)
                         ? authState.user.longitude!
-                        : (_currentPosition?.longitude ?? 72.8777);
-                    final officeRadius = (authState is AuthenticatedState && authState.user.radius != null)
-                        ? authState.user.radius!
+                        : 73.73845322922567;
+                    final officeRadius = (authState is AuthenticatedState &&
+                            (authState.user.allowedRadius != null || authState.user.radius != null))
+                        ? (authState.user.allowedRadius ?? authState.user.radius!)
                         : 100.0;
-                    final officeLocationName = (authState is AuthenticatedState &&
+                    final officeClientName = (authState is AuthenticatedState && authState.user.company.isNotEmpty)
+                        ? authState.user.company
+                        : 'Deva Interprices';
+                    final officeLocName = (authState is AuthenticatedState &&
                             authState.user.locationName != null &&
                             authState.user.locationName!.isNotEmpty)
                         ? authState.user.locationName!
-                        : ((authState is AuthenticatedState && authState.user.company.isNotEmpty)
-                            ? authState.user.company
-                            : 'HQ Building, 5th Floor');
+                        : 'Deva Int';
+                    final officeAddress = (authState is AuthenticatedState &&
+                            authState.user.address != null &&
+                            authState.user.address!.isNotEmpty)
+                        ? authState.user.address!
+                        : 'Pune';
+
+                    final fullOfficeTitle = officeClientName == officeLocName
+                        ? officeClientName
+                        : '$officeClientName ($officeLocName)';
+
+                    final subtitleText = '$officeAddress • ${_formatDistance(_distanceToOffice)}';
 
                     return Material(
                       color: Colors.transparent,
@@ -961,7 +1145,8 @@ class _HomePageState extends State<HomePage> {
                           officeLat: officeLat,
                           officeLng: officeLng,
                           officeRadius: officeRadius,
-                          officeName: officeLocationName,
+                          officeName: fullOfficeTitle,
+                          officeAddress: officeAddress,
                         ),
                         borderRadius: BorderRadius.circular(16),
                         child: Container(
@@ -1065,29 +1250,28 @@ class _HomePageState extends State<HomePage> {
                                     ),
                                     const SizedBox(height: 2),
                                     Text(
-                                      officeLocationName,
+                                      fullOfficeTitle,
                                       maxLines: 1,
                                       overflow: TextOverflow.ellipsis,
                                       style: const TextStyle(
                                         fontSize: 11.5,
                                         color: AppColors.textMuted,
+                                        fontWeight: FontWeight.w500,
                                       ),
                                     ),
-                                    if (_distanceToOffice != null) ...[
-                                      const SizedBox(height: 2),
-                                      Text(
-                                        '${_distanceToOffice!.toStringAsFixed(0)}m away • Tap for map',
-                                        maxLines: 1,
-                                        overflow: TextOverflow.ellipsis,
-                                        style: TextStyle(
-                                          fontSize: 10.5,
-                                          fontWeight: FontWeight.w500,
-                                          color: _isInRange
-                                              ? AppColors.textLight
-                                              : AppColors.dangerRose,
-                                        ),
+                                    const SizedBox(height: 2),
+                                    Text(
+                                      subtitleText,
+                                      maxLines: 1,
+                                      overflow: TextOverflow.ellipsis,
+                                      style: TextStyle(
+                                        fontSize: 10.5,
+                                        fontWeight: FontWeight.w500,
+                                        color: _isInRange
+                                            ? AppColors.textLight
+                                            : AppColors.dangerRose,
                                       ),
-                                    ],
+                                    ),
                                   ],
                                 ),
                               ),
@@ -1186,22 +1370,33 @@ class _HomePageState extends State<HomePage> {
               const SizedBox(height: 8),
 
               Container(
-                padding: const EdgeInsets.all(14),
+                padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 14),
                 decoration: BoxDecoration(
                   color: Colors.white,
                   borderRadius: BorderRadius.circular(14),
                   border: Border.all(color: AppColors.borderGrey),
+                  boxShadow: [
+                    BoxShadow(
+                      color: Colors.black.withOpacity(0.02),
+                      blurRadius: 6,
+                      offset: const Offset(0, 2),
+                    ),
+                  ],
                 ),
-                child:Column(
+                child: Column(
                   crossAxisAlignment: CrossAxisAlignment.end,
                   children: [
                     TextField(
                       controller: _descriptionController,
-
                       maxLines: 4,
                       maxLength: 500,
                       enabled: !isLoading && !isCompletedToday,
                       onChanged: (_) => setState(() {}),
+                      style: const TextStyle(
+                        fontSize: 14,
+                        color: AppColors.textDark,
+                        height: 1.4,
+                      ),
                       buildCounter: (
                           context, {
                             required currentLength,
@@ -1218,14 +1413,16 @@ class _HomePageState extends State<HomePage> {
                         ),
                         isDense: true,
                         border: InputBorder.none,
-                        contentPadding: EdgeInsets.zero,
+                        contentPadding: EdgeInsets.only(top: 2, bottom: 8),
                       ),
                     ),
+                    const SizedBox(height: 4),
                     Text(
                       '${_descriptionController.text.length} / 500',
                       style: const TextStyle(
                         color: AppColors.textLight,
                         fontSize: 12,
+                        fontWeight: FontWeight.w500,
                       ),
                     ),
                   ],
@@ -1265,12 +1462,8 @@ class _HomePageState extends State<HomePage> {
                           isCompletedToday
                               ? 'Attendance Marked for Today'
                               : (isClockedIn
-                                  ? (_selectedWorkTypeIndex == 1
-                                      ? 'Confirm Time Out'
-                                      : 'Confirm Clock Out')
-                                  : (_selectedWorkTypeIndex == 1
-                                      ? 'Confirm Time In'
-                                      : 'Confirm Clock In')),
+                                  ? 'Confirm Time Out'
+                                  : 'Confirm Time In'),
                           style: const TextStyle(
                             color: Colors.white,
                             fontSize: 16,
