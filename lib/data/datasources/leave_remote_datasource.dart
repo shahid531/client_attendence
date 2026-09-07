@@ -35,6 +35,28 @@ class LeaveRemoteDataSourceImpl implements LeaveRemoteDataSource {
 
   final List<LeaveRequestModel> _mockLeaveRequests = [];
 
+  String _getRequestsEndpoint() {
+    final role = sharedPreferences?.getString('cached_user_role')?.trim().toUpperCase() ?? '';
+    if (role == 'ADMIN') {
+      return '$_baseUrl/admin/requests';
+    } else if (role == 'RM' || role.startsWith('RM')) {
+      return '$_baseUrl/rm/requests';
+    } else {
+      return '$_baseUrl/requests';
+    }
+  }
+
+  String _getUpdateRequestEndpoint(String requestId, String action) {
+    final role = sharedPreferences?.getString('cached_user_role')?.trim().toUpperCase() ?? '';
+    if (role == 'ADMIN') {
+      return '$_baseUrl/admin/requests/$requestId/$action';
+    } else if (role == 'RM' || role.startsWith('RM')) {
+      return '$_baseUrl/rm/requests/$requestId/$action';
+    } else {
+      return '$_baseUrl/requests/$requestId/$action';
+    }
+  }
+
   @override
   Future<List<LeaveRequestModel>> getLeaveRequests({String? status}) async {
     if (dio != null && sharedPreferences != null) {
@@ -53,14 +75,17 @@ class LeaveRemoteDataSourceImpl implements LeaveRemoteDataSource {
           queryParams['status'] = status.toUpperCase();
         }
 
+        final endpoint = _getRequestsEndpoint();
+        print('[LeaveRemoteDataSource] GET $endpoint with params: $queryParams');
+
         final response = await dio!.get(
-          '$_baseUrl/admin/requests',
+          endpoint,
           queryParameters: queryParams.isNotEmpty ? queryParams : null,
           options: Options(headers: headers),
         );
 
         final data = response.data;
-        print('[LeaveRemoteDataSource] GET /admin/requests response: $data');
+        print('[LeaveRemoteDataSource] GET $endpoint response: $data');
 
         if (data is Map<String, dynamic>) {
           if (data['success'] == false) {
@@ -78,7 +103,7 @@ class LeaveRemoteDataSourceImpl implements LeaveRemoteDataSource {
         }
         return [];
       } on DioException catch (e) {
-        print('[LeaveRemoteDataSource] DioException on GET /admin/requests: ${e.response?.data ?? e.message}');
+        print('[LeaveRemoteDataSource] DioException on GET requests: ${e.response?.data ?? e.message}');
         if (e.response != null && e.response?.data is Map<String, dynamic>) {
           final errMap = e.response!.data as Map<String, dynamic>;
           final message = errMap['message'] ?? 'Failed to fetch requests (${e.response?.statusCode})';
@@ -86,7 +111,7 @@ class LeaveRemoteDataSourceImpl implements LeaveRemoteDataSource {
         }
         throw ServerException(e.message ?? 'Network error while fetching requests');
       } catch (e) {
-        print('[LeaveRemoteDataSource] Exception on GET /admin/requests: $e');
+        print('[LeaveRemoteDataSource] Exception on GET requests: $e');
         if (e is ServerException) rethrow;
         throw ServerException(e.toString());
       }
@@ -147,10 +172,11 @@ class LeaveRemoteDataSourceImpl implements LeaveRemoteDataSource {
             ? 'approve'
             : 'reject';
 
-        print('[LeaveRemoteDataSource] POST /admin/requests/$requestId/$action with comments: $remarks');
+        final endpoint = _getUpdateRequestEndpoint(requestId, action);
+        print('[LeaveRemoteDataSource] POST $endpoint with comments: $remarks');
 
         final response = await dio!.post(
-          '$_baseUrl/admin/requests/$requestId/$action',
+          endpoint,
           data: {
             'comments': remarks ?? '',
           },
@@ -158,7 +184,7 @@ class LeaveRemoteDataSourceImpl implements LeaveRemoteDataSource {
         );
 
         final data = response.data;
-        print('[LeaveRemoteDataSource] POST /admin/requests/$requestId/$action response: $data');
+        print('[LeaveRemoteDataSource] POST $endpoint response: $data');
 
         if (data is Map<String, dynamic>) {
           if (data['success'] == false) {
@@ -167,7 +193,7 @@ class LeaveRemoteDataSourceImpl implements LeaveRemoteDataSource {
         }
         return;
       } on DioException catch (e) {
-        print('[LeaveRemoteDataSource] DioException on POST /admin/requests/$requestId: ${e.response?.data ?? e.message}');
+        print('[LeaveRemoteDataSource] DioException on POST update request $requestId: ${e.response?.data ?? e.message}');
         if (e.response != null && e.response?.data is Map<String, dynamic>) {
           final errMap = e.response!.data as Map<String, dynamic>;
           final message = errMap['message'] ?? 'Failed to update request (${e.response?.statusCode})';
@@ -175,7 +201,7 @@ class LeaveRemoteDataSourceImpl implements LeaveRemoteDataSource {
         }
         throw ServerException(e.message ?? 'Network connection error while updating request status');
       } catch (e) {
-        print('[LeaveRemoteDataSource] Exception on POST /admin/requests/$requestId: $e');
+        print('[LeaveRemoteDataSource] Exception on POST update request $requestId: $e');
         if (e is ServerException) rethrow;
         throw ServerException(e.toString());
       }
