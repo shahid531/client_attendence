@@ -2,6 +2,7 @@ import 'package:flutter/material.dart';
 import 'package:flutter_bloc/flutter_bloc.dart';
 import 'core/di/injection_container.dart';
 import 'core/theme/app_theme.dart';
+import 'presentation/blocs/admin/admin_bloc.dart';
 import 'presentation/blocs/attendance/attendance_bloc.dart';
 import 'presentation/blocs/auth/auth_bloc.dart';
 import 'presentation/blocs/change_password/change_password_bloc.dart';
@@ -36,6 +37,9 @@ class MyApp extends StatelessWidget {
         ),
         BlocProvider<DashboardBloc>(
           create: (_) => sl<DashboardBloc>(),
+        ),
+        BlocProvider<AdminBloc>(
+          create: (_) => sl<AdminBloc>(),
         ),
       ],
       child: MaterialApp(

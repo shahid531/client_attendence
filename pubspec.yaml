@@ -44,6 +44,9 @@ dependencies:
   path_provider: ^2.1.5
   share_plus: ^10.1.4
   open_filex: ^4.7.0
+  geolocator: ^13.0.2
+  flutter_map: ^7.0.2
+  latlong2: ^0.9.1
 
 dev_dependencies:
   flutter_test:

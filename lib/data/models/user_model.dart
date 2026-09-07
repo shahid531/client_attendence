@@ -13,6 +13,9 @@ class UserModel extends User {
     super.status,
     super.avatarUrl,
     required super.firstLogin,
+    super.latitude,
+    super.longitude,
+    super.radius,
   });
 
   factory UserModel.fromJson(Map<String, dynamic> json) {
@@ -35,6 +38,28 @@ class UserModel extends User {
         json['locationName']?.toString() ??
         'ClientSite HQ';
 
+    double? parseDouble(dynamic value) {
+      if (value == null) return null;
+      if (value is num) return value.toDouble();
+      return double.tryParse(value.toString());
+    }
+
+    final lat = parseDouble(json['latitude'] ??
+        json['lat'] ??
+        json['officeLatitude'] ??
+        json['locationLatitude']);
+
+    final lng = parseDouble(json['longitude'] ??
+        json['long'] ??
+        json['lng'] ??
+        json['officeLongitude'] ??
+        json['locationLongitude']);
+
+    final rad = parseDouble(json['radius'] ??
+        json['geofenceRadius'] ??
+        json['locationRadius'] ??
+        json['officeRadius']);
+
     return UserModel(
       id: empId,
       name: fullName,
@@ -47,6 +72,9 @@ class UserModel extends User {
       status: json['status']?.toString() ?? 'ACTIVE',
       avatarUrl: json['avatarUrl']?.toString(),
       firstLogin: json['firstLogin'] == true,
+      latitude: lat,
+      longitude: lng,
+      radius: rad,
     );
   }
 
@@ -63,6 +91,9 @@ class UserModel extends User {
       'status': status,
       'avatarUrl': avatarUrl,
       'firstLogin': firstLogin,
+      'latitude': latitude,
+      'longitude': longitude,
+      'radius': radius,
     };
   }
 }

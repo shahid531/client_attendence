@@ -3,11 +3,16 @@ import 'package:flutter/material.dart';
 import 'package:flutter_bloc/flutter_bloc.dart';
 import 'package:intl/intl.dart';
 import 'package:shared_preferences/shared_preferences.dart';
+import 'package:flutter_map/flutter_map.dart';
+import 'package:geolocator/geolocator.dart';
+import 'package:latlong2/latlong.dart' as latlong;
 import '../../core/constants/app_colors.dart';
 import '../../data/models/attendance_record_model.dart';
 import '../blocs/attendance/attendance_bloc.dart';
 import '../blocs/attendance/attendance_event.dart';
 import '../blocs/attendance/attendance_state.dart';
+import '../blocs/auth/auth_bloc.dart';
+import '../blocs/auth/auth_state.dart';
 
 class HomePage extends StatefulWidget {
   const HomePage({super.key});
@@ -25,11 +30,470 @@ class _HomePageState extends State<HomePage> {
   String? _localRecordId;
   final TextEditingController _descriptionController = TextEditingController();
 
+  // Geofence & Location State
+  Position? _currentPosition;
+  bool _isLocating = false;
+  double? _distanceToOffice;
+  bool _isInRange = true;
+
   @override
   void initState() {
     super.initState();
     _loadPreferences();
+    _checkLocationRange();
     context.read<AttendanceBloc>().add(LoadTodayAttendanceEvent());
+  }
+
+  Future<void> _checkLocationRange({bool showSnackBar = false}) async {
+    if (!mounted) return;
+    setState(() {
+      _isLocating = true;
+    });
+
+    try {
+      bool serviceEnabled = await Geolocator.isLocationServiceEnabled();
+      if (!serviceEnabled) {
+        if (mounted) {
+          setState(() {
+            _isLocating = false;
+          });
+          if (showSnackBar) {
+            ScaffoldMessenger.of(context).showSnackBar(
+              const SnackBar(
+                content: Text('Location services are disabled. Please enable GPS in device settings.'),
+                backgroundColor: AppColors.warningAmber,
+                behavior: SnackBarBehavior.floating,
+              ),
+            );
+          }
+        }
+        return;
+      }
+
+      LocationPermission permission = await Geolocator.checkPermission();
+      if (permission == LocationPermission.denied) {
+        permission = await Geolocator.requestPermission();
+        if (permission == LocationPermission.denied) {
+          if (mounted) {
+            setState(() {
+              _isLocating = false;
+            });
+            if (showSnackBar) {
+              ScaffoldMessenger.of(context).showSnackBar(
+                const SnackBar(
+                  content: Text('Location permissions are denied.'),
+                  backgroundColor: AppColors.dangerRose,
+                  behavior: SnackBarBehavior.floating,
+                ),
+              );
+            }
+          }
+          return;
+        }
+      }
+
+      if (permission == LocationPermission.deniedForever) {
+        if (mounted) {
+          setState(() {
+            _isLocating = false;
+          });
+          if (showSnackBar) {
+            ScaffoldMessenger.of(context).showSnackBar(
+              const SnackBar(
+                content: Text('Location permission is permanently denied in settings.'),
+                backgroundColor: AppColors.dangerRose,
+                behavior: SnackBarBehavior.floating,
+              ),
+            );
+          }
+        }
+        return;
+      }
+
+      final authBloc = context.read<AuthBloc>();
+
+      final position = await Geolocator.getCurrentPosition(
+        locationSettings: const LocationSettings(
+          accuracy: LocationAccuracy.high,
+          timeLimit: Duration(seconds: 12),
+        ),
+      );
+
+      final authState = authBloc.state;
+      // Default to user's current GPS location if backend coordinates are not set
+      double officeLat = position.latitude;
+      double officeLng = position.longitude;
+      double officeRadius = 100.0;
+
+      if (authState is AuthenticatedState) {
+        if (authState.user.latitude != null) officeLat = authState.user.latitude!;
+        if (authState.user.longitude != null) officeLng = authState.user.longitude!;
+        if (authState.user.radius != null) officeRadius = authState.user.radius!;
+      }
+
+      final distance = Geolocator.distanceBetween(
+        position.latitude,
+        position.longitude,
+        officeLat,
+        officeLng,
+      );
+
+      if (mounted) {
+        setState(() {
+          _currentPosition = position;
+          _distanceToOffice = distance;
+          _isInRange = distance <= officeRadius;
+          _isLocating = false;
+        });
+
+        if (showSnackBar) {
+          ScaffoldMessenger.of(context).showSnackBar(
+            SnackBar(
+              content: Text(
+                _isInRange
+                    ? 'Location verified: In Range (${distance.toStringAsFixed(0)}m away)'
+                    : 'Location updated: Out of Range (${distance.toStringAsFixed(0)}m away)',
+              ),
+              backgroundColor: _isInRange ? AppColors.successEmerald : AppColors.dangerRose,
+              behavior: SnackBarBehavior.floating,
+            ),
+          );
+        }
+      }
+    } catch (e) {
+      if (mounted) {
+        setState(() {
+          _isLocating = false;
+        });
+        if (showSnackBar) {
+          ScaffoldMessenger.of(context).showSnackBar(
+            SnackBar(
+              content: Text('Location update: $e'),
+              backgroundColor: AppColors.dangerRose,
+              behavior: SnackBarBehavior.floating,
+            ),
+          );
+        }
+      }
+    }
+  }
+
+  void _showLocationMapModal(
+    BuildContext parentContext, {
+    required double officeLat,
+    required double officeLng,
+    required double officeRadius,
+    required String officeName,
+  }) {
+    showModalBottomSheet(
+      context: parentContext,
+      isScrollControlled: true,
+      backgroundColor: Colors.transparent,
+      builder: (modalContext) {
+        return StatefulBuilder(
+          builder: (context, setModalState) {
+            final officeLatLng = latlong.LatLng(officeLat, officeLng);
+            final userLatLng = _currentPosition != null
+                ? latlong.LatLng(_currentPosition!.latitude, _currentPosition!.longitude)
+                : null;
+
+            return Container(
+              height: MediaQuery.of(context).size.height * 0.85,
+              decoration: const BoxDecoration(
+                color: Colors.white,
+                borderRadius: BorderRadius.vertical(top: Radius.circular(24)),
+              ),
+              child: Column(
+                children: [
+                  // Modal Header
+                  Padding(
+                    padding: const EdgeInsets.symmetric(horizontal: 20, vertical: 14),
+                    child: Row(
+                      mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                      children: [
+                        Row(
+                          children: const [
+                            Icon(Icons.map_rounded, color: AppColors.primaryNavy, size: 24),
+                            SizedBox(width: 8),
+                            Text(
+                              'Office Geofence Map',
+                              style: TextStyle(
+                                fontSize: 18,
+                                fontWeight: FontWeight.bold,
+                                color: AppColors.textDark,
+                              ),
+                            ),
+                          ],
+                        ),
+                        IconButton(
+                          onPressed: () => Navigator.pop(context),
+                          icon: const Icon(Icons.close_rounded, color: AppColors.textMuted),
+                        ),
+                      ],
+                    ),
+                  ),
+                  const Divider(height: 1),
+
+                  // Map Display
+                  Expanded(
+                    child: Stack(
+                      children: [
+                        FlutterMap(
+                          options: MapOptions(
+                            initialCenter: officeLatLng,
+                            initialZoom: 16.5,
+                            minZoom: 4.0,
+                            maxZoom: 19.0,
+                          ),
+                          children: [
+                            TileLayer(
+                              urlTemplate: 'https://tile.openstreetmap.org/{z}/{x}/{y}.png',
+                              userAgentPackageName: 'com.clientattendance.app',
+                            ),
+                            CircleLayer(
+                              circles: [
+                                CircleMarker(
+                                  point: officeLatLng,
+                                  radius: officeRadius,
+                                  useRadiusInMeter: true,
+                                  color: AppColors.primaryNavy.withOpacity(0.18),
+                                  borderColor: AppColors.primaryNavy,
+                                  borderStrokeWidth: 2.0,
+                                ),
+                              ],
+                            ),
+                            MarkerLayer(
+                              markers: [
+                                // Office Marker
+                                Marker(
+                                  point: officeLatLng,
+                                  width: 44,
+                                  height: 44,
+                                  child: Column(
+                                    children: [
+                                      Container(
+                                        padding: const EdgeInsets.all(6),
+                                        decoration: BoxDecoration(
+                                          color: AppColors.primaryNavy,
+                                          shape: BoxShape.circle,
+                                          boxShadow: [
+                                            BoxShadow(
+                                              color: Colors.black.withOpacity(0.2),
+                                              blurRadius: 6,
+                                            ),
+                                          ],
+                                        ),
+                                        child: const Icon(
+                                          Icons.business_rounded,
+                                          color: Colors.white,
+                                          size: 18,
+                                        ),
+                                      ),
+                                    ],
+                                  ),
+                                ),
+                                // User Position Marker
+                                if (userLatLng != null)
+                                  Marker(
+                                    point: userLatLng,
+                                    width: 44,
+                                    height: 44,
+                                    child: Container(
+                                      decoration: BoxDecoration(
+                                        color: _isInRange ? AppColors.successEmerald : AppColors.dangerRose,
+                                        shape: BoxShape.circle,
+                                        border: Border.all(color: Colors.white, width: 3),
+                                        boxShadow: [
+                                          BoxShadow(
+                                            color: Colors.black.withOpacity(0.25),
+                                            blurRadius: 6,
+                                          ),
+                                        ],
+                                      ),
+                                      child: const Icon(
+                                        Icons.person_pin_circle_rounded,
+                                        color: Colors.white,
+                                        size: 22,
+                                      ),
+                                    ),
+                                  ),
+                              ],
+                            ),
+                          ],
+                        ),
+
+                        // Map Status Overlay Card
+                        Positioned(
+                          top: 12,
+                          left: 16,
+                          right: 16,
+                          child: Container(
+                            padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 10),
+                            decoration: BoxDecoration(
+                              color: Colors.white.withOpacity(0.95),
+                              borderRadius: BorderRadius.circular(12),
+                              boxShadow: [
+                                BoxShadow(
+                                  color: Colors.black.withOpacity(0.08),
+                                  blurRadius: 8,
+                                ),
+                              ],
+                            ),
+                            child: Row(
+                              children: [
+                                Icon(
+                                  _isInRange ? Icons.check_circle_rounded : Icons.warning_amber_rounded,
+                                  color: _isInRange ? AppColors.successEmerald : AppColors.dangerRose,
+                                  size: 20,
+                                ),
+                                const SizedBox(width: 8),
+                                Expanded(
+                                  child: Text(
+                                    _isInRange
+                                        ? 'You are inside the geofence range'
+                                        : 'You are outside the geofence radius',
+                                    style: TextStyle(
+                                      fontSize: 13,
+                                      fontWeight: FontWeight.w600,
+                                      color: _isInRange ? AppColors.successEmerald : AppColors.dangerRose,
+                                    ),
+                                  ),
+                                ),
+                              ],
+                            ),
+                          ),
+                        ),
+                      ],
+                    ),
+                  ),
+
+                  // Bottom Details Panel
+                  Container(
+                    padding: const EdgeInsets.all(20),
+                    decoration: BoxDecoration(
+                      color: Colors.white,
+                      boxShadow: [
+                        BoxShadow(
+                          color: Colors.black.withOpacity(0.06),
+                          blurRadius: 10,
+                          offset: const Offset(0, -4),
+                        ),
+                      ],
+                    ),
+                    child: Column(
+                      crossAxisAlignment: CrossAxisAlignment.start,
+                      children: [
+                        Row(
+                          mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                          children: [
+                            Expanded(
+                              child: Column(
+                                crossAxisAlignment: CrossAxisAlignment.start,
+                                children: [
+                                  Text(
+                                    officeName,
+                                    style: const TextStyle(
+                                      fontWeight: FontWeight.bold,
+                                      fontSize: 16,
+                                      color: AppColors.textDark,
+                                    ),
+                                  ),
+                                  const SizedBox(height: 2),
+                                  Text(
+                                    'Allowed Radius: ${officeRadius.toStringAsFixed(0)} meters',
+                                    style: const TextStyle(
+                                      fontSize: 12,
+                                      color: AppColors.textMuted,
+                                    ),
+                                  ),
+                                ],
+                              ),
+                            ),
+                            Container(
+                              padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 6),
+                              decoration: BoxDecoration(
+                                color: _isInRange ? AppColors.successBg : AppColors.dangerRose.withOpacity(0.1),
+                                borderRadius: BorderRadius.circular(12),
+                                border: Border.all(
+                                  color: _isInRange ? const Color(0xFFA7F3D0) : const Color(0xFFFECDD3),
+                                ),
+                              ),
+                              child: Text(
+                                _isInRange ? 'In Range' : 'Out Range',
+                                style: TextStyle(
+                                  color: _isInRange ? AppColors.successEmerald : AppColors.dangerRose,
+                                  fontSize: 12,
+                                  fontWeight: FontWeight.bold,
+                                ),
+                              ),
+                            ),
+                          ],
+                        ),
+                        const SizedBox(height: 12),
+                        Row(
+                          children: [
+                            const Icon(Icons.straighten_rounded, size: 18, color: AppColors.textLight),
+                            const SizedBox(width: 6),
+                            Text(
+                              _distanceToOffice != null
+                                  ? 'Distance to Office: ${_distanceToOffice!.toStringAsFixed(1)} m'
+                                  : 'Distance: Calculating...',
+                              style: const TextStyle(
+                                fontSize: 13,
+                                fontWeight: FontWeight.w500,
+                                color: AppColors.textDark,
+                              ),
+                            ),
+                          ],
+                        ),
+                        const SizedBox(height: 16),
+                        SizedBox(
+                          width: double.infinity,
+                          height: 46,
+                          child: ElevatedButton.icon(
+                            onPressed: _isLocating
+                                ? null
+                                : () async {
+                                    await _checkLocationRange(showSnackBar: false);
+                                    setModalState(() {});
+                                  },
+                            icon: _isLocating
+                                ? const SizedBox(
+                                    width: 18,
+                                    height: 18,
+                                    child: CircularProgressIndicator(
+                                      strokeWidth: 2,
+                                      valueColor: AlwaysStoppedAnimation<Color>(Colors.white),
+                                    ),
+                                  )
+                                : const Icon(Icons.refresh_rounded, color: Colors.white, size: 18),
+                            label: Text(
+                              _isLocating ? 'Locating...' : 'Refresh Location & Distance',
+                              style: const TextStyle(
+                                color: Colors.white,
+                                fontWeight: FontWeight.bold,
+                                fontSize: 14,
+                              ),
+                            ),
+                            style: ElevatedButton.styleFrom(
+                              backgroundColor: AppColors.primaryNavy,
+                              shape: RoundedRectangleBorder(
+                                borderRadius: BorderRadius.circular(12),
+                              ),
+                              elevation: 0,
+                            ),
+                          ),
+                        ),
+                      ],
+                    ),
+                  ),
+                ],
+              ),
+            );
+          },
+        );
+      },
+    );
   }
 
   Future<void> _loadPreferences() async {
@@ -469,113 +933,235 @@ class _HomePageState extends State<HomePage> {
 
               // Location Verified Card with Gradient (shown for GPS)
               if (_selectedWorkTypeIndex == 0) ...[
-                Container(
-                  padding: const EdgeInsets.symmetric(
-                    horizontal: 16,
-                    vertical: 14,
-                  ),
-                  decoration: BoxDecoration(
-                    borderRadius: BorderRadius.circular(16),
-                    gradient: const LinearGradient(
-                      colors: [
-                        Color(0xFFEEF2FF),
-                        Color(0xFFF8FAFC),
-                        Colors.white,
-                      ],
-                      begin: Alignment.topLeft,
-                      end: Alignment.bottomRight,
-                    ),
-                    border: Border.all(color: const Color(0xFFC7D2FE)),
-                    boxShadow: [
-                      BoxShadow(
-                        color: Colors.black.withOpacity(0.02),
-                        blurRadius: 8,
-                        offset: const Offset(0, 3),
-                      ),
-                    ],
-                  ),
-                  child: Row(
-                    children: [
-                      Stack(
-                        clipBehavior: Clip.none,
-                        children: [
-                          Container(
-                            width: 44,
-                            height: 44,
-                            decoration: BoxDecoration(
-                              color: AppColors.primaryNavy.withOpacity(0.08),
-                              borderRadius: BorderRadius.circular(12),
-                            ),
-                            child: const Icon(
-                              Icons.location_on_rounded,
-                              color: AppColors.primaryNavy,
-                              size: 24,
-                            ),
+                Builder(
+                  builder: (context) {
+                    final authState = context.watch<AuthBloc>().state;
+                    final officeLat = (authState is AuthenticatedState && authState.user.latitude != null)
+                        ? authState.user.latitude!
+                        : (_currentPosition?.latitude ?? 19.0760);
+                    final officeLng = (authState is AuthenticatedState && authState.user.longitude != null)
+                        ? authState.user.longitude!
+                        : (_currentPosition?.longitude ?? 72.8777);
+                    final officeRadius = (authState is AuthenticatedState && authState.user.radius != null)
+                        ? authState.user.radius!
+                        : 100.0;
+                    final officeLocationName = (authState is AuthenticatedState &&
+                            authState.user.locationName != null &&
+                            authState.user.locationName!.isNotEmpty)
+                        ? authState.user.locationName!
+                        : ((authState is AuthenticatedState && authState.user.company.isNotEmpty)
+                            ? authState.user.company
+                            : 'HQ Building, 5th Floor');
+
+                    return Material(
+                      color: Colors.transparent,
+                      child: InkWell(
+                        onTap: () => _showLocationMapModal(
+                          context,
+                          officeLat: officeLat,
+                          officeLng: officeLng,
+                          officeRadius: officeRadius,
+                          officeName: officeLocationName,
+                        ),
+                        borderRadius: BorderRadius.circular(16),
+                        child: Container(
+                          padding: const EdgeInsets.symmetric(
+                            horizontal: 12,
+                            vertical: 12,
                           ),
-                          Positioned(
-                            top: -2,
-                            right: -2,
-                            child: Container(
-                              width: 12,
-                              height: 12,
-                              decoration: BoxDecoration(
-                                color: AppColors.successEmerald,
-                                shape: BoxShape.circle,
-                                border: Border.all(
-                                  color: Colors.white,
-                                  width: 2,
+                          decoration: BoxDecoration(
+                            borderRadius: BorderRadius.circular(16),
+                            gradient: const LinearGradient(
+                              colors: [
+                                Color(0xFFEEF2FF),
+                                Color(0xFFF8FAFC),
+                                Colors.white,
+                              ],
+                              begin: Alignment.topLeft,
+                              end: Alignment.bottomRight,
+                            ),
+                            border: Border.all(
+                              color: _isInRange
+                                  ? const Color(0xFFC7D2FE)
+                                  : const Color(0xFFFECDD3),
+                            ),
+                            boxShadow: [
+                              BoxShadow(
+                                color: Colors.black.withOpacity(0.02),
+                                blurRadius: 8,
+                                offset: const Offset(0, 3),
+                              ),
+                            ],
+                          ),
+                          child: Row(
+                            children: [
+                              Stack(
+                                clipBehavior: Clip.none,
+                                children: [
+                                  Container(
+                                    width: 40,
+                                    height: 40,
+                                    decoration: BoxDecoration(
+                                      color: (_isInRange ? AppColors.primaryNavy : AppColors.dangerRose)
+                                          .withOpacity(0.08),
+                                      borderRadius: BorderRadius.circular(10),
+                                    ),
+                                    child: Icon(
+                                      Icons.location_on_rounded,
+                                      color: _isInRange
+                                          ? AppColors.primaryNavy
+                                          : AppColors.dangerRose,
+                                      size: 22,
+                                    ),
+                                  ),
+                                  Positioned(
+                                    top: -2,
+                                    right: -2,
+                                    child: Container(
+                                      width: 10,
+                                      height: 10,
+                                      decoration: BoxDecoration(
+                                        color: _isLocating
+                                            ? AppColors.warningAmber
+                                            : (_isInRange
+                                                ? AppColors.successEmerald
+                                                : AppColors.dangerRose),
+                                        shape: BoxShape.circle,
+                                        border: Border.all(
+                                          color: Colors.white,
+                                          width: 1.5,
+                                        ),
+                                      ),
+                                    ),
+                                  ),
+                                ],
+                              ),
+                              const SizedBox(width: 10),
+                              Expanded(
+                                child: Column(
+                                  crossAxisAlignment: CrossAxisAlignment.start,
+                                  children: [
+                                    Row(
+                                      children: [
+                                        Flexible(
+                                          child: Text(
+                                            _isInRange ? 'Location Verified' : 'Location Check',
+                                            maxLines: 1,
+                                            overflow: TextOverflow.ellipsis,
+                                            style: const TextStyle(
+                                              fontWeight: FontWeight.bold,
+                                              fontSize: 14,
+                                              color: AppColors.textDark,
+                                            ),
+                                          ),
+                                        ),
+                                        const SizedBox(width: 3),
+                                        const Icon(
+                                          Icons.touch_app_outlined,
+                                          size: 13,
+                                          color: AppColors.textLight,
+                                        ),
+                                      ],
+                                    ),
+                                    const SizedBox(height: 2),
+                                    Text(
+                                      officeLocationName,
+                                      maxLines: 1,
+                                      overflow: TextOverflow.ellipsis,
+                                      style: const TextStyle(
+                                        fontSize: 11.5,
+                                        color: AppColors.textMuted,
+                                      ),
+                                    ),
+                                    if (_distanceToOffice != null) ...[
+                                      const SizedBox(height: 2),
+                                      Text(
+                                        '${_distanceToOffice!.toStringAsFixed(0)}m away • Tap for map',
+                                        maxLines: 1,
+                                        overflow: TextOverflow.ellipsis,
+                                        style: TextStyle(
+                                          fontSize: 10.5,
+                                          fontWeight: FontWeight.w500,
+                                          color: _isInRange
+                                              ? AppColors.textLight
+                                              : AppColors.dangerRose,
+                                        ),
+                                      ),
+                                    ],
+                                  ],
                                 ),
                               ),
-                            ),
-                          ),
-                        ],
-                      ),
-                      const SizedBox(width: 14),
-                      Expanded(
-                        child: Column(
-                          crossAxisAlignment: CrossAxisAlignment.start,
-                          children: const [
-                            Text(
-                              'Location Verified',
-                              style: TextStyle(
-                                fontWeight: FontWeight.bold,
-                                fontSize: 15,
-                                color: AppColors.textDark,
+                              const SizedBox(width: 6),
+                              // In / Out Range Badge
+                              Container(
+                                padding: const EdgeInsets.symmetric(
+                                  horizontal: 8,
+                                  vertical: 3.5,
+                                ),
+                                decoration: BoxDecoration(
+                                  color: _isLocating
+                                      ? AppColors.warningAmber.withOpacity(0.12)
+                                      : (_isInRange
+                                          ? AppColors.successBg
+                                          : AppColors.dangerRose.withOpacity(0.1)),
+                                  borderRadius: BorderRadius.circular(10),
+                                  border: Border.all(
+                                    color: _isLocating
+                                        ? AppColors.warningAmber.withOpacity(0.3)
+                                        : (_isInRange
+                                            ? const Color(0xFFA7F3D0)
+                                            : const Color(0xFFFECDD3)),
+                                  ),
+                                ),
+                                child: Text(
+                                  _isLocating
+                                      ? 'Locating...'
+                                      : (_isInRange ? 'In Range' : 'Out Range'),
+                                  textAlign: TextAlign.center,
+                                  style: TextStyle(
+                                    color: _isLocating
+                                        ? AppColors.warningAmber
+                                        : (_isInRange
+                                            ? AppColors.successEmerald
+                                            : AppColors.dangerRose),
+                                    fontSize: 10.5,
+                                    fontWeight: FontWeight.bold,
+                                  ),
+                                ),
                               ),
-                            ),
-                            SizedBox(height: 2),
-                            Text(
-                              'HQ Building, 5th Floor',
-                              style: TextStyle(
-                                fontSize: 12,
-                                color: AppColors.textMuted,
+                              const SizedBox(width: 4),
+                              // Refresh Icon Button
+                              InkWell(
+                                onTap: _isLocating
+                                    ? null
+                                    : () => _checkLocationRange(showSnackBar: true),
+                                borderRadius: BorderRadius.circular(8),
+                                child: Padding(
+                                  padding: const EdgeInsets.all(4.0),
+                                  child: _isLocating
+                                      ? const SizedBox(
+                                          width: 16,
+                                          height: 16,
+                                          child: CircularProgressIndicator(
+                                            strokeWidth: 2,
+                                            valueColor: AlwaysStoppedAnimation<Color>(
+                                              AppColors.primaryNavy,
+                                            ),
+                                          ),
+                                        )
+                                      : const Icon(
+                                          Icons.refresh_rounded,
+                                          size: 19,
+                                          color: AppColors.primaryNavy,
+                                        ),
+                                ),
                               ),
-                            ),
-                          ],
-                        ),
-                      ),
-                      Container(
-                        padding: const EdgeInsets.symmetric(
-                          horizontal: 10,
-                          vertical: 4,
-                        ),
-                        decoration: BoxDecoration(
-                          color: AppColors.successBg,
-                          borderRadius: BorderRadius.circular(12),
-                          border: Border.all(color: const Color(0xFFA7F3D0)),
-                        ),
-                        child: const Text(
-                          'In Range',
-                          textAlign: TextAlign.center,
-                          style: TextStyle(
-                            color: AppColors.successEmerald,
-                            fontSize: 11,
-                            fontWeight: FontWeight.bold,
+                            ],
                           ),
                         ),
                       ),
-                    ],
-                  ),
+                    );
+                  },
                 ),
                 const SizedBox(height: 20),
               ],

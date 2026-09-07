@@ -12,6 +12,9 @@ class User extends Equatable {
   final String? status;
   final String? avatarUrl;
   final bool firstLogin;
+  final double? latitude;
+  final double? longitude;
+  final double? radius;
 
   const User({
     required this.id,
@@ -25,6 +28,9 @@ class User extends Equatable {
     this.status,
     this.avatarUrl,
     this.firstLogin = false,
+    this.latitude,
+    this.longitude,
+    this.radius,
   });
 
   @override
@@ -40,5 +46,8 @@ class User extends Equatable {
         status,
         avatarUrl,
         firstLogin,
+        latitude,
+        longitude,
+        radius,
       ];
 }
