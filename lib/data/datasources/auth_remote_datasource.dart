@@ -83,6 +83,7 @@ class AuthRemoteDataSourceImpl implements AuthRemoteDataSource {
         await sharedPreferences.setString('cached_user_id', user.id);
         await sharedPreferences.setString('cached_user_email', user.email);
         await sharedPreferences.setString('cached_user_name', user.name);
+        await sharedPreferences.setString('cached_user_role', user.role);
         await sharedPreferences.setBool('cached_first_login', user.firstLogin);
 
         return user;
@@ -110,6 +111,7 @@ class AuthRemoteDataSourceImpl implements AuthRemoteDataSource {
     await sharedPreferences.remove('cached_user_id');
     await sharedPreferences.remove('cached_user_email');
     await sharedPreferences.remove('cached_user_name');
+    await sharedPreferences.remove('cached_user_role');
     await sharedPreferences.remove('cached_first_login');
   }
 
@@ -147,6 +149,9 @@ class AuthRemoteDataSourceImpl implements AuthRemoteDataSource {
           if (user.name.isNotEmpty) {
             await sharedPreferences.setString('cached_user_name', user.name);
           }
+          if (user.role.isNotEmpty) {
+            await sharedPreferences.setString('cached_user_role', user.role);
+          }
           await sharedPreferences.setBool('cached_first_login', user.firstLogin);
 
           return user;
@@ -159,6 +164,7 @@ class AuthRemoteDataSourceImpl implements AuthRemoteDataSource {
     final userId = sharedPreferences.getString('cached_user_id');
     final userEmail = sharedPreferences.getString('cached_user_email');
     final userName = sharedPreferences.getString('cached_user_name');
+    final userRole = sharedPreferences.getString('cached_user_role');
     final firstLogin = sharedPreferences.getBool('cached_first_login') ?? false;
 
     if (userId != null && userId.isNotEmpty) {
@@ -166,7 +172,7 @@ class AuthRemoteDataSourceImpl implements AuthRemoteDataSource {
         id: userId,
         name: userName ?? 'User',
         email: userEmail ?? '$userId@clientsite.com',
-        role: 'RM',
+        role: userRole ?? 'RM',
         company: 'ClientSite HQ',
         firstLogin: firstLogin,
       );
