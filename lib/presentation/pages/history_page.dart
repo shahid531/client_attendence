@@ -2,10 +2,13 @@ import 'package:flutter/material.dart';
 import 'package:flutter_bloc/flutter_bloc.dart';
 import 'package:intl/intl.dart';
 import '../../core/constants/app_colors.dart';
+import '../../core/utils/excel_exporter.dart';
 import '../../domain/entities/attendance_record.dart';
 import '../blocs/attendance/attendance_bloc.dart';
 import '../blocs/attendance/attendance_event.dart';
 import '../blocs/attendance/attendance_state.dart';
+import '../blocs/auth/auth_bloc.dart';
+import '../blocs/auth/auth_state.dart';
 
 class HistoryPage extends StatefulWidget {
   const HistoryPage({super.key});
@@ -23,6 +26,7 @@ class _HistoryPageState extends State<HistoryPage> {
   late DateTime _fromDate;
   late DateTime _toDate;
   String _displayRangeStr = '';
+  bool _isExporting = false;
 
   @override
   void initState() {
@@ -104,6 +108,62 @@ class _HistoryPageState extends State<HistoryPage> {
     return DateFormat('dd/MM/yyyy').format(date);
   }
 
+  Future<void> _onExportPressed() async {
+    if (_isExporting) return;
+
+    final attendanceState = context.read<AttendanceBloc>().state;
+    final records = attendanceState is AttendanceLoadedState
+        ? attendanceState.history
+        : <AttendanceRecord>[];
+
+    if (records.isEmpty) {
+      ScaffoldMessenger.of(context).showSnackBar(
+        const SnackBar(
+          content: Text('No attendance records available to export for this period.'),
+          backgroundColor: AppColors.dangerRose,
+          behavior: SnackBarBehavior.floating,
+        ),
+      );
+      return;
+    }
+
+    setState(() => _isExporting = true);
+
+    try {
+      ScaffoldMessenger.of(context).showSnackBar(
+        const SnackBar(
+          content: Text('Generating Excel report...'),
+          duration: Duration(seconds: 1),
+          behavior: SnackBarBehavior.floating,
+        ),
+      );
+
+      final authState = context.read<AuthBloc>().state;
+      final user = authState is AuthenticatedState ? authState.user : null;
+
+      await ExcelExporter.exportAttendanceHistory(
+        records: records,
+        dateRange: _displayRangeStr.isNotEmpty ? _displayRangeStr : _selectedPeriod,
+        employeeName: user?.name,
+        employeeId: user?.id,
+      );
+    } catch (e) {
+      if (mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(
+            content: Text('Failed to export report: $e'),
+            backgroundColor: AppColors.dangerRose,
+            behavior: SnackBarBehavior.floating,
+          ),
+        );
+      }
+    } finally {
+      if (mounted) {
+        setState(() => _isExporting = false);
+      }
+    }
+  }
+
   @override
   Widget build(BuildContext context) {
     const primaryNavy = AppColors.primaryNavy;
@@ -131,18 +191,21 @@ class _HistoryPageState extends State<HistoryPage> {
                   ),
                 ),
                 ElevatedButton.icon(
-                  onPressed: () {
-                    ScaffoldMessenger.of(context).showSnackBar(
-                      const SnackBar(
-                        content: Text('Exporting attendance report...'),
-                        duration: Duration(seconds: 2),
-                      ),
-                    );
-                  },
-                  icon: const Icon(Icons.download, size: 16, color: primaryNavy),
-                  label: const Text(
-                    'Export',
-                    style: TextStyle(
+                  onPressed: _isExporting ? null : _onExportPressed,
+                  icon: _isExporting
+                      ? const SizedBox(
+                          width: 14,
+                          height: 14,
+                          child: CircularProgressIndicator(
+                            strokeWidth: 2,
+                            valueColor:
+                                AlwaysStoppedAnimation<Color>(primaryNavy),
+                          ),
+                        )
+                      : const Icon(Icons.download, size: 16, color: primaryNavy),
+                  label: Text(
+                    _isExporting ? 'Exporting...' : 'Export',
+                    style: const TextStyle(
                       color: primaryNavy,
                       fontWeight: FontWeight.w600,
                       fontSize: 13,
