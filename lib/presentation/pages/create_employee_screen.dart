@@ -6,6 +6,7 @@ import '../../domain/entities/created_employee.dart';
 import '../blocs/admin/admin_bloc.dart';
 import '../blocs/admin/admin_event.dart';
 import '../blocs/admin/admin_state.dart';
+import '../widgets/location_picker_dialog.dart';
 
 class CreateEmployeeScreen extends StatefulWidget {
   const CreateEmployeeScreen({super.key});
@@ -23,7 +24,14 @@ class _CreateEmployeeScreenState extends State<CreateEmployeeScreen> {
   final _emailController = TextEditingController(text: 'ashish3@idealake.com');
   final _contactController = TextEditingController(text: '1111111221');
   final _locationIdController = TextEditingController(text: '001');
+  final _locationNameController = TextEditingController();
+  final _latitudeController = TextEditingController();
+  final _longitudeController = TextEditingController();
   final _reportingManagerController = TextEditingController();
+
+  double? _selectedLatitude;
+  double? _selectedLongitude;
+  String? _selectedAddress;
 
   final List<Map<String, String>> _roleOptions = [
     {'label': 'RM (Relationship Manager)', 'code': 'RM'},
@@ -48,6 +56,9 @@ class _CreateEmployeeScreenState extends State<CreateEmployeeScreen> {
     _emailController.dispose();
     _contactController.dispose();
     _locationIdController.dispose();
+    _locationNameController.dispose();
+    _latitudeController.dispose();
+    _longitudeController.dispose();
     _reportingManagerController.dispose();
     super.dispose();
   }
@@ -58,16 +69,56 @@ class _CreateEmployeeScreenState extends State<CreateEmployeeScreen> {
     _emailController.clear();
     _contactController.clear();
     _locationIdController.clear();
+    _locationNameController.clear();
+    _latitudeController.clear();
+    _longitudeController.clear();
     _reportingManagerController.clear();
     setState(() {
+      _selectedLatitude = null;
+      _selectedLongitude = null;
+      _selectedAddress = null;
       _selectedRoleCode = _roleOptions.first['code']!;
     });
+  }
+
+  Future<void> _openGoogleMapPicker() async {
+    final result = await LocationPickerDialog.show(
+      context,
+      initialLatitude: _selectedLatitude ??
+          double.tryParse(_latitudeController.text.trim()),
+      initialLongitude: _selectedLongitude ??
+          double.tryParse(_longitudeController.text.trim()),
+      initialLocationName: _locationNameController.text.trim().isNotEmpty
+          ? _locationNameController.text.trim()
+          : null,
+    );
+
+    if (result != null) {
+      setState(() {
+        _selectedLatitude = result.latitude;
+        _selectedLongitude = result.longitude;
+        _selectedAddress = result.address;
+        _latitudeController.text = result.latitude.toStringAsFixed(6);
+        _longitudeController.text = result.longitude.toStringAsFixed(6);
+        if (result.address != null && result.address!.isNotEmpty) {
+          _locationNameController.text = result.address!;
+        }
+      });
+    }
   }
 
   void _onCreateEmployeePressed() {
     FocusScope.of(context).unfocus();
 
     if (_formKey.currentState?.validate() ?? false) {
+      final lat = _selectedLatitude ??
+          double.tryParse(_latitudeController.text.trim());
+      final lng = _selectedLongitude ??
+          double.tryParse(_longitudeController.text.trim());
+      final locName = _locationNameController.text.trim().isNotEmpty
+          ? _locationNameController.text.trim()
+          : _selectedAddress;
+
       context.read<AdminBloc>().add(
             CreateEmployeeSubmittedEvent(
               fullName: _fullNameController.text.trim(),
@@ -75,6 +126,9 @@ class _CreateEmployeeScreenState extends State<CreateEmployeeScreen> {
               email: _emailController.text.trim(),
               contactNumber: _contactController.text.trim(),
               locationId: _locationIdController.text.trim(),
+              locationName: locName,
+              latitude: lat,
+              longitude: lng,
               role: _selectedRoleCode,
               reportingManagerEmployeeId:
                   _reportingManagerController.text.trim().isNotEmpty
@@ -154,6 +208,13 @@ class _CreateEmployeeScreenState extends State<CreateEmployeeScreen> {
                       _buildDialogRow(
                         'Location',
                         employee.locationName ?? employee.locationId ?? '-',
+                      ),
+                    ],
+                    if (employee.latitude != null && employee.longitude != null) ...[
+                      const Divider(height: 16),
+                      _buildDialogRow(
+                        'Coordinates',
+                        '${employee.latitude!.toStringAsFixed(4)}, ${employee.longitude!.toStringAsFixed(4)}',
                       ),
                     ],
                   ],
@@ -510,7 +571,7 @@ class _CreateEmployeeScreenState extends State<CreateEmployeeScreen> {
                       _buildInputField(
                         controller: _locationIdController,
                         hintText: 'e.g. 001',
-                        icon: Icons.location_on_outlined,
+                        icon: Icons.tag_rounded,
                         enabled: !isLoading,
                         validator: (val) {
                           if (val == null || val.trim().isEmpty) {
@@ -519,6 +580,228 @@ class _CreateEmployeeScreenState extends State<CreateEmployeeScreen> {
                           return null;
                         },
                       ),
+
+                      // Location & Google Map Coordinates Section
+                      Row(
+                        mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                        children: [
+                          _buildFieldLabel(
+                            'Location & Coordinates (Google Map)',
+                            bottomPadding: 0,
+                          ),
+                          const Text(
+                            'Optional',
+                            style: TextStyle(
+                              fontSize: 12,
+                              color: Color(0xFF94A3B8),
+                            ),
+                          ),
+                        ],
+                      ),
+                      const SizedBox(height: 8),
+
+                      // Google Map Picker Trigger Banner Card
+                      Container(
+                        width: double.infinity,
+                        margin: const EdgeInsets.only(bottom: 14),
+                        padding: const EdgeInsets.all(14),
+                        decoration: BoxDecoration(
+                          color: const Color(0xFFF1F5F9),
+                          borderRadius: BorderRadius.circular(14),
+                          border: Border.all(
+                            color: (_selectedLatitude != null && _selectedLongitude != null)
+                                ? AppColors.primaryNavy.withValues(alpha: 0.3)
+                                : const Color(0xFFE2E8F0),
+                          ),
+                        ),
+                        child: Column(
+                          crossAxisAlignment: CrossAxisAlignment.start,
+                          children: [
+                            Row(
+                              children: [
+                                Container(
+                                  padding: const EdgeInsets.all(8),
+                                  decoration: BoxDecoration(
+                                    color: AppColors.primaryNavy,
+                                    borderRadius: BorderRadius.circular(10),
+                                  ),
+                                  child: const Icon(
+                                    Icons.map_rounded,
+                                    color: Colors.white,
+                                    size: 20,
+                                  ),
+                                ),
+                                const SizedBox(width: 12),
+                                Expanded(
+                                  child: Column(
+                                    crossAxisAlignment:
+                                        CrossAxisAlignment.start,
+                                    children: [
+                                      const Text(
+                                        'Google Map Location Picker',
+                                        style: TextStyle(
+                                          fontSize: 13,
+                                          fontWeight: FontWeight.bold,
+                                          color: Color(0xFF0F172A),
+                                        ),
+                                      ),
+                                      const SizedBox(height: 2),
+                                      Text(
+                                        (_selectedLatitude != null && _selectedLongitude != null)
+                                            ? 'Pinned: ${_selectedLatitude!.toStringAsFixed(5)}, ${_selectedLongitude!.toStringAsFixed(5)}'
+                                            : 'Search by name or drag pin on map',
+                                        style: TextStyle(
+                                          fontSize: 11.5,
+                                          color: (_selectedLatitude != null && _selectedLongitude != null)
+                                              ? AppColors.primaryNavy
+                                              : const Color(0xFF64748B),
+                                          fontWeight: (_selectedLatitude != null && _selectedLongitude != null)
+                                              ? FontWeight.w600
+                                              : FontWeight.normal,
+                                        ),
+                                      ),
+                                    ],
+                                  ),
+                                ),
+                                ElevatedButton.icon(
+                                  onPressed: isLoading ? null : _openGoogleMapPicker,
+                                  icon: const Icon(
+                                    Icons.pin_drop_rounded,
+                                    color: Colors.white,
+                                    size: 16,
+                                  ),
+                                  label: Text(
+                                    (_selectedLatitude != null && _selectedLongitude != null)
+                                        ? 'Adjust'
+                                        : 'Pick on Map',
+                                    style: const TextStyle(
+                                      color: Colors.white,
+                                      fontSize: 12,
+                                      fontWeight: FontWeight.bold,
+                                    ),
+                                  ),
+                                  style: ElevatedButton.styleFrom(
+                                    backgroundColor: AppColors.primaryNavy,
+                                    padding: const EdgeInsets.symmetric(
+                                      horizontal: 12,
+                                      vertical: 8,
+                                    ),
+                                    shape: RoundedRectangleBorder(
+                                      borderRadius: BorderRadius.circular(10),
+                                    ),
+                                    elevation: 0,
+                                  ),
+                                ),
+                              ],
+                            ),
+                            if (_selectedAddress != null &&
+                                _selectedAddress!.isNotEmpty) ...[
+                              const SizedBox(height: 10),
+                              Container(
+                                width: double.infinity,
+                                padding: const EdgeInsets.symmetric(
+                                  horizontal: 10,
+                                  vertical: 6,
+                                ),
+                                decoration: BoxDecoration(
+                                  color: Colors.white,
+                                  borderRadius: BorderRadius.circular(8),
+                                  border: Border.all(
+                                    color: const Color(0xFFCBD5E1),
+                                  ),
+                                ),
+                                child: Row(
+                                  children: [
+                                    const Icon(
+                                      Icons.location_on,
+                                      size: 14,
+                                      color: AppColors.primaryNavy,
+                                    ),
+                                    const SizedBox(width: 6),
+                                    Expanded(
+                                      child: Text(
+                                        _selectedAddress!,
+                                        maxLines: 1,
+                                        overflow: TextOverflow.ellipsis,
+                                        style: const TextStyle(
+                                          fontSize: 11.5,
+                                          color: Color(0xFF334155),
+                                          fontWeight: FontWeight.w500,
+                                        ),
+                                      ),
+                                    ),
+                                  ],
+                                ),
+                              ),
+                            ],
+                          ],
+                        ),
+                      ),
+
+                      // Location Name / Address Input Field
+                      _buildFieldLabel('Location Name / Address'),
+                      _buildInputField(
+                        controller: _locationNameController,
+                        hintText: 'e.g. Mumbai Office, Bandra Kurla Complex',
+                        icon: Icons.location_city_outlined,
+                        enabled: !isLoading,
+                      ),
+
+                      // Latitude & Longitude Numeric Fields (Row)
+                      Row(
+                        children: [
+                          Expanded(
+                            child: Column(
+                              crossAxisAlignment: CrossAxisAlignment.start,
+                              children: [
+                                _buildFieldLabel('Latitude (lat)'),
+                                _buildInputField(
+                                  controller: _latitudeController,
+                                  hintText: 'e.g. 19.0760',
+                                  icon: Icons.explore_outlined,
+                                  keyboardType: const TextInputType.numberWithOptions(
+                                    decimal: true,
+                                    signed: true,
+                                  ),
+                                  enabled: !isLoading,
+                                  onChanged: (val) {
+                                    final parsed = double.tryParse(val.trim());
+                                    setState(() {
+                                      _selectedLatitude = parsed;
+                                    });
+                                  },
+                                ),
+                              ],
+                            ),
+                          ),
+                          const SizedBox(width: 12),
+                          Expanded(
+                            child: Column(
+                              crossAxisAlignment: CrossAxisAlignment.start,
+                              children: [
+                                _buildFieldLabel('Longitude (log/lng)'),
+                                _buildInputField(
+                                  controller: _longitudeController,
+                                  hintText: 'e.g. 72.8777',
+                                  icon: Icons.explore_outlined,
+                                  keyboardType: const TextInputType.numberWithOptions(
+                                    decimal: true,
+                                    signed: true,
+                                  ),
+                                  enabled: !isLoading,
+                                  onChanged: (val) {
+                                    final parsed = double.tryParse(val.trim());
+                                    setState(() {
+                                      _selectedLongitude = parsed;
+                                    });
+                                  },
+                                ),
+                              ],
+                            ),
+                          ),
+                        ],
+                      ),
+                      const SizedBox(height: 4),
 
                       // Reporting Manager ID (Optional)
                       Row(
@@ -652,6 +935,7 @@ class _CreateEmployeeScreenState extends State<CreateEmployeeScreen> {
     TextInputType? keyboardType,
     bool enabled = true,
     String? Function(String?)? validator,
+    ValueChanged<String>? onChanged,
   }) {
     return Padding(
       padding: const EdgeInsets.only(bottom: 16.0),
@@ -666,6 +950,7 @@ class _CreateEmployeeScreenState extends State<CreateEmployeeScreen> {
           keyboardType: keyboardType,
           enabled: enabled,
           validator: validator,
+          onChanged: onChanged,
           style: const TextStyle(
             fontSize: 14,
             color: Color(0xFF0F172A),

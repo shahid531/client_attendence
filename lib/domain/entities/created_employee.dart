@@ -10,6 +10,8 @@ class CreatedEmployee extends Equatable {
   final String? reportingManagerName;
   final String? locationId;
   final String? locationName;
+  final double? latitude;
+  final double? longitude;
   final String? clientName;
   final String role;
   final String? status;
@@ -28,6 +30,8 @@ class CreatedEmployee extends Equatable {
     this.reportingManagerName,
     this.locationId,
     this.locationName,
+    this.latitude,
+    this.longitude,
     this.clientName,
     required this.role,
     this.status,
@@ -48,6 +52,8 @@ class CreatedEmployee extends Equatable {
         reportingManagerName,
         locationId,
         locationName,
+        latitude,
+        longitude,
         clientName,
         role,
         status,
@@ -57,3 +63,4 @@ class CreatedEmployee extends Equatable {
         updatedAt,
       ];
 }
+

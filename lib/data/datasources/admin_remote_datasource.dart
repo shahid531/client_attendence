@@ -9,6 +9,9 @@ abstract class AdminRemoteDataSource {
     required String employeeId,
     required String fullName,
     required String locationId,
+    String? locationName,
+    double? latitude,
+    double? longitude,
     required String role,
     required String contactNumber,
     String? reportingManagerEmployeeId,
@@ -32,6 +35,9 @@ class AdminRemoteDataSourceImpl implements AdminRemoteDataSource {
     required String employeeId,
     required String fullName,
     required String locationId,
+    String? locationName,
+    double? latitude,
+    double? longitude,
     required String role,
     required String contactNumber,
     String? reportingManagerEmployeeId,
@@ -48,13 +54,20 @@ class AdminRemoteDataSourceImpl implements AdminRemoteDataSource {
         headers['Authorization'] = 'Bearer $cachedToken';
       }
 
-      final payload = {
+      final payload = <String, dynamic>{
         'email': email,
         'employeeId': employeeId,
         'fullName': fullName,
         'locationId': locationId,
         'role': role,
         'contactNumber': contactNumber,
+        if (locationName != null && locationName.trim().isNotEmpty)
+          'locationName': locationName.trim(),
+        if (latitude != null) 'latitude': latitude,
+        if (longitude != null) 'longitude': longitude,
+        if (latitude != null) 'lat': latitude,
+        if (longitude != null) 'log': longitude,
+        if (longitude != null) 'lng': longitude,
         'reportingManagerEmployeeId': (reportingManagerEmployeeId != null &&
                 reportingManagerEmployeeId.trim().isNotEmpty)
             ? reportingManagerEmployeeId.trim()

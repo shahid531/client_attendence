@@ -16,6 +16,9 @@ class AdminRepositoryImpl implements AdminRepository {
     required String employeeId,
     required String fullName,
     required String locationId,
+    String? locationName,
+    double? latitude,
+    double? longitude,
     required String role,
     required String contactNumber,
     String? reportingManagerEmployeeId,
@@ -26,6 +29,9 @@ class AdminRepositoryImpl implements AdminRepository {
         employeeId: employeeId,
         fullName: fullName,
         locationId: locationId,
+        locationName: locationName,
+        latitude: latitude,
+        longitude: longitude,
         role: role,
         contactNumber: contactNumber,
         reportingManagerEmployeeId: reportingManagerEmployeeId,
@@ -38,3 +44,4 @@ class AdminRepositoryImpl implements AdminRepository {
     }
   }
 }
+

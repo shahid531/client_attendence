@@ -11,6 +11,8 @@ class CreatedEmployeeModel extends CreatedEmployee {
     super.reportingManagerName,
     super.locationId,
     super.locationName,
+    super.latitude,
+    super.longitude,
     super.clientName,
     required super.role,
     super.status,
@@ -21,6 +23,16 @@ class CreatedEmployeeModel extends CreatedEmployee {
   });
 
   factory CreatedEmployeeModel.fromJson(Map<String, dynamic> json) {
+    double? parseCoord(dynamic val) {
+      if (val == null) return null;
+      if (val is num) return val.toDouble();
+      if (val is String) return double.tryParse(val);
+      return null;
+    }
+
+    final lat = parseCoord(json['latitude'] ?? json['lat']);
+    final lng = parseCoord(json['longitude'] ?? json['lng'] ?? json['log']);
+
     return CreatedEmployeeModel(
       id: json['id'] is int ? json['id'] as int : int.tryParse(json['id']?.toString() ?? ''),
       employeeId: json['employeeId']?.toString() ?? '',
@@ -31,6 +43,8 @@ class CreatedEmployeeModel extends CreatedEmployee {
       reportingManagerName: json['reportingManagerName']?.toString(),
       locationId: json['locationId']?.toString(),
       locationName: json['locationName']?.toString(),
+      latitude: lat,
+      longitude: lng,
       clientName: json['clientName']?.toString(),
       role: json['role']?.toString() ?? 'RM',
       status: json['status']?.toString() ?? 'ACTIVE',
@@ -52,6 +66,11 @@ class CreatedEmployeeModel extends CreatedEmployee {
       'reportingManagerName': reportingManagerName,
       'locationId': locationId,
       'locationName': locationName,
+      'latitude': latitude,
+      'longitude': longitude,
+      'lat': latitude,
+      'log': longitude,
+      'lng': longitude,
       'clientName': clientName,
       'role': role,
       'status': status,
@@ -62,3 +81,4 @@ class CreatedEmployeeModel extends CreatedEmployee {
     };
   }
 }
+

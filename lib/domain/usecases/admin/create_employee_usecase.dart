@@ -19,6 +19,9 @@ class CreateEmployeeUseCase
       employeeId: params.employeeId,
       fullName: params.fullName,
       locationId: params.locationId,
+      locationName: params.locationName,
+      latitude: params.latitude,
+      longitude: params.longitude,
       role: params.role,
       contactNumber: params.contactNumber,
       reportingManagerEmployeeId: params.reportingManagerEmployeeId,
@@ -31,6 +34,9 @@ class CreateEmployeeParams extends Equatable {
   final String employeeId;
   final String fullName;
   final String locationId;
+  final String? locationName;
+  final double? latitude;
+  final double? longitude;
   final String role;
   final String contactNumber;
   final String? reportingManagerEmployeeId;
@@ -40,6 +46,9 @@ class CreateEmployeeParams extends Equatable {
     required this.employeeId,
     required this.fullName,
     required this.locationId,
+    this.locationName,
+    this.latitude,
+    this.longitude,
     required this.role,
     required this.contactNumber,
     this.reportingManagerEmployeeId,
@@ -51,6 +60,9 @@ class CreateEmployeeParams extends Equatable {
         employeeId,
         fullName,
         locationId,
+        locationName,
+        latitude,
+        longitude,
         role,
         contactNumber,
         reportingManagerEmployeeId,

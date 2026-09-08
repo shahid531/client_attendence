@@ -12,6 +12,9 @@ class CreateEmployeeSubmittedEvent extends AdminEvent {
   final String employeeId;
   final String fullName;
   final String locationId;
+  final String? locationName;
+  final double? latitude;
+  final double? longitude;
   final String role;
   final String contactNumber;
   final String? reportingManagerEmployeeId;
@@ -21,6 +24,9 @@ class CreateEmployeeSubmittedEvent extends AdminEvent {
     required this.employeeId,
     required this.fullName,
     required this.locationId,
+    this.locationName,
+    this.latitude,
+    this.longitude,
     required this.role,
     required this.contactNumber,
     this.reportingManagerEmployeeId,
@@ -32,6 +38,9 @@ class CreateEmployeeSubmittedEvent extends AdminEvent {
         employeeId,
         fullName,
         locationId,
+        locationName,
+        latitude,
+        longitude,
         role,
         contactNumber,
         reportingManagerEmployeeId,

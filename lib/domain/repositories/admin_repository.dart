@@ -8,8 +8,12 @@ abstract class AdminRepository {
     required String employeeId,
     required String fullName,
     required String locationId,
+    String? locationName,
+    double? latitude,
+    double? longitude,
     required String role,
     required String contactNumber,
     String? reportingManagerEmployeeId,
   });
 }
+
