@@ -3,6 +3,8 @@ import 'package:flutter_bloc/flutter_bloc.dart';
 import 'package:intl/intl.dart';
 import '../../core/constants/app_colors.dart';
 import '../../domain/entities/leave_request.dart';
+import '../blocs/auth/auth_bloc.dart';
+import '../blocs/auth/auth_state.dart';
 import '../blocs/leave/leave_bloc.dart';
 import '../blocs/leave/leave_event.dart';
 import '../blocs/leave/leave_state.dart';
@@ -11,20 +13,42 @@ class RequestPage extends StatefulWidget {
   const RequestPage({super.key});
 
   @override
-  State<RequestPage> createState() => _RequestPageState();
+  State<RequestPage> createState() => RequestPageState();
 }
 
-class _RequestPageState extends State<RequestPage> {
-  int _selectedTabIndex = 0; // 0 for Pending, 1 for Completed
+class RequestPageState extends State<RequestPage> {
+  int _selectedTabIndex = 0; // 0 for Pending (or Rejected for Admin), 1 for Completed
+
+  bool get _isAdmin {
+    final authState = context.read<AuthBloc>().state;
+    if (authState is AuthenticatedState) {
+      return authState.user.role.trim().toUpperCase() == 'ADMIN';
+    }
+    return false;
+  }
+
+  void refreshCurrentTab() {
+    if (_selectedTabIndex == 0) {
+      context.read<LeaveBloc>().add(
+            LoadLeaveRequestsEvent(
+              status: _isAdmin ? 'REJECTED' : 'PENDING',
+            ),
+          );
+    } else {
+      context.read<LeaveBloc>().add(
+            const LoadLeaveRequestsEvent(
+              status: 'APPROVED,REJECTED',
+            ),
+          );
+    }
+  }
 
   @override
   void initState() {
     super.initState();
-    // Fetch pending requests on initState
+    // Fetch requests on initState
     WidgetsBinding.instance.addPostFrameCallback((_) {
-      context
-          .read<LeaveBloc>()
-          .add(const LoadLeaveRequestsEvent(status: 'PENDING'));
+      refreshCurrentTab();
     });
   }
 
@@ -33,15 +57,7 @@ class _RequestPageState extends State<RequestPage> {
     setState(() {
       _selectedTabIndex = index;
     });
-    if (index == 0) {
-      context
-          .read<LeaveBloc>()
-          .add(const LoadLeaveRequestsEvent(status: 'PENDING'));
-    } else {
-      context
-          .read<LeaveBloc>()
-          .add(const LoadLeaveRequestsEvent(status: 'APPROVED,REJECTED'));
-    }
+    refreshCurrentTab();
   }
 
   IconData _getTypeIcon(String type) {
@@ -69,11 +85,7 @@ class _RequestPageState extends State<RequestPage> {
 
     return RefreshIndicator(
       onRefresh: () async {
-        context.read<LeaveBloc>().add(
-              LoadLeaveRequestsEvent(
-                status: _selectedTabIndex == 0 ? 'PENDING' : 'APPROVED,REJECTED',
-              ),
-            );
+        refreshCurrentTab();
       },
       color: primaryNavy,
       child: SingleChildScrollView(
@@ -104,16 +116,25 @@ class _RequestPageState extends State<RequestPage> {
             // Segmented Tab Toggle (Pending / Completed)
             BlocBuilder<LeaveBloc, LeaveState>(
               builder: (context, state) {
-                int pendingCount = 0;
+                int firstTabCount = 0;
                 int completedCount = 0;
 
                 if (state is LeaveLoadedState) {
-                  pendingCount = state.requests
-                      .where((r) => r.status.toLowerCase() == 'pending')
-                      .length;
-                  completedCount = state.requests
-                      .where((r) => r.status.toLowerCase() != 'pending')
-                      .length;
+                  if (_isAdmin) {
+                    firstTabCount = state.requests
+                        .where((r) => r.status.toLowerCase() == 'rejected')
+                        .length;
+                    completedCount = state.requests
+                        .where((r) => r.status.toLowerCase() != 'rejected')
+                        .length;
+                  } else {
+                    firstTabCount = state.requests
+                        .where((r) => r.status.toLowerCase() == 'pending')
+                        .length;
+                    completedCount = state.requests
+                        .where((r) => r.status.toLowerCase() != 'pending')
+                        .length;
+                  }
                 }
 
                 return Container(
@@ -147,9 +168,11 @@ class _RequestPageState extends State<RequestPage> {
                             ),
                             alignment: Alignment.center,
                             child: Text(
-                              _selectedTabIndex == 0 && pendingCount > 0
-                                  ? 'Pending ($pendingCount)'
-                                  : 'Pending',
+                              _selectedTabIndex == 0 && firstTabCount > 0
+                                  ? (_isAdmin
+                                      ? 'Rejected ($firstTabCount)'
+                                      : 'Pending ($firstTabCount)')
+                                  : (_isAdmin ? 'Rejected' : 'Pending'),
                               style: TextStyle(
                                 color: _selectedTabIndex == 0
                                     ? const Color(0xFF2563EB)
@@ -274,13 +297,7 @@ class _RequestPageState extends State<RequestPage> {
                           alignment: Alignment.centerRight,
                           child: TextButton(
                             onPressed: () {
-                              context.read<LeaveBloc>().add(
-                                    LoadLeaveRequestsEvent(
-                                      status: _selectedTabIndex == 0
-                                          ? 'PENDING'
-                                          : null,
-                                    ),
-                                  );
+                              refreshCurrentTab();
                             },
                             child: const Text(
                               'Retry',
@@ -300,12 +317,20 @@ class _RequestPageState extends State<RequestPage> {
                     state is LeaveLoadedState ? state.requests : <LeaveRequest>[];
 
                 final activeRequests = _selectedTabIndex == 0
-                    ? allRequests
-                        .where((r) => r.status.toLowerCase() == 'pending')
-                        .toList()
-                    : allRequests
-                        .where((r) => r.status.toLowerCase() != 'pending')
-                        .toList();
+                    ? (_isAdmin
+                        ? allRequests
+                            .where((r) => r.status.toLowerCase() == 'rejected')
+                            .toList()
+                        : allRequests
+                            .where((r) => r.status.toLowerCase() == 'pending')
+                            .toList())
+                    : (_isAdmin
+                        ? allRequests
+                            .where((r) => r.status.toLowerCase() != 'rejected')
+                            .toList()
+                        : allRequests
+                            .where((r) => r.status.toLowerCase() != 'pending')
+                            .toList());
 
                 if (activeRequests.isEmpty) {
                   return Container(
@@ -330,7 +355,7 @@ class _RequestPageState extends State<RequestPage> {
                         const SizedBox(height: 12),
                         Text(
                           _selectedTabIndex == 0
-                              ? 'No pending requests'
+                              ? (_isAdmin ? 'No rejected requests' : 'No pending requests')
                               : 'No completed requests',
                           style: const TextStyle(
                             fontSize: 16,
@@ -341,7 +366,9 @@ class _RequestPageState extends State<RequestPage> {
                         const SizedBox(height: 6),
                         Text(
                           _selectedTabIndex == 0
-                              ? 'You have no attendance or leave requests awaiting approval.'
+                              ? (_isAdmin
+                                  ? 'There are no rejected requests found.'
+                                  : 'You have no attendance or leave requests awaiting approval.')
                               : 'No completed request history available.',
                           textAlign: TextAlign.center,
                           style: const TextStyle(

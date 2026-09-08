@@ -3,6 +3,8 @@ import 'package:flutter_bloc/flutter_bloc.dart';
 import 'package:intl/intl.dart';
 import '../../core/constants/app_colors.dart';
 import '../../domain/entities/leave_request.dart';
+import '../blocs/auth/auth_bloc.dart';
+import '../blocs/auth/auth_state.dart';
 import '../blocs/leave/leave_bloc.dart';
 import '../blocs/leave/leave_event.dart';
 import '../blocs/leave/leave_state.dart';
@@ -12,21 +14,31 @@ class ApprovalsScreen extends StatefulWidget {
   const ApprovalsScreen({super.key});
 
   @override
-  State<ApprovalsScreen> createState() => _ApprovalsScreenState();
+  State<ApprovalsScreen> createState() => ApprovalsScreenState();
 }
 
-class _ApprovalsScreenState extends State<ApprovalsScreen> {
+class ApprovalsScreenState extends State<ApprovalsScreen> {
   int _selectedTabIndex = 0; // 0 for Pending, 1 for Completed
   int _completedFilterIndex = 0; // 0 for All, 1 for Reject, 2 for Approve
   String _searchQuery = '';
   final TextEditingController _searchController = TextEditingController();
+
+  void refreshCurrentTab() {
+    context.read<LeaveBloc>().add(
+          LoadLeaveRequestsEvent(
+            status: _selectedTabIndex == 0
+                ? 'PENDING'
+                : 'APPROVED,REJECTED',
+          ),
+        );
+  }
 
   @override
   void initState() {
     super.initState();
     WidgetsBinding.instance.addPostFrameCallback((_) {
       if (mounted) {
-        context.read<LeaveBloc>().add(const LoadLeaveRequestsEvent(status: 'PENDING'));
+        refreshCurrentTab();
       }
     });
   }
@@ -150,11 +162,7 @@ class _ApprovalsScreenState extends State<ApprovalsScreen> {
 
           return RefreshIndicator(
             onRefresh: () async {
-              context.read<LeaveBloc>().add(
-                    LoadLeaveRequestsEvent(
-                      status: _selectedTabIndex == 0 ? 'PENDING' : null,
-                    ),
-                  );
+              refreshCurrentTab();
             },
             color: AppColors.primaryNavy,
             child: SingleChildScrollView(
@@ -395,7 +403,11 @@ class _ApprovalsScreenState extends State<ApprovalsScreen> {
               onTap: () {
                 if (_selectedTabIndex != 0) {
                   setState(() => _selectedTabIndex = 0);
-                  context.read<LeaveBloc>().add(const LoadLeaveRequestsEvent(status: 'PENDING'));
+                  context.read<LeaveBloc>().add(
+                        const LoadLeaveRequestsEvent(
+                          status: 'PENDING',
+                        ),
+                      );
                 }
               },
               child: Container(
@@ -433,7 +445,11 @@ class _ApprovalsScreenState extends State<ApprovalsScreen> {
               onTap: () {
                 if (_selectedTabIndex != 1) {
                   setState(() => _selectedTabIndex = 1);
-                  context.read<LeaveBloc>().add(const LoadLeaveRequestsEvent());
+                  context.read<LeaveBloc>().add(
+                        const LoadLeaveRequestsEvent(
+                          status: 'APPROVED,REJECTED',
+                        ),
+                      );
                 }
               },
               child: Container(
