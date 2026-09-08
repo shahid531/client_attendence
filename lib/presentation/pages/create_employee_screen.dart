@@ -35,9 +35,7 @@ class _CreateEmployeeScreenState extends State<CreateEmployeeScreen> {
 
   final List<Map<String, String>> _roleOptions = [
     {'label': 'RM (Relationship Manager)', 'code': 'RM'},
-    {'label': 'Senior Manager', 'code': 'Senior Manager'},
-    {'label': 'Team Lead', 'code': 'Team Lead'},
-    {'label': 'Associate', 'code': 'Associate'},
+    {'label': 'EMPLOYEE', 'code': 'EMPLOYEE'},
     {'label': 'Admin', 'code': 'ADMIN'},
   ];
 

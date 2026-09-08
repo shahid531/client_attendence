@@ -1,4 +1,5 @@
 import 'package:dio/dio.dart';
+import 'package:flutter/cupertino.dart';
 import 'package:get_it/get_it.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 import '../../data/datasources/admin_remote_datasource.dart';
@@ -66,7 +67,7 @@ Future<void> initServiceLocator() async {
       onResponse: (response, handler) {
         print('\n==================== [API RESPONSE] ====================');
         print('<-- ${response.statusCode} ${response.requestOptions.uri}');
-        print('Response Data: ${response.data}');
+        debugPrint('Response Data: ${response.data}');
         print('========================================================\n');
         return handler.next(response);
       },
