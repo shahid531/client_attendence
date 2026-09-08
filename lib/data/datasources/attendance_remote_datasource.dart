@@ -3,6 +3,7 @@ import 'package:dio/dio.dart';
 import 'package:intl/intl.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 import '../../core/errors/exceptions.dart';
+import '../../core/utils/device_info_util.dart';
 import '../models/attendance_record_model.dart';
 
 abstract class AttendanceRemoteDataSource {
@@ -205,15 +206,19 @@ class AttendanceRemoteDataSourceImpl implements AttendanceRemoteDataSource {
             ? '$_baseUrl/attendance/wfh/time-in'
             : '$_baseUrl/attendance/time-in';
 
+        final effectiveDeviceId = (deviceId != null && deviceId.isNotEmpty && deviceId != 'string')
+            ? deviceId
+            : await DeviceInfoUtil.getDeviceId();
+
         final Map<String, dynamic> requestBody = isWfh
             ? {
                 'reason': description,
-                'deviceId': deviceId ?? 'flutter_device_01',
+                'deviceId': effectiveDeviceId,
               }
             : {
                 'latitude': latitude ?? 18.58742586542344,
                 'longitude': longitude ?? 73.73845322922567,
-                'deviceId': deviceId ?? 'string',
+                'deviceId': effectiveDeviceId,
               };
 
         final response = await dio!.post(
@@ -314,15 +319,19 @@ class AttendanceRemoteDataSourceImpl implements AttendanceRemoteDataSource {
             ? '$_baseUrl/attendance/wfh/time-out'
             : '$_baseUrl/attendance/time-out';
 
+        final effectiveDeviceId = (deviceId != null && deviceId.isNotEmpty && deviceId != 'string')
+            ? deviceId
+            : await DeviceInfoUtil.getDeviceId();
+
         final Map<String, dynamic> requestBody = isWfh
             ? {
                 'reason': description,
-                'deviceId': deviceId ?? 'flutter_device_01',
+                'deviceId': effectiveDeviceId,
               }
             : {
                 'latitude': latitude ?? 18.58742586542344,
                 'longitude': longitude ?? 73.73845322922567,
-                'deviceId': deviceId ?? 'string',
+                'deviceId': effectiveDeviceId,
               };
 
         final response = await dio!.post(

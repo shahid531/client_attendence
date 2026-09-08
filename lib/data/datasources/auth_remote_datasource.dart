@@ -1,6 +1,7 @@
 import 'package:dio/dio.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 import '../../core/errors/exceptions.dart';
+import '../../core/utils/device_info_util.dart';
 import '../models/user_model.dart';
 
 abstract class AuthRemoteDataSource {
@@ -50,15 +51,25 @@ class AuthRemoteDataSourceImpl implements AuthRemoteDataSource {
         headers['Authorization'] = 'Bearer $cachedToken';
       }
 
+      final effectiveDeviceId = (deviceId.isNotEmpty && deviceId != 'flutter_app_01' && deviceId != 'flutter_device_01')
+          ? deviceId
+          : await DeviceInfoUtil.getDeviceId();
+      final effectiveDeviceModel = (deviceModel.isNotEmpty && deviceModel != 'Mobile' && deviceModel != 'Flutter App')
+          ? deviceModel
+          : await DeviceInfoUtil.getDeviceModel();
+      final effectiveOs = (operatingSystem.isNotEmpty && operatingSystem != 'Android')
+          ? operatingSystem
+          : await DeviceInfoUtil.getOperatingSystem();
+
       final response = await dio.post(
         '$_baseUrl/auth/login',
         options: Options(headers: headers),
         data: {
           'username': username,
           'password': password,
-          'deviceId': deviceId,
-          'deviceModel': deviceModel,
-          'operatingSystem': operatingSystem,
+          'deviceId': effectiveDeviceId,
+          'deviceModel': effectiveDeviceModel,
+          'operatingSystem': effectiveOs,
         },
       );
 
