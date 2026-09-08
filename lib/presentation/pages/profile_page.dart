@@ -1,6 +1,11 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_bloc/flutter_bloc.dart';
+import 'package:shared_preferences/shared_preferences.dart';
 import '../../core/constants/app_colors.dart';
+import '../../core/di/injection_container.dart';
+import '../../data/datasources/attendance_remote_datasource.dart';
+import '../blocs/attendance/attendance_bloc.dart';
+import '../blocs/attendance/attendance_event.dart';
 import '../blocs/auth/auth_bloc.dart';
 import '../blocs/auth/auth_event.dart';
 import '../blocs/auth/auth_state.dart';
@@ -60,9 +65,19 @@ class _ProfilePageState extends State<ProfilePage> {
             ),
           ),
           ElevatedButton(
-            onPressed: () {
+            onPressed: () async {
               Navigator.of(ctx).pop();
-              context.read<AuthBloc>().add(LogoutRequestedEvent());
+              try {
+                final prefs = await SharedPreferences.getInstance();
+                await prefs.clear();
+              } catch (_) {}
+              try {
+                sl<AttendanceRemoteDataSource>().clearCache();
+              } catch (_) {}
+              if (context.mounted) {
+                context.read<AttendanceBloc>().add(ResetAttendanceEvent());
+                context.read<AuthBloc>().add(LogoutRequestedEvent());
+              }
             },
             style: ElevatedButton.styleFrom(
               backgroundColor: AppColors.dangerRose,

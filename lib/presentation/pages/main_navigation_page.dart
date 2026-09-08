@@ -48,7 +48,7 @@ class _MainNavigationPageState extends State<MainNavigationPage> {
               }
             },
           ),
-          if (isRM)
+          if (isRM || isAdmin)
             _NavTabItem(
               page: const ApprovalsScreen(),
               barItem: const BottomNavigationBarItem(
@@ -60,6 +60,7 @@ class _MainNavigationPageState extends State<MainNavigationPage> {
                 context.read<LeaveBloc>().add(const LoadLeaveRequestsEvent(status: 'PENDING'));
               },
             ),
+          if(!isAdmin)
           _NavTabItem(
             page: const HistoryPage(),
             barItem: const BottomNavigationBarItem(
@@ -71,6 +72,7 @@ class _MainNavigationPageState extends State<MainNavigationPage> {
               context.read<AttendanceBloc>().add(LoadAttendanceHistoryEvent());
             },
           ),
+          if(!isAdmin)
           _NavTabItem(
             page: const RequestPage(),
             barItem: const BottomNavigationBarItem(

@@ -9,9 +9,15 @@ class User extends Equatable {
   final String? contactNumber;
   final String? reportingManagerName;
   final String? locationName;
+  final String? address;
   final String? status;
   final String? avatarUrl;
   final bool firstLogin;
+  final double? latitude;
+  final double? longitude;
+  final double? radius;
+
+  double? get allowedRadius => radius;
 
   const User({
     required this.id,
@@ -22,9 +28,13 @@ class User extends Equatable {
     this.contactNumber,
     this.reportingManagerName,
     this.locationName,
+    this.address,
     this.status,
     this.avatarUrl,
     this.firstLogin = false,
+    this.latitude,
+    this.longitude,
+    this.radius,
   });
 
   @override
@@ -37,8 +47,12 @@ class User extends Equatable {
         contactNumber,
         reportingManagerName,
         locationName,
+        address,
         status,
         avatarUrl,
         firstLogin,
+        latitude,
+        longitude,
+        radius,
       ];
 }

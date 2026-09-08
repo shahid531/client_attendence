@@ -2,10 +2,13 @@ import 'package:flutter/material.dart';
 import 'package:flutter_bloc/flutter_bloc.dart';
 import 'package:intl/intl.dart';
 import '../../core/constants/app_colors.dart';
+import '../../core/utils/excel_exporter.dart';
 import '../../domain/entities/attendance_record.dart';
 import '../blocs/attendance/attendance_bloc.dart';
 import '../blocs/attendance/attendance_event.dart';
 import '../blocs/attendance/attendance_state.dart';
+import '../blocs/auth/auth_bloc.dart';
+import '../blocs/auth/auth_state.dart';
 
 class HistoryPage extends StatefulWidget {
   const HistoryPage({super.key});
@@ -23,6 +26,7 @@ class _HistoryPageState extends State<HistoryPage> {
   late DateTime _fromDate;
   late DateTime _toDate;
   String _displayRangeStr = '';
+  bool _isExporting = false;
 
   @override
   void initState() {
@@ -104,6 +108,287 @@ class _HistoryPageState extends State<HistoryPage> {
     return DateFormat('dd/MM/yyyy').format(date);
   }
 
+  void _onExportPressed() {
+    final attendanceState = context.read<AttendanceBloc>().state;
+    final records = attendanceState is AttendanceLoadedState
+        ? attendanceState.history
+        : <AttendanceRecord>[];
+
+    if (records.isEmpty) {
+      ScaffoldMessenger.of(context).showSnackBar(
+        const SnackBar(
+          content: Text('No attendance records available to export for this period.'),
+          backgroundColor: AppColors.dangerRose,
+          behavior: SnackBarBehavior.floating,
+        ),
+      );
+      return;
+    }
+
+    _showExportModal(context, records);
+  }
+
+  void _showExportModal(BuildContext context, List<AttendanceRecord> records) {
+    final authState = context.read<AuthBloc>().state;
+    final user = authState is AuthenticatedState ? authState.user : null;
+    final dateRange = _displayRangeStr.isNotEmpty ? _displayRangeStr : _selectedPeriod;
+
+    showModalBottomSheet(
+      context: context,
+      shape: const RoundedRectangleBorder(
+        borderRadius: BorderRadius.vertical(top: Radius.circular(20)),
+      ),
+      backgroundColor: Colors.white,
+      builder: (modalCtx) {
+        return SafeArea(
+          child: Padding(
+            padding: const EdgeInsets.fromLTRB(20, 20, 20, 16),
+            child: Column(
+              mainAxisSize: MainAxisSize.min,
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                Center(
+                  child: Container(
+                    width: 40,
+                    height: 4,
+                    decoration: BoxDecoration(
+                      color: const Color(0xFFCBD5E1),
+                      borderRadius: BorderRadius.circular(2),
+                    ),
+                  ),
+                ),
+                const SizedBox(height: 16),
+                const Text(
+                  'Export Attendance Report',
+                  style: TextStyle(
+                    fontSize: 18,
+                    fontWeight: FontWeight.bold,
+                    color: Color(0xFF1E293B),
+                  ),
+                ),
+                const SizedBox(height: 4),
+                Text(
+                  'Includes ${records.length} record(s) for $dateRange',
+                  style: const TextStyle(
+                    fontSize: 13,
+                    color: Color(0xFF64748B),
+                  ),
+                ),
+                const SizedBox(height: 20),
+
+                // Option 1: Download directly to device
+                InkWell(
+                  onTap: () async {
+                    Navigator.of(modalCtx).pop();
+                    await _handleDirectDownload(records, dateRange, user?.name, user?.id);
+                  },
+                  borderRadius: BorderRadius.circular(12),
+                  child: Container(
+                    padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 14),
+                    decoration: BoxDecoration(
+                      color: const Color(0xFFF8FAFC),
+                      borderRadius: BorderRadius.circular(12),
+                      border: Border.all(color: const Color(0xFFE2E8F0)),
+                    ),
+                    child: Row(
+                      children: [
+                        Container(
+                          width: 40,
+                          height: 40,
+                          decoration: BoxDecoration(
+                            color: AppColors.primaryNavy.withValues(alpha: 0.1),
+                            borderRadius: BorderRadius.circular(10),
+                          ),
+                          child: const Icon(
+                            Icons.download_rounded,
+                            color: AppColors.primaryNavy,
+                            size: 22,
+                          ),
+                        ),
+                        const SizedBox(width: 14),
+                        const Expanded(
+                          child: Column(
+                            crossAxisAlignment: CrossAxisAlignment.start,
+                            children: [
+                              Text(
+                                'Download to Device',
+                                style: TextStyle(
+                                  fontSize: 14,
+                                  fontWeight: FontWeight.bold,
+                                  color: Color(0xFF0F172A),
+                                ),
+                              ),
+                              SizedBox(height: 2),
+                              Text(
+                                'Save .xlsx file to Downloads folder',
+                                style: TextStyle(
+                                  fontSize: 12,
+                                  color: Color(0xFF64748B),
+                                ),
+                              ),
+                            ],
+                          ),
+                        ),
+                        const Icon(
+                          Icons.chevron_right_rounded,
+                          color: Color(0xFF94A3B8),
+                        ),
+                      ],
+                    ),
+                  ),
+                ),
+                const SizedBox(height: 12),
+
+                // Option 2: Share file via system share
+                InkWell(
+                  onTap: () async {
+                    Navigator.of(modalCtx).pop();
+                    await _handleShareReport(records, dateRange, user?.name, user?.id);
+                  },
+                  borderRadius: BorderRadius.circular(12),
+                  child: Container(
+                    padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 14),
+                    decoration: BoxDecoration(
+                      color: const Color(0xFFF8FAFC),
+                      borderRadius: BorderRadius.circular(12),
+                      border: Border.all(color: const Color(0xFFE2E8F0)),
+                    ),
+                    child: Row(
+                      children: [
+                        Container(
+                          width: 40,
+                          height: 40,
+                          decoration: BoxDecoration(
+                            color: AppColors.successEmerald.withValues(alpha: 0.1),
+                            borderRadius: BorderRadius.circular(10),
+                          ),
+                          child: const Icon(
+                            Icons.share_rounded,
+                            color: AppColors.successEmerald,
+                            size: 22,
+                          ),
+                        ),
+                        const SizedBox(width: 14),
+                        const Expanded(
+                          child: Column(
+                            crossAxisAlignment: CrossAxisAlignment.start,
+                            children: [
+                              Text(
+                                'Share Excel File',
+                                style: TextStyle(
+                                  fontSize: 14,
+                                  fontWeight: FontWeight.bold,
+                                  color: Color(0xFF0F172A),
+                                ),
+                              ),
+                              SizedBox(height: 2),
+                              Text(
+                                'Send via WhatsApp, Email, Google Drive, etc.',
+                                style: TextStyle(
+                                  fontSize: 12,
+                                  color: Color(0xFF64748B),
+                                ),
+                              ),
+                            ],
+                          ),
+                        ),
+                        const Icon(
+                          Icons.chevron_right_rounded,
+                          color: Color(0xFF94A3B8),
+                        ),
+                      ],
+                    ),
+                  ),
+                ),
+                const SizedBox(height: 12),
+              ],
+            ),
+          ),
+        );
+      },
+    );
+  }
+
+  Future<void> _handleDirectDownload(
+    List<AttendanceRecord> records,
+    String dateRange,
+    String? employeeName,
+    String? employeeId,
+  ) async {
+    setState(() => _isExporting = true);
+    try {
+      final result = await ExcelExporter.downloadToDevice(
+        records: records,
+        dateRange: dateRange,
+        employeeName: employeeName,
+        employeeId: employeeId,
+      );
+
+      if (mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(
+            content: Text('Downloaded: ${result.fileName}'),
+            backgroundColor: AppColors.successEmerald,
+            duration: const Duration(seconds: 4),
+            behavior: SnackBarBehavior.floating,
+            action: SnackBarAction(
+              label: 'OPEN',
+              textColor: Colors.white,
+              onPressed: () {
+                ExcelExporter.openFile(result.filePath);
+              },
+            ),
+          ),
+        );
+      }
+    } catch (e) {
+      if (mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(
+            content: Text('Failed to download file: $e'),
+            backgroundColor: AppColors.dangerRose,
+            behavior: SnackBarBehavior.floating,
+          ),
+        );
+      }
+    } finally {
+      if (mounted) {
+        setState(() => _isExporting = false);
+      }
+    }
+  }
+
+  Future<void> _handleShareReport(
+    List<AttendanceRecord> records,
+    String dateRange,
+    String? employeeName,
+    String? employeeId,
+  ) async {
+    setState(() => _isExporting = true);
+    try {
+      await ExcelExporter.shareExcelReport(
+        records: records,
+        dateRange: dateRange,
+        employeeName: employeeName,
+        employeeId: employeeId,
+      );
+    } catch (e) {
+      if (mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(
+            content: Text('Failed to share file: $e'),
+            backgroundColor: AppColors.dangerRose,
+            behavior: SnackBarBehavior.floating,
+          ),
+        );
+      }
+    } finally {
+      if (mounted) {
+        setState(() => _isExporting = false);
+      }
+    }
+  }
+
   @override
   Widget build(BuildContext context) {
     const primaryNavy = AppColors.primaryNavy;
@@ -131,18 +416,21 @@ class _HistoryPageState extends State<HistoryPage> {
                   ),
                 ),
                 ElevatedButton.icon(
-                  onPressed: () {
-                    ScaffoldMessenger.of(context).showSnackBar(
-                      const SnackBar(
-                        content: Text('Exporting attendance report...'),
-                        duration: Duration(seconds: 2),
-                      ),
-                    );
-                  },
-                  icon: const Icon(Icons.download, size: 16, color: primaryNavy),
-                  label: const Text(
-                    'Export',
-                    style: TextStyle(
+                  onPressed: _isExporting ? null : _onExportPressed,
+                  icon: _isExporting
+                      ? const SizedBox(
+                          width: 14,
+                          height: 14,
+                          child: CircularProgressIndicator(
+                            strokeWidth: 2,
+                            valueColor:
+                                AlwaysStoppedAnimation<Color>(primaryNavy),
+                          ),
+                        )
+                      : const Icon(Icons.download, size: 16, color: primaryNavy),
+                  label: Text(
+                    _isExporting ? 'Exporting...' : 'Export',
+                    style: const TextStyle(
                       color: primaryNavy,
                       fontWeight: FontWeight.w600,
                       fontSize: 13,

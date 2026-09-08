@@ -1,6 +1,10 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_bloc/flutter_bloc.dart';
 import '../../core/constants/app_colors.dart';
+import '../../core/di/injection_container.dart';
+import '../../data/datasources/attendance_remote_datasource.dart';
+import '../blocs/attendance/attendance_bloc.dart';
+import '../blocs/attendance/attendance_event.dart';
 import '../blocs/auth/auth_bloc.dart';
 import '../blocs/auth/auth_event.dart';
 import 'dart:developer' as dev;
@@ -48,6 +52,11 @@ class _LoginPageState extends State<LoginPage> {
       listener: (context, state) {
         if (state is AuthenticatedState) {
           dev.log('Login firstLogin: ${state.user.firstLogin}');
+          try {
+            sl<AttendanceRemoteDataSource>().clearCache();
+          } catch (_) {}
+          context.read<AttendanceBloc>().add(ResetAttendanceEvent());
+
           if (state.user.firstLogin) {
             Navigator.pushReplacement(
               context,

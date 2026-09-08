@@ -10,9 +10,13 @@ class UserModel extends User {
     super.contactNumber,
     super.reportingManagerName,
     super.locationName,
+    super.address,
     super.status,
     super.avatarUrl,
     required super.firstLogin,
+    super.latitude,
+    super.longitude,
+    super.radius,
   });
 
   factory UserModel.fromJson(Map<String, dynamic> json) {
@@ -30,10 +34,49 @@ class UserModel extends User {
 
     final role = json['role']?.toString() ?? 'Employee';
 
-    final company = json['clientName']?.toString() ??
+    final locationMap = (json['location'] is Map<String, dynamic>)
+        ? json['location'] as Map<String, dynamic>
+        : null;
+
+    final company = locationMap?['clientName']?.toString() ??
+        json['clientName']?.toString() ??
         json['company']?.toString() ??
+        locationMap?['locationName']?.toString() ??
         json['locationName']?.toString() ??
         'ClientSite HQ';
+
+    final locationName = locationMap?['locationName']?.toString() ??
+        json['locationName']?.toString();
+
+    final address = locationMap?['address']?.toString() ??
+        json['address']?.toString();
+
+    double? parseDouble(dynamic value) {
+      if (value == null) return null;
+      if (value is num) return value.toDouble();
+      return double.tryParse(value.toString());
+    }
+
+    final lat = parseDouble(locationMap?['latitude'] ??
+        json['latitude'] ??
+        json['lat'] ??
+        json['officeLatitude'] ??
+        json['locationLatitude']);
+
+    final lng = parseDouble(locationMap?['longitude'] ??
+        json['longitude'] ??
+        json['long'] ??
+        json['lng'] ??
+        json['officeLongitude'] ??
+        json['locationLongitude']);
+
+    final rad = parseDouble(locationMap?['allowedRadius'] ??
+        locationMap?['radius'] ??
+        json['allowedRadius'] ??
+        json['radius'] ??
+        json['geofenceRadius'] ??
+        json['locationRadius'] ??
+        json['officeRadius']);
 
     return UserModel(
       id: empId,
@@ -43,10 +86,14 @@ class UserModel extends User {
       company: company,
       contactNumber: json['contactNumber']?.toString(),
       reportingManagerName: json['reportingManagerName']?.toString(),
-      locationName: json['locationName']?.toString(),
-      status: json['status']?.toString() ?? 'ACTIVE',
+      locationName: locationName,
+      address: address,
+      status: locationMap?['status']?.toString() ?? json['status']?.toString() ?? 'ACTIVE',
       avatarUrl: json['avatarUrl']?.toString(),
       firstLogin: json['firstLogin'] == true,
+      latitude: lat,
+      longitude: lng,
+      radius: rad,
     );
   }
 
@@ -60,9 +107,13 @@ class UserModel extends User {
       'contactNumber': contactNumber,
       'reportingManagerName': reportingManagerName,
       'locationName': locationName,
+      'address': address,
       'status': status,
       'avatarUrl': avatarUrl,
       'firstLogin': firstLogin,
+      'latitude': latitude,
+      'longitude': longitude,
+      'radius': radius,
     };
   }
 }
