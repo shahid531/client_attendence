@@ -7,11 +7,17 @@ abstract class AttendanceRepository {
     required String workType,
     required String location,
     required String description,
+    double? latitude,
+    double? longitude,
+    String? deviceId,
   });
 
   Future<Either<Failure, AttendanceRecord>> checkOut({
     required String recordId,
     required String description,
+    double? latitude,
+    double? longitude,
+    String? deviceId,
   });
 
   Future<Either<Failure, List<AttendanceRecord>>> getAttendanceHistory({

@@ -15,6 +15,9 @@ class CheckOutUseCase implements UseCase<AttendanceRecord, CheckOutParams> {
     return await repository.checkOut(
       recordId: params.recordId,
       description: params.description,
+      latitude: params.latitude,
+      longitude: params.longitude,
+      deviceId: params.deviceId,
     );
   }
 }
@@ -22,12 +25,18 @@ class CheckOutUseCase implements UseCase<AttendanceRecord, CheckOutParams> {
 class CheckOutParams extends Equatable {
   final String recordId;
   final String description;
+  final double? latitude;
+  final double? longitude;
+  final String? deviceId;
 
   const CheckOutParams({
     required this.recordId,
     required this.description,
+    this.latitude,
+    this.longitude,
+    this.deviceId,
   });
 
   @override
-  List<Object?> get props => [recordId, description];
+  List<Object?> get props => [recordId, description, latitude, longitude, deviceId];
 }

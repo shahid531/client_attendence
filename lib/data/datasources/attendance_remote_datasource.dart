@@ -10,11 +10,17 @@ abstract class AttendanceRemoteDataSource {
     required String workType,
     required String location,
     required String description,
+    double? latitude,
+    double? longitude,
+    String? deviceId,
   });
 
   Future<AttendanceRecordModel> checkOut({
     required String recordId,
     required String description,
+    double? latitude,
+    double? longitude,
+    String? deviceId,
   });
 
   Future<List<AttendanceRecordModel>> getAttendanceHistory({
@@ -174,12 +180,15 @@ class AttendanceRemoteDataSourceImpl implements AttendanceRemoteDataSource {
     required String workType,
     required String location,
     required String description,
+    double? latitude,
+    double? longitude,
+    String? deviceId,
   }) async {
     final now = DateTime.now();
     String timeStr = DateFormat('hh:mm a').format(now);
     String assignedId = 'att_${now.millisecondsSinceEpoch}';
 
-    if (dio != null && sharedPreferences != null && workType == 'WFH') {
+    if (dio != null && sharedPreferences != null) {
       try {
         final token = sharedPreferences!.getString('auth_bearer_token');
         final headers = <String, String>{
@@ -191,15 +200,26 @@ class AttendanceRemoteDataSourceImpl implements AttendanceRemoteDataSource {
           headers['Authorization'] = 'Bearer $token';
         }
 
-        final endpoint = '$_baseUrl/attendance/wfh/time-in';
+        final isWfh = workType.toUpperCase() == 'WFH';
+        final endpoint = isWfh
+            ? '$_baseUrl/attendance/wfh/time-in'
+            : '$_baseUrl/attendance/time-in';
+
+        final Map<String, dynamic> requestBody = isWfh
+            ? {
+                'reason': description,
+                'deviceId': deviceId ?? 'flutter_device_01',
+              }
+            : {
+                'latitude': latitude ?? 18.58742586542344,
+                'longitude': longitude ?? 73.73845322922567,
+                'deviceId': deviceId ?? 'string',
+              };
 
         final response = await dio!.post(
           endpoint,
           options: Options(headers: headers),
-          data: {
-            'reason': description,
-            'deviceId': 'flutter_device_01',
-          },
+          data: requestBody,
         );
 
         final data = response.data;
@@ -209,15 +229,24 @@ class AttendanceRemoteDataSourceImpl implements AttendanceRemoteDataSource {
           }
           if (data['data'] is Map<String, dynamic>) {
             final resData = data['data'] as Map<String, dynamic>;
-            if (resData['timeIn'] != null) {
-              final parsed = DateTime.tryParse(resData['timeIn'].toString());
-              timeStr = parsed != null
-                  ? DateFormat('hh:mm a').format(parsed)
-                  : resData['timeIn'].toString();
-            }
-            if (resData['id'] != null || resData['attendanceId'] != null) {
-              assignedId = (resData['id'] ?? resData['attendanceId']).toString();
-            }
+            final parsedModel = AttendanceRecordModel.fromJson(resData);
+            final record = AttendanceRecordModel(
+              id: parsedModel.id,
+              date: parsedModel.date,
+              checkInTime: parsedModel.checkInTime.isNotEmpty && parsedModel.checkInTime != '--:--'
+                  ? parsedModel.checkInTime
+                  : timeStr,
+              checkOutTime: parsedModel.checkOutTime,
+              workType: parsedModel.workType.isNotEmpty ? parsedModel.workType : workType,
+              location: parsedModel.location.isNotEmpty && parsedModel.location != 'HQ Office'
+                  ? parsedModel.location
+                  : location,
+              description: description,
+              totalHours: parsedModel.totalHours,
+              status: parsedModel.status.isNotEmpty ? parsedModel.status : 'Present',
+            );
+            await saveTodayRecord(record);
+            return record;
           }
         }
       } on DioException catch (e) {
@@ -253,6 +282,9 @@ class AttendanceRemoteDataSourceImpl implements AttendanceRemoteDataSource {
   Future<AttendanceRecordModel> checkOut({
     required String recordId,
     required String description,
+    double? latitude,
+    double? longitude,
+    String? deviceId,
   }) async {
     final now = DateTime.now();
     String timeStr = DateFormat('hh:mm a').format(now);
@@ -263,9 +295,9 @@ class AttendanceRemoteDataSourceImpl implements AttendanceRemoteDataSource {
     }
 
     final currentRecord = _todayRecord;
-    final workType = currentRecord?.workType ?? 'WFH';
+    final workType = currentRecord?.workType ?? 'GPS';
 
-    if (dio != null && sharedPreferences != null && workType == 'WFH') {
+    if (dio != null && sharedPreferences != null) {
       try {
         final token = sharedPreferences!.getString('auth_bearer_token');
         final headers = <String, String>{
@@ -277,15 +309,26 @@ class AttendanceRemoteDataSourceImpl implements AttendanceRemoteDataSource {
           headers['Authorization'] = 'Bearer $token';
         }
 
-        final endpoint = '$_baseUrl/attendance/wfh/time-out';
+        final isWfh = workType.toUpperCase() == 'WFH';
+        final endpoint = isWfh
+            ? '$_baseUrl/attendance/wfh/time-out'
+            : '$_baseUrl/attendance/time-out';
+
+        final Map<String, dynamic> requestBody = isWfh
+            ? {
+                'reason': description,
+                'deviceId': deviceId ?? 'flutter_device_01',
+              }
+            : {
+                'latitude': latitude ?? 18.58742586542344,
+                'longitude': longitude ?? 73.73845322922567,
+                'deviceId': deviceId ?? 'string',
+              };
 
         final response = await dio!.post(
           endpoint,
           options: Options(headers: headers),
-          data: {
-            'reason': description,
-            'deviceId': 'flutter_device_01',
-          },
+          data: requestBody,
         );
 
         final data = response.data;
@@ -295,16 +338,26 @@ class AttendanceRemoteDataSourceImpl implements AttendanceRemoteDataSource {
           }
           if (data['data'] is Map<String, dynamic>) {
             final resData = data['data'] as Map<String, dynamic>;
-            if (resData['timeOut'] != null) {
-              final parsed = DateTime.tryParse(resData['timeOut'].toString());
-              timeStr = parsed != null
-                  ? DateFormat('hh:mm a').format(parsed)
-                  : resData['timeOut'].toString();
-            }
-            if (resData['totalHours'] != null || resData['hours'] != null) {
-              final rawH = resData['totalHours'] ?? resData['hours'];
-              computedHours = double.tryParse(rawH.toString()) ?? 0.0;
-            }
+            final parsedModel = AttendanceRecordModel.fromJson(resData);
+            final updatedRecord = AttendanceRecordModel(
+              id: parsedModel.id,
+              date: parsedModel.date,
+              checkInTime: parsedModel.checkInTime.isNotEmpty && parsedModel.checkInTime != '--:--'
+                  ? parsedModel.checkInTime
+                  : (currentRecord?.checkInTime ?? timeStr),
+              checkOutTime: parsedModel.checkOutTime ?? timeStr,
+              workType: parsedModel.workType.isNotEmpty ? parsedModel.workType : workType,
+              location: parsedModel.location.isNotEmpty && parsedModel.location != 'HQ Office'
+                  ? parsedModel.location
+                  : (currentRecord?.location ?? 'HQ Building, 5th Floor'),
+              description: description.isNotEmpty ? description : (currentRecord?.description ?? ''),
+              totalHours: parsedModel.totalHours > 0 ? parsedModel.totalHours : computedHours,
+              status: parsedModel.status.isNotEmpty ? parsedModel.status : 'Present',
+            );
+
+            await saveTodayRecord(updatedRecord);
+            _mockRecords.insert(0, updatedRecord);
+            return updatedRecord;
           }
         }
       } on DioException catch (e) {

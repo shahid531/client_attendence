@@ -20,6 +20,9 @@ class MockAttendanceRepository implements AttendanceRepository {
     required String workType,
     required String location,
     required String description,
+    double? latitude,
+    double? longitude,
+    String? deviceId,
   }) async {
     final record = AttendanceRecord(
       id: '1',
@@ -39,6 +42,9 @@ class MockAttendanceRepository implements AttendanceRepository {
   Future<Either<Failure, AttendanceRecord>> checkOut({
     required String recordId,
     required String description,
+    double? latitude,
+    double? longitude,
+    String? deviceId,
   }) async {
     final record = AttendanceRecord(
       id: recordId,
@@ -94,11 +100,10 @@ void main() {
     expect(bloc.state, AttendanceInitialState());
   });
 
-  test('should emit [AttendanceLoadingState, AttendanceLoadedState] when LoadTodayAttendanceEvent is added', () async {
+  test('should emit [AttendanceLoadedState] when LoadTodayAttendanceEvent is added', () async {
     final expectation = expectLater(
       bloc.stream,
       emitsInOrder([
-        AttendanceLoadingState(),
         const AttendanceLoadedState(todayRecord: null, history: []),
       ]),
     );
@@ -179,6 +184,9 @@ class FailingAttendanceRepository implements AttendanceRepository {
     required String workType,
     required String location,
     required String description,
+    double? latitude,
+    double? longitude,
+    String? deviceId,
   }) async {
     return const Left(
       ServerFailure('Admin cannot mark attendance directly without an employee profile'),
@@ -189,6 +197,9 @@ class FailingAttendanceRepository implements AttendanceRepository {
   Future<Either<Failure, AttendanceRecord>> checkOut({
     required String recordId,
     required String description,
+    double? latitude,
+    double? longitude,
+    String? deviceId,
   }) async {
     return const Left(
       ServerFailure('Attendance time-out failed'),

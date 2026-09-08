@@ -32,28 +32,40 @@ class CheckInRequestedEvent extends AttendanceEvent {
   final String workType;
   final String location;
   final String description;
+  final double? latitude;
+  final double? longitude;
+  final String? deviceId;
 
   const CheckInRequestedEvent({
     required this.workType,
     required this.location,
     required this.description,
+    this.latitude,
+    this.longitude,
+    this.deviceId,
   });
 
   @override
-  List<Object?> get props => [workType, location, description];
+  List<Object?> get props => [workType, location, description, latitude, longitude, deviceId];
 }
 
 class CheckOutRequestedEvent extends AttendanceEvent {
   final String recordId;
   final String description;
+  final double? latitude;
+  final double? longitude;
+  final String? deviceId;
 
   const CheckOutRequestedEvent({
     required this.recordId,
     required this.description,
+    this.latitude,
+    this.longitude,
+    this.deviceId,
   });
 
   @override
-  List<Object?> get props => [recordId, description];
+  List<Object?> get props => [recordId, description, latitude, longitude, deviceId];
 }
 
 class ResetAttendanceEvent extends AttendanceEvent {}
