@@ -723,13 +723,11 @@ class _HomePageState extends State<HomePage> {
     final description = _descriptionController.text.trim();
 
     if (isClockedIn) {
-      context.read<AttendanceBloc>().add(
-            CheckOutRequestedEvent(
-              recordId: recordId ?? _localRecordId ?? 'att_${DateTime.now().millisecondsSinceEpoch}',
-              description: description,
-            ),
-          );
-      _descriptionController.clear();
+      final workType = _selectedWorkTypeIndex == 0 ? 'GPS' : 'WFH';
+      _showTimeOutConfirmation(
+        recordId: recordId,
+        workType: workType,
+      );
     } else {
       if (description.isEmpty) {
         ScaffoldMessenger.of(context).showSnackBar(
@@ -755,6 +753,94 @@ class _HomePageState extends State<HomePage> {
             ),
           );
     }
+  }
+
+  void _showTimeOutConfirmation({
+    required String? recordId,
+    required String workType,
+  }) {
+    showDialog(
+      context: context,
+      builder: (ctx) => AlertDialog(
+        shape: RoundedRectangleBorder(
+          borderRadius: BorderRadius.circular(16),
+        ),
+        title: Row(
+          children: [
+            Container(
+              padding: const EdgeInsets.all(8),
+              decoration: BoxDecoration(
+                color: AppColors.warningAmber.withValues(alpha: 0.12),
+                borderRadius: BorderRadius.circular(10),
+              ),
+              child: const Icon(
+                Icons.logout_rounded,
+                color: AppColors.warningAmber,
+                size: 22,
+              ),
+            ),
+            const SizedBox(width: 12),
+            const Expanded(
+              child: Text(
+                'Confirm Time Out',
+                style: TextStyle(
+                  fontWeight: FontWeight.bold,
+                  fontSize: 18,
+                  color: AppColors.textDark,
+                ),
+              ),
+            ),
+          ],
+        ),
+        content: Text(
+          'Are you sure you want to clock out for today ($workType)? This will end your active work session.',
+          style: const TextStyle(
+            color: AppColors.textMuted,
+            fontSize: 14,
+            height: 1.4,
+          ),
+        ),
+        actions: [
+          TextButton(
+            onPressed: () => Navigator.of(ctx).pop(),
+            child: const Text(
+              'Cancel',
+              style: TextStyle(
+                color: AppColors.textLight,
+                fontWeight: FontWeight.w600,
+              ),
+            ),
+          ),
+          ElevatedButton(
+            onPressed: () {
+              Navigator.of(ctx).pop();
+              final description = _descriptionController.text.trim();
+              context.read<AttendanceBloc>().add(
+                    CheckOutRequestedEvent(
+                      recordId: recordId ??
+                          _localRecordId ??
+                          'att_${DateTime.now().millisecondsSinceEpoch}',
+                      description: description,
+                    ),
+                  );
+              _descriptionController.clear();
+            },
+            style: ElevatedButton.styleFrom(
+              backgroundColor: AppColors.warningAmber,
+              foregroundColor: Colors.white,
+              shape: RoundedRectangleBorder(
+                borderRadius: BorderRadius.circular(8),
+              ),
+              elevation: 0,
+            ),
+            child: const Text(
+              'Confirm Time Out',
+              style: TextStyle(fontWeight: FontWeight.bold),
+            ),
+          ),
+        ],
+      ),
+    );
   }
 
   @override
