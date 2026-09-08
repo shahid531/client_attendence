@@ -16,6 +16,11 @@ class User extends Equatable {
   final double? latitude;
   final double? longitude;
   final double? radius;
+  final String? timeIn;
+  final String? timeOut;
+  final dynamic totalHours;
+  final String? attendanceType;
+  final String? description;
 
   double? get allowedRadius => radius;
 
@@ -35,6 +40,11 @@ class User extends Equatable {
     this.latitude,
     this.longitude,
     this.radius,
+    this.timeIn,
+    this.timeOut,
+    this.totalHours,
+    this.attendanceType,
+    this.description,
   });
 
   @override
@@ -54,5 +64,10 @@ class User extends Equatable {
         latitude,
         longitude,
         radius,
+        timeIn,
+        timeOut,
+        totalHours,
+        attendanceType,
+        description,
       ];
 }

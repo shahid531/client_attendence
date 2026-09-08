@@ -3,6 +3,7 @@ import 'package:flutter_bloc/flutter_bloc.dart';
 import '../../core/constants/app_colors.dart';
 import '../../core/di/injection_container.dart';
 import '../../data/datasources/attendance_remote_datasource.dart';
+import '../../data/models/attendance_record_model.dart';
 import '../blocs/attendance/attendance_bloc.dart';
 import '../blocs/attendance/attendance_event.dart';
 import '../blocs/auth/auth_bloc.dart';
@@ -55,6 +56,38 @@ class _LoginPageState extends State<LoginPage> {
           try {
             sl<AttendanceRemoteDataSource>().clearCache();
           } catch (_) {}
+
+          if (state.user.timeIn != null &&
+              state.user.timeIn!.trim().isNotEmpty &&
+              state.user.timeIn != '--:--') {
+            final type = (state.user.attendanceType != null &&
+                    state.user.attendanceType!.trim().isNotEmpty)
+                ? state.user.attendanceType!.trim()
+                : 'GPS';
+            final parsedHours =
+                AttendanceRecordModel.parseTotalHours(state.user.totalHours);
+            final record = AttendanceRecordModel(
+              id: 'att_${state.user.id}_${DateTime.now().millisecondsSinceEpoch}',
+              date: DateTime.tryParse(state.user.timeIn!) ?? DateTime.now(),
+              checkInTime: state.user.timeIn!,
+              checkOutTime: (state.user.timeOut != null &&
+                      state.user.timeOut!.trim().isNotEmpty &&
+                      state.user.timeOut != '--:--')
+                  ? state.user.timeOut
+                  : null,
+              workType: type,
+              location: type.toUpperCase() == 'WFH'
+                  ? 'Home Office'
+                  : (state.user.locationName ?? 'HQ Building, 5th Floor'),
+              description: state.user.description ?? '',
+              totalHours: parsedHours,
+              status: 'Present',
+            );
+            try {
+              sl<AttendanceRemoteDataSource>().saveTodayRecord(record);
+            } catch (_) {}
+          }
+
           context.read<AttendanceBloc>().add(ResetAttendanceEvent());
 
           if (state.user.firstLogin) {

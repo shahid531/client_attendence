@@ -119,8 +119,10 @@ class LeaveRemoteDataSourceImpl implements LeaveRemoteDataSource {
 
     await Future.delayed(const Duration(milliseconds: 300));
     if (status != null && status.isNotEmpty) {
+      final statuses =
+          status.toUpperCase().split(',').map((s) => s.trim()).toList();
       return _mockLeaveRequests
-          .where((r) => r.status.toUpperCase() == status.toUpperCase())
+          .where((r) => statuses.contains(r.status.toUpperCase()))
           .toList();
     }
     return List<LeaveRequestModel>.from(_mockLeaveRequests);

@@ -91,6 +91,10 @@ class AuthRemoteDataSourceImpl implements AuthRemoteDataSource {
         if (user.latitude != null) await sharedPreferences.setDouble('cached_user_lat', user.latitude!);
         if (user.longitude != null) await sharedPreferences.setDouble('cached_user_lng', user.longitude!);
         if (user.radius != null) await sharedPreferences.setDouble('cached_user_radius', user.radius!);
+        if (user.timeIn != null) await sharedPreferences.setString('cached_user_time_in', user.timeIn!);
+        if (user.timeOut != null) await sharedPreferences.setString('cached_user_time_out', user.timeOut!);
+        if (user.totalHours != null) await sharedPreferences.setString('cached_user_total_hours', user.totalHours.toString());
+        if (user.attendanceType != null) await sharedPreferences.setString('cached_user_attendance_type', user.attendanceType!);
 
         return user;
       }
@@ -166,6 +170,10 @@ class AuthRemoteDataSourceImpl implements AuthRemoteDataSource {
           if (user.latitude != null) await sharedPreferences.setDouble('cached_user_lat', user.latitude!);
           if (user.longitude != null) await sharedPreferences.setDouble('cached_user_lng', user.longitude!);
           if (user.radius != null) await sharedPreferences.setDouble('cached_user_radius', user.radius!);
+          if (user.timeIn != null) await sharedPreferences.setString('cached_user_time_in', user.timeIn!);
+          if (user.timeOut != null) await sharedPreferences.setString('cached_user_time_out', user.timeOut!);
+          if (user.totalHours != null) await sharedPreferences.setString('cached_user_total_hours', user.totalHours.toString());
+          if (user.attendanceType != null) await sharedPreferences.setString('cached_user_attendance_type', user.attendanceType!);
 
           return user;
         }
@@ -185,6 +193,10 @@ class AuthRemoteDataSourceImpl implements AuthRemoteDataSource {
     final userLat = sharedPreferences.getDouble('cached_user_lat');
     final userLng = sharedPreferences.getDouble('cached_user_lng');
     final userRadius = sharedPreferences.getDouble('cached_user_radius');
+    final userTimeIn = sharedPreferences.getString('cached_user_time_in');
+    final userTimeOut = sharedPreferences.getString('cached_user_time_out');
+    final userTotalHours = sharedPreferences.getString('cached_user_total_hours');
+    final userAttendanceType = sharedPreferences.getString('cached_user_attendance_type');
 
     if (userId != null && userId.isNotEmpty) {
       return UserModel(
@@ -199,6 +211,10 @@ class AuthRemoteDataSourceImpl implements AuthRemoteDataSource {
         latitude: userLat,
         longitude: userLng,
         radius: userRadius,
+        timeIn: userTimeIn,
+        timeOut: userTimeOut,
+        totalHours: userTotalHours,
+        attendanceType: userAttendanceType,
       );
     }
     return null;

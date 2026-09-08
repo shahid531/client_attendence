@@ -24,7 +24,6 @@ class HomePage extends StatefulWidget {
 
 class _HomePageState extends State<HomePage> {
   int _selectedWorkTypeIndex = 0; // 0 for GPS, 1 for WFH
-  bool _isLocalClockedIn = false;
   String? _localInTime;
   String? _localOutTime;
   double _localTotalHours = 0.0;
@@ -45,7 +44,6 @@ class _HomePageState extends State<HomePage> {
     super.initState();
     _loadPreferences();
     _checkLocationRange();
-    context.read<AttendanceBloc>().add(LoadTodayAttendanceEvent());
   }
 
   void _startLiveTimer() {
@@ -555,7 +553,50 @@ class _HomePageState extends State<HomePage> {
 
       final isSameUser = (savedUserId == null || savedUserId.isEmpty || savedUserId == currentUserId);
 
-      if (savedDate == todayStr && isSameUser) {
+      final hasLoginInTime = authState is AuthenticatedState &&
+          authState.user.timeIn != null &&
+          authState.user.timeIn!.trim().isNotEmpty &&
+          authState.user.timeIn != '--:--';
+
+      if (hasLoginInTime) {
+        final loginUser = authState.user;
+        final type = (loginUser.attendanceType != null &&
+                loginUser.attendanceType!.trim().isNotEmpty)
+            ? loginUser.attendanceType!.trim()
+            : 'GPS';
+        final initTypeIndex = type.toUpperCase() == 'WFH' ? 1 : 0;
+        final initInTime = loginUser.timeIn;
+        final initOutTime = (loginUser.timeOut != null &&
+                loginUser.timeOut!.trim().isNotEmpty &&
+                loginUser.timeOut != '--:--')
+            ? loginUser.timeOut
+            : null;
+        final initTotalH = AttendanceRecordModel.parseTotalHours(loginUser.totalHours);
+        final initClockedIn = initInTime != null &&
+            (initOutTime == null ||
+                initOutTime.isEmpty ||
+                initOutTime == '--:--');
+
+        final desc = loginUser.description?.trim() ?? '';
+
+        if (mounted) {
+          setState(() {
+            _localInTime = initInTime;
+            _localOutTime = initOutTime;
+            _localTotalHours = initTotalH;
+            _localRecordId = null;
+            _selectedWorkTypeIndex = initTypeIndex;
+            if (desc.isNotEmpty) {
+              _descriptionController.text = desc;
+            }
+            if (initClockedIn) {
+              _startLiveTimer();
+            } else {
+              _stopLiveTimer();
+            }
+          });
+        }
+      } else if (savedDate == todayStr && isSameUser) {
         final isClockedIn = prefs.getBool('today_attendance_is_clocked_in') ?? false;
         final workType = prefs.getString('today_attendance_work_type') ?? 'GPS';
         final savedIndex = prefs.getInt('selected_work_type_index');
@@ -576,7 +617,6 @@ class _HomePageState extends State<HomePage> {
 
         if (mounted) {
           setState(() {
-            _isLocalClockedIn = isClockedIn;
             if (isClockedIn) {
               _startLiveTimer();
             } else {
@@ -590,7 +630,6 @@ class _HomePageState extends State<HomePage> {
           });
         }
       } else {
-        // Different user or new day: Reset all today attendance data for HomePage
         _stopLiveTimer();
         await prefs.remove('today_attendance_record_data');
         await prefs.remove('today_attendance_date');
@@ -601,7 +640,6 @@ class _HomePageState extends State<HomePage> {
 
         if (mounted) {
           setState(() {
-            _isLocalClockedIn = false;
             _localInTime = null;
             _localOutTime = null;
             _localTotalHours = 0.0;
@@ -652,7 +690,34 @@ class _HomePageState extends State<HomePage> {
     }
   }
 
+  String _formatLiveDuration(Duration duration) {
+    if (duration.isNegative) duration = Duration.zero;
+    final hours = duration.inHours;
+    final minutes = duration.inMinutes.remainder(60);
+    final seconds = duration.inSeconds.remainder(60);
+    return '${hours.toString().padLeft(2, '0')}h ${minutes.toString().padLeft(2, '0')}m ${seconds.toString().padLeft(2, '0')}s';
+  }
 
+  String _calculateAndFormatDuration(String? inStr, String? outStr) {
+    final inDt = _parseTimeString(inStr);
+    final outDt = _parseTimeString(outStr);
+    if (inDt != null && outDt != null) {
+      final diff = outDt.difference(inDt);
+      if (!diff.isNegative) {
+        final hours = diff.inHours;
+        final minutes = diff.inMinutes.remainder(60);
+        final seconds = diff.inSeconds.remainder(60);
+        if (hours > 0 || minutes > 0) {
+          return '${hours.toString().padLeft(2, '0')}h ${minutes.toString().padLeft(2, '0')}m';
+        } else if (seconds > 0) {
+          return '${seconds}s';
+        } else {
+          return '00h 00m';
+        }
+      }
+    }
+    return '-- h --';
+  }
 
   String _formatDistance(double? meters) {
     if (meters == null) return 'Calculating...';
@@ -675,46 +740,34 @@ class _HomePageState extends State<HomePage> {
     }
   }
 
-
-
-  Widget _buildBurstAccent({required bool isLeft}) {
-    return Column(
-      mainAxisSize: MainAxisSize.min,
-      children: [
-        Transform.rotate(
-          angle: isLeft ? -0.5 : 0.5,
-          child: Container(
-            width: 8,
-            height: 3,
-            decoration: BoxDecoration(
-              color: const Color(0xFF1D72F2),
-              borderRadius: BorderRadius.circular(2),
-            ),
-          ),
-        ),
-        const SizedBox(height: 4),
-        Container(
-          width: 10,
-          height: 3,
-          decoration: BoxDecoration(
-            color: const Color(0xFF1D72F2),
-            borderRadius: BorderRadius.circular(2),
-          ),
-        ),
-        const SizedBox(height: 4),
-        Transform.rotate(
-          angle: isLeft ? 0.5 : -0.5,
-          child: Container(
-            width: 8,
-            height: 3,
-            decoration: BoxDecoration(
-              color: const Color(0xFF1D72F2),
-              borderRadius: BorderRadius.circular(2),
-            ),
-          ),
-        ),
-      ],
-    );
+  String _formatTotalHours(dynamic hours) {
+    if (hours == null) return '-- h --';
+    if (hours is String) {
+      if (hours.contains(':')) {
+        final parts = hours.split(':');
+        if (parts.length >= 2) {
+          final h = int.tryParse(parts[0]) ?? 0;
+          final m = int.tryParse(parts[1]) ?? 0;
+          return '${h.toString().padLeft(2, '0')}h ${m.toString().padLeft(2, '0')}m';
+        }
+      }
+      final parsedD = double.tryParse(hours);
+      if (parsedD != null) {
+        return _formatTotalHours(parsedD);
+      }
+      if (hours.isNotEmpty && hours != '--:--') {
+        return hours;
+      }
+      return '-- h --';
+    }
+    if (hours is num) {
+      final double hVal = hours.toDouble();
+      final totalMinutes = (hVal * 60).round();
+      final wholeHours = totalMinutes ~/ 60;
+      final minutes = totalMinutes % 60;
+      return '${wholeHours.toString().padLeft(2, '0')}h ${minutes.toString().padLeft(2, '0')}m';
+    }
+    return '-- h --';
   }
 
   void _onConfirmPressed({
@@ -854,7 +907,6 @@ class _HomePageState extends State<HomePage> {
             final isRecordClockedIn = state.todayRecord!.checkOutTime == null ||
                 state.todayRecord!.checkOutTime!.isEmpty ||
                 state.todayRecord!.checkOutTime == '--:--';
-            _isLocalClockedIn = isRecordClockedIn;
             _localInTime = state.todayRecord!.checkInTime;
             _localOutTime = state.todayRecord!.checkOutTime;
             _localTotalHours = state.todayRecord!.totalHours;
@@ -872,12 +924,18 @@ class _HomePageState extends State<HomePage> {
               _saveSelectedWorkType(0);
             }
           } else {
-            _stopLiveTimer();
-            _isLocalClockedIn = false;
-            _localInTime = null;
-            _localOutTime = null;
-            _localTotalHours = 0.0;
-            _localRecordId = null;
+            final authState = context.read<AuthBloc>().state;
+            final loginUser = authState is AuthenticatedState ? authState.user : null;
+            final hasLoginInTime = loginUser?.timeIn != null &&
+                loginUser!.timeIn!.trim().isNotEmpty &&
+                loginUser.timeIn != '--:--';
+            if (!hasLoginInTime) {
+              _stopLiveTimer();
+              _localInTime = null;
+              _localOutTime = null;
+              _localTotalHours = 0.0;
+              _localRecordId = null;
+            }
           }
           if (state.successMessage != null) {
             ScaffoldMessenger.of(context).showSnackBar(
@@ -890,13 +948,29 @@ class _HomePageState extends State<HomePage> {
           }
         } else if (state is AttendanceInitialState) {
           _stopLiveTimer();
-          _isLocalClockedIn = false;
-          _localInTime = null;
-          _localOutTime = null;
-          _localTotalHours = 0.0;
-          _localRecordId = null;
-          _selectedWorkTypeIndex = 0;
-          _descriptionController.clear();
+          final authState = context.read<AuthBloc>().state;
+          final loginUser = authState is AuthenticatedState ? authState.user : null;
+          if (loginUser?.timeIn != null &&
+              loginUser!.timeIn!.trim().isNotEmpty &&
+              loginUser.timeIn != '--:--') {
+            final isWfh = loginUser.attendanceType?.trim().toUpperCase() == 'WFH';
+            _localInTime = loginUser.timeIn;
+            _localOutTime = loginUser.timeOut;
+            _localTotalHours = AttendanceRecordModel.parseTotalHours(loginUser.totalHours);
+            _selectedWorkTypeIndex = isWfh ? 1 : 0;
+            final isClockedIn = _localInTime != null &&
+                (_localOutTime == null || _localOutTime!.isEmpty || _localOutTime == '--:--');
+            if (isClockedIn) {
+              _startLiveTimer();
+            }
+          } else {
+            _localInTime = null;
+            _localOutTime = null;
+            _localTotalHours = 0.0;
+            _localRecordId = null;
+            _selectedWorkTypeIndex = 0;
+            _descriptionController.clear();
+          }
         } else if (state is AttendanceErrorState) {
           ScaffoldMessenger.of(context).showSnackBar(
             SnackBar(
@@ -911,21 +985,36 @@ class _HomePageState extends State<HomePage> {
         final isLoading = state is AttendanceLoadingState;
         final isLoaded = state is AttendanceLoadedState;
         final todayRecord = isLoaded ? state.todayRecord : null;
-        final isClockedIn = isLoaded
-            ? (todayRecord != null &&
-                (todayRecord.checkOutTime == null ||
-                    todayRecord.checkOutTime!.isEmpty ||
-                    todayRecord.checkOutTime == '--:--'))
-            : (todayRecord != null
-                ? (todayRecord.checkOutTime == null ||
-                    todayRecord.checkOutTime!.isEmpty ||
-                    todayRecord.checkOutTime == '--:--')
-                : _isLocalClockedIn);
 
-        final displayInTime = isLoaded ? todayRecord?.checkInTime : (todayRecord?.checkInTime ?? _localInTime);
-        final displayOutTime = isLoaded ? todayRecord?.checkOutTime : (todayRecord?.checkOutTime ?? _localOutTime);
-        final displayTotalHours = isLoaded ? (todayRecord?.totalHours ?? 0.0) : (todayRecord?.totalHours ?? _localTotalHours);
-        final activeRecordId = isLoaded ? todayRecord?.id : (todayRecord?.id ?? _localRecordId);
+        final authState = context.watch<AuthBloc>().state;
+        final loginUser = authState is AuthenticatedState ? authState.user : null;
+        final hasLoginInTime = loginUser?.timeIn != null &&
+            loginUser!.timeIn!.trim().isNotEmpty &&
+            loginUser.timeIn != '--:--';
+
+        final displayInTime = todayRecord?.checkInTime ??
+            _localInTime ??
+            (hasLoginInTime ? loginUser.timeIn : null);
+        final displayOutTime = todayRecord?.checkOutTime ??
+            _localOutTime ??
+            (hasLoginInTime ? loginUser.timeOut : null);
+        final displayTotalHours = (todayRecord?.totalHours != null &&
+                todayRecord!.totalHours > 0)
+            ? todayRecord.totalHours
+            : (_localTotalHours > 0
+                ? _localTotalHours
+                : (hasLoginInTime
+                    ? AttendanceRecordModel.parseTotalHours(
+                        loginUser.totalHours)
+                    : 0.0));
+        final activeRecordId = todayRecord?.id ?? _localRecordId;
+
+        final isClockedIn = displayInTime != null &&
+            displayInTime.isNotEmpty &&
+            displayInTime != '--:--' &&
+            (displayOutTime == null ||
+                displayOutTime.isEmpty ||
+                displayOutTime == '--:--');
 
         final isCompletedToday = !isClockedIn &&
             (displayOutTime != null &&
@@ -933,6 +1022,7 @@ class _HomePageState extends State<HomePage> {
                 displayOutTime.isNotEmpty);
 
         final hasMarkedToday = isClockedIn || isCompletedToday;
+        final isFixedAttendance = hasMarkedToday;
 
         if (isClockedIn) {
           _startLiveTimer();
@@ -943,16 +1033,12 @@ class _HomePageState extends State<HomePage> {
         final inDt = isClockedIn ? _parseTimeString(displayInTime) : null;
         final liveDuration = inDt != null ? DateTime.now().difference(inDt) : Duration.zero;
 
-        // Auto sync work type if already checked in or recorded for today
+        // Active work type index (0: GPS, 1: WFH)
+        int activeWorkTypeIndex = _selectedWorkTypeIndex;
         if (todayRecord != null) {
-          final isWfh = todayRecord.workType.toUpperCase() == 'WFH';
-          if (isWfh && _selectedWorkTypeIndex != 1) {
-            _selectedWorkTypeIndex = 1;
-            _saveSelectedWorkType(1);
-          } else if (!isWfh && _selectedWorkTypeIndex != 0) {
-            _selectedWorkTypeIndex = 0;
-            _saveSelectedWorkType(0);
-          }
+          activeWorkTypeIndex = todayRecord.workType.toUpperCase() == 'WFH' ? 1 : 0;
+        } else if (hasLoginInTime && loginUser.attendanceType != null) {
+          activeWorkTypeIndex = loginUser.attendanceType!.trim().toUpperCase() == 'WFH' ? 1 : 0;
         }
 
         return SingleChildScrollView(
@@ -963,7 +1049,7 @@ class _HomePageState extends State<HomePage> {
               // Page Title & Subtitle
               Text(
                 isCompletedToday
-                    ? (_selectedWorkTypeIndex == 1
+                    ? (activeWorkTypeIndex == 1
                         ? 'Day Completed (WFH)'
                         : 'Day Completed (GPS)')
                     : (isClockedIn ? 'Time Out' : 'Time In'),
@@ -978,8 +1064,8 @@ class _HomePageState extends State<HomePage> {
                 isCompletedToday
                     ? 'Your attendance has been fully recorded for today.'
                     : (isClockedIn
-                        ? 'Submit your end-of-day summary to complete ${_selectedWorkTypeIndex == 1 ? "time-out" : "clock-out"}.'
-                        : 'Review your location and submit your work description to ${_selectedWorkTypeIndex == 1 ? "time-in" : "clock-in"}.'),
+                        ? 'Submit your end-of-day summary to complete ${activeWorkTypeIndex == 1 ? "time-out" : "clock-out"}.'
+                        : 'Review your location and submit your work description to ${activeWorkTypeIndex == 1 ? "time-in" : "clock-in"}.'),
                 style: const TextStyle(
                   fontSize: 14,
                   color: AppColors.textMuted,
@@ -988,393 +1074,130 @@ class _HomePageState extends State<HomePage> {
               ),
               const SizedBox(height: 20),
 
-              // Total Hours Worked Card (Modern Design matching attachment)
+              // Total Hours Worked Card
               Container(
                 width: double.infinity,
                 padding: const EdgeInsets.all(20),
                 decoration: BoxDecoration(
-                  gradient: const LinearGradient(
-                    begin: Alignment.topLeft,
-                    end: Alignment.bottomRight,
-                    colors: [
-                      Color(0xFFEFF5FF),
-                      Color(0xFFF7FAFF),
-                      Color(0xFFEBF3FF),
-                    ],
-                  ),
-                  borderRadius: BorderRadius.circular(24),
+                  color: Colors.white,
+                  borderRadius: BorderRadius.circular(16),
                   border: Border.all(
-                    color: isClockedIn
-                        ? const Color(0xFFC7D2FE)
-                        : const Color(0xFFE2EDFC),
-                    width: 1.2,
+                    color: isClockedIn ? const Color(0xFFC7D2FE) : AppColors.borderGrey,
                   ),
                   boxShadow: [
                     BoxShadow(
-                      color: const Color(0xFF1D72F2).withValues(alpha: 0.05),
-                      blurRadius: 20,
-                      offset: const Offset(0, 8),
+                      color: Colors.black.withOpacity(0.03),
+                      blurRadius: 10,
+                      offset: const Offset(0, 4),
                     ),
                   ],
                 ),
                 child: Column(
                   children: [
-                    // Header Row with Timer/Live Icon, Title, and Decorative Dot Grid
-                    Stack(
-                      alignment: Alignment.center,
+                    Row(
+                      mainAxisAlignment: MainAxisAlignment.center,
                       children: [
-                        Row(
-                          mainAxisAlignment: MainAxisAlignment.center,
-                          children: [
-                            if (isClockedIn) ...[
-                              Container(
-                                width: 8,
-                                height: 8,
-                                decoration: const BoxDecoration(
-                                  color: AppColors.successEmerald,
-                                  shape: BoxShape.circle,
-                                ),
-                              ),
-                              const SizedBox(width: 8),
-                            ] else ...[
-                              const Icon(
-                                Icons.timer_outlined,
-                                color: Color(0xFF1D72F2),
-                                size: 22,
-                              ),
-                              const SizedBox(width: 8),
-                            ],
-                            const Text(
-                              'TOTAL ',
-                              style: TextStyle(
-                                color: Color(0xFF0F172A),
-                                fontWeight: FontWeight.w800,
-                                fontSize: 13,
-                                letterSpacing: 0.6,
-                              ),
+                        if (isClockedIn) ...[
+                          Container(
+                            width: 8,
+                            height: 8,
+                            decoration: const BoxDecoration(
+                              color: AppColors.successEmerald,
+                              shape: BoxShape.circle,
                             ),
-                            Column(
-                              mainAxisSize: MainAxisSize.min,
-                              children: [
-                                Text(
-                                  'HOURS',
-                                  style: TextStyle(
-                                    color: isClockedIn
-                                        ? AppColors.successEmerald
-                                        : const Color(0xFF1D72F2),
-                                    fontWeight: FontWeight.w800,
-                                    fontSize: 13,
-                                    letterSpacing: 0.6,
-                                  ),
-                                ),
-                                const SizedBox(height: 2),
-                                Container(
-                                  height: 2,
-                                  width: 38,
-                                  decoration: BoxDecoration(
-                                    color: isClockedIn
-                                        ? AppColors.successEmerald
-                                        : const Color(0xFF1D72F2),
-                                    borderRadius: BorderRadius.circular(2),
-                                  ),
-                                ),
-                              ],
-                            ),
-                            Text(
-                              isClockedIn ? ' WORKED (LIVE)' : ' WORKED',
-                              style: TextStyle(
-                                color: isClockedIn
-                                    ? AppColors.successEmerald
-                                    : const Color(0xFF0F172A),
-                                fontWeight: FontWeight.w800,
-                                fontSize: 13,
-                                letterSpacing: 0.6,
-                              ),
-                            ),
-                          ],
+                          ),
+                          const SizedBox(width: 8),
+                        ] else ...[
+                          const Icon(
+                            Icons.timer_outlined,
+                            color: AppColors.primaryNavy,
+                            size: 20,
+                          ),
+                          const SizedBox(width: 8),
+                        ],
+                        Text(
+                          isClockedIn ? 'TOTAL HOURS WORKED (LIVE)' : 'TOTAL HOURS WORKED',
+                          style: TextStyle(
+                            color: isClockedIn ? AppColors.successEmerald : AppColors.primaryNavy,
+                            fontWeight: FontWeight.bold,
+                            fontSize: 13,
+                            letterSpacing: 0.5,
+                          ),
                         ),
                       ],
                     ),
-                    const SizedBox(height: 18),
-
-                    // Floating White Pill with Time Display & Burst Accent Marks
-                    Builder(
-                      builder: (context) {
-                        String hoursStr = '00';
-                        String minsStr = '00';
-                        String? secStr;
-
-                        if (isClockedIn) {
-                          hoursStr = liveDuration.inHours
-                              .toString()
-                              .padLeft(2, '0');
-                          minsStr = liveDuration.inMinutes
-                              .remainder(60)
-                              .toString()
-                              .padLeft(2, '0');
-                          secStr = liveDuration.inSeconds
-                              .remainder(60)
-                              .toString()
-                              .padLeft(2, '0');
-                        } else if (isCompletedToday) {
-                          int totalMinutes = 0;
-                          if (displayTotalHours > 0) {
-                            totalMinutes = (displayTotalHours * 60).round();
-                          } else {
-                            final inDt = _parseTimeString(displayInTime);
-                            final outDt = _parseTimeString(displayOutTime);
-                            if (inDt != null && outDt != null) {
-                              final diff = outDt.difference(inDt);
-                              if (!diff.isNegative) {
-                                totalMinutes = diff.inMinutes;
-                              }
-                            }
-                          }
-                          hoursStr =
-                              (totalMinutes ~/ 60).toString().padLeft(2, '0');
-                          minsStr =
-                              (totalMinutes % 60).toString().padLeft(2, '0');
-                        }
-
-                        return Row(
-                          mainAxisAlignment: MainAxisAlignment.center,
-                          children: [
-                            // Left Burst Accents
-                            _buildBurstAccent(isLeft: true),
-                            const SizedBox(width: 12),
-
-                            // White Pill Container
-                            Container(
-                              padding: const EdgeInsets.symmetric(
-                                horizontal: 26,
-                                vertical: 10,
-                              ),
-                              decoration: BoxDecoration(
-                                color: Colors.white,
-                                borderRadius: BorderRadius.circular(36),
-                                boxShadow: [
-                                  BoxShadow(
-                                    color: const Color(0xFF1D72F2)
-                                        .withValues(alpha: 0.08),
-                                    blurRadius: 16,
-                                    offset: const Offset(0, 4),
-                                  ),
-                                ],
-                              ),
-                              child: Row(
-                                mainAxisSize: MainAxisSize.min,
-                                crossAxisAlignment: CrossAxisAlignment.baseline,
-                                textBaseline: TextBaseline.alphabetic,
-                                children: [
-                                  Text(
-                                    hoursStr,
-                                    style: const TextStyle(
-                                      fontSize: 28,
-                                      fontWeight: FontWeight.w900,
-                                      color: Color(0xFF0F172A),
-                                      letterSpacing: -0.5,
-                                    ),
-                                  ),
-                                  const SizedBox(width: 4),
-                                  const Text(
-                                    'h',
-                                    style: TextStyle(
-                                      fontSize: 16,
-                                      fontWeight: FontWeight.w800,
-                                      color: Color(0xFF1D72F2),
-                                    ),
-                                  ),
-                                  const SizedBox(width: 14),
-                                  Text(
-                                    minsStr,
-                                    style: const TextStyle(
-                                      fontSize: 28,
-                                      fontWeight: FontWeight.w900,
-                                      color: Color(0xFF0F172A),
-                                      letterSpacing: -0.5,
-                                    ),
-                                  ),
-                                  const SizedBox(width: 4),
-                                  const Text(
-                                    'm',
-                                    style: TextStyle(
-                                      fontSize: 16,
-                                      fontWeight: FontWeight.w800,
-                                      color: Color(0xFF1D72F2),
-                                    ),
-                                  ),
-                                  if (secStr != null) ...[
-                                    const SizedBox(width: 10),
-                                    Text(
-                                      secStr,
-                                      style: const TextStyle(
-                                        fontSize: 20,
-                                        fontWeight: FontWeight.w800,
-                                        color: Color(0xFF0F172A),
-                                        letterSpacing: -0.5,
-                                      ),
-                                    ),
-                                    const SizedBox(width: 2),
-                                    const Text(
-                                      's',
-                                      style: TextStyle(
-                                        fontSize: 13,
-                                        fontWeight: FontWeight.w800,
-                                        color: Color(0xFF1D72F2),
-                                      ),
-                                    ),
-                                  ],
-                                ],
-                              ),
-                            ),
-                            const SizedBox(width: 12),
-
-                            // Right Burst Accents
-                            _buildBurstAccent(isLeft: false),
-                          ],
-                        );
-                      },
+                    const SizedBox(height: 14),
+                    Text(
+                      isClockedIn
+                          ? _formatLiveDuration(liveDuration)
+                          : (isCompletedToday
+                              ? (loginUser?.totalHours != null &&
+                                      loginUser!.totalHours.toString().isNotEmpty &&
+                                      loginUser.totalHours.toString() != '--:--'
+                                  ? _formatTotalHours(loginUser.totalHours)
+                                  : (displayTotalHours > 0
+                                      ? _formatTotalHours(displayTotalHours)
+                                      : _calculateAndFormatDuration(displayInTime, displayOutTime)))
+                              : '-- h --'),
+                      style: TextStyle(
+                        fontSize: isClockedIn ? 28 : 28,
+                        fontWeight: FontWeight.bold,
+                        color: isClockedIn ? AppColors.primaryNavy : AppColors.textDark,
+                        letterSpacing: isClockedIn ? 0.5 : 0.0,
+                      ),
                     ),
-                    const SizedBox(height: 20),
-
-                    // In and Out Time Cards Row
+                    const SizedBox(height: 16),
                     Row(
                       children: [
                         Expanded(
-                          child: Container(
-                            padding: const EdgeInsets.symmetric(
-                              horizontal: 14,
-                              vertical: 12,
-                            ),
-                            decoration: BoxDecoration(
-                              color: Colors.white,
-                              borderRadius: BorderRadius.circular(18),
-                              boxShadow: [
-                                BoxShadow(
-                                  color: Colors.black.withValues(alpha: 0.03),
-                                  blurRadius: 10,
-                                  offset: const Offset(0, 3),
+                          child: Column(
+                            children: [
+                              const Text(
+                                'In',
+                                style: TextStyle(
+                                  color: AppColors.textLight,
+                                  fontSize: 13,
+                                  fontWeight: FontWeight.w500,
                                 ),
-                              ],
-                            ),
-                            child: Row(
-                              children: [
-                                Container(
-                                  width: 38,
-                                  height: 38,
-                                  decoration: const BoxDecoration(
-                                    color: Color(0xFF1D72F2),
-                                    shape: BoxShape.circle,
-                                  ),
-                                  child: const Center(
-                                    child: Icon(
-                                      Icons.login_rounded,
-                                      color: Colors.white,
-                                      size: 18,
-                                    ),
-                                  ),
+                              ),
+                              const SizedBox(height: 4),
+                              Text(
+                                _formatTime(displayInTime),
+                                style: const TextStyle(
+                                  color: AppColors.textDark,
+                                  fontSize: 15,
+                                  fontWeight: FontWeight.bold,
                                 ),
-                                const SizedBox(width: 10),
-                                Expanded(
-                                  child: Column(
-                                    crossAxisAlignment:
-                                        CrossAxisAlignment.start,
-                                    mainAxisSize: MainAxisSize.min,
-                                    children: [
-                                      const Text(
-                                        'In',
-                                        style: TextStyle(
-                                          color: Color(0xFF64748B),
-                                          fontSize: 12,
-                                          fontWeight: FontWeight.w500,
-                                        ),
-                                      ),
-                                      const SizedBox(height: 2),
-                                      Text(
-                                        _formatTime(displayInTime),
-                                        maxLines: 1,
-                                        overflow: TextOverflow.ellipsis,
-                                        style: const TextStyle(
-                                          color: Color(0xFF0F172A),
-                                          fontSize: 13.5,
-                                          fontWeight: FontWeight.bold,
-                                        ),
-                                      ),
-                                    ],
-                                  ),
-                                ),
-                              ],
-                            ),
+                              ),
+                            ],
                           ),
                         ),
-                        const SizedBox(width: 12),
+                        Container(
+                          height: 30,
+                          width: 1,
+                          color: AppColors.borderGrey,
+                        ),
                         Expanded(
-                          child: Container(
-                            padding: const EdgeInsets.symmetric(
-                              horizontal: 14,
-                              vertical: 12,
-                            ),
-                            decoration: BoxDecoration(
-                              color: Colors.white,
-                              borderRadius: BorderRadius.circular(18),
-                              boxShadow: [
-                                BoxShadow(
-                                  color: Colors.black.withValues(alpha: 0.03),
-                                  blurRadius: 10,
-                                  offset: const Offset(0, 3),
+                          child: Column(
+                            children: [
+                              const Text(
+                                'Out',
+                                style: TextStyle(
+                                  color: AppColors.textLight,
+                                  fontSize: 13,
+                                  fontWeight: FontWeight.w500,
                                 ),
-                              ],
-                            ),
-                            child: Row(
-                              children: [
-                                Container(
-                                  width: 38,
-                                  height: 38,
-                                  decoration: const BoxDecoration(
-                                    color: Color(0xFF1D72F2),
-                                    shape: BoxShape.circle,
-                                  ),
-                                  child: const Center(
-                                    child: Icon(
-                                      Icons.logout_rounded,
-                                      color: Colors.white,
-                                      size: 18,
-                                    ),
-                                  ),
+                              ),
+                              const SizedBox(height: 4),
+                              Text(
+                                isClockedIn ? '-' : _formatTime(displayOutTime),
+                                style: const TextStyle(
+                                  color: AppColors.textDark,
+                                  fontSize: 15,
+                                  fontWeight: FontWeight.bold,
                                 ),
-                                const SizedBox(width: 10),
-                                Expanded(
-                                  child: Column(
-                                    crossAxisAlignment:
-                                        CrossAxisAlignment.start,
-                                    mainAxisSize: MainAxisSize.min,
-                                    children: [
-                                      const Text(
-                                        'Out',
-                                        style: TextStyle(
-                                          color: Color(0xFF64748B),
-                                          fontSize: 12,
-                                          fontWeight: FontWeight.w500,
-                                        ),
-                                      ),
-                                      const SizedBox(height: 2),
-                                      Text(
-                                        isClockedIn
-                                            ? '-'
-                                            : _formatTime(displayOutTime),
-                                        maxLines: 1,
-                                        overflow: TextOverflow.ellipsis,
-                                        style: const TextStyle(
-                                          color: Color(0xFF0F172A),
-                                          fontSize: 13.5,
-                                          fontWeight: FontWeight.bold,
-                                        ),
-                                      ),
-                                    ],
-                                  ),
-                                ),
-                              ],
-                            ),
+                              ),
+                            ],
                           ),
                         ),
                       ],
@@ -1384,81 +1207,79 @@ class _HomePageState extends State<HomePage> {
               ),
               const SizedBox(height: 20),
 
-              // Segmented Control (GPS / WFH) - allowed only before marking attendance
-              if (!hasMarkedToday) ...[
-                Center(
-                  child: Container(
-                    height: 48,
-                    width: 260,
-                    padding: const EdgeInsets.all(4),
-                    decoration: BoxDecoration(
-                      color: Colors.white,
-                      borderRadius: BorderRadius.circular(12),
-                      border: Border.all(color: AppColors.borderGrey),
-                    ),
-                    child: Row(
-                      children: [
-                        Expanded(
-                          child: GestureDetector(
-                            behavior: HitTestBehavior.opaque,
-                            onTap: () => _saveSelectedWorkType(0),
-                            child: Container(
-                              decoration: BoxDecoration(
-                                color: _selectedWorkTypeIndex == 0
-                                    ? const Color(0xFFF1F5F9)
-                                    : Colors.transparent,
-                                borderRadius: BorderRadius.circular(8),
-                              ),
-                              alignment: Alignment.center,
-                              child: Text(
-                                'GPS Office',
-                                style: TextStyle(
-                                  color: _selectedWorkTypeIndex == 0
-                                      ? AppColors.primaryNavy
-                                      : AppColors.textLight,
-                                  fontWeight: _selectedWorkTypeIndex == 0
-                                      ? FontWeight.bold
-                                      : FontWeight.w500,
-                                ),
+              // Segmented Control (GPS Office / WFH Remote)
+              Center(
+                child: Container(
+                  height: 48,
+                  width: 260,
+                  padding: const EdgeInsets.all(4),
+                  decoration: BoxDecoration(
+                    color: Colors.white,
+                    borderRadius: BorderRadius.circular(12),
+                    border: Border.all(color: AppColors.borderGrey),
+                  ),
+                  child: Row(
+                    children: [
+                      Expanded(
+                        child: GestureDetector(
+                          behavior: HitTestBehavior.opaque,
+                          onTap: isFixedAttendance ? null : () => _saveSelectedWorkType(0),
+                          child: Container(
+                            decoration: BoxDecoration(
+                              color: activeWorkTypeIndex == 0
+                                  ? const Color(0xFFF1F5F9)
+                                  : Colors.transparent,
+                              borderRadius: BorderRadius.circular(8),
+                            ),
+                            alignment: Alignment.center,
+                            child: Text(
+                              'GPS Office',
+                              style: TextStyle(
+                                color: activeWorkTypeIndex == 0
+                                    ? AppColors.primaryNavy
+                                    : AppColors.textLight,
+                                fontWeight: activeWorkTypeIndex == 0
+                                    ? FontWeight.bold
+                                    : FontWeight.w500,
                               ),
                             ),
                           ),
                         ),
-                        Expanded(
-                          child: GestureDetector(
-                            behavior: HitTestBehavior.opaque,
-                            onTap: () => _saveSelectedWorkType(1),
-                            child: Container(
-                              decoration: BoxDecoration(
-                                color: _selectedWorkTypeIndex == 1
-                                    ? const Color(0xFFF1F5F9)
-                                    : Colors.transparent,
-                                borderRadius: BorderRadius.circular(8),
-                              ),
-                              alignment: Alignment.center,
-                              child: Text(
-                                'WFH Remote',
-                                style: TextStyle(
-                                  color: _selectedWorkTypeIndex == 1
-                                      ? AppColors.primaryNavy
-                                      : AppColors.textLight,
-                                  fontWeight: _selectedWorkTypeIndex == 1
-                                      ? FontWeight.bold
-                                      : FontWeight.w500,
-                                ),
+                      ),
+                      Expanded(
+                        child: GestureDetector(
+                          behavior: HitTestBehavior.opaque,
+                          onTap: isFixedAttendance ? null : () => _saveSelectedWorkType(1),
+                          child: Container(
+                            decoration: BoxDecoration(
+                              color: activeWorkTypeIndex == 1
+                                  ? const Color(0xFFF1F5F9)
+                                  : Colors.transparent,
+                              borderRadius: BorderRadius.circular(8),
+                            ),
+                            alignment: Alignment.center,
+                            child: Text(
+                              'WFH Remote',
+                              style: TextStyle(
+                                color: activeWorkTypeIndex == 1
+                                    ? AppColors.primaryNavy
+                                    : AppColors.textLight,
+                                fontWeight: activeWorkTypeIndex == 1
+                                    ? FontWeight.bold
+                                    : FontWeight.w500,
                               ),
                             ),
                           ),
                         ),
-                      ],
-                    ),
+                      ),
+                    ],
                   ),
                 ),
-                const SizedBox(height: 20),
-              ],
+              ),
+              const SizedBox(height: 20),
 
               // Location Verified Card with Gradient (shown for GPS)
-              if (_selectedWorkTypeIndex == 0) ...[
+              if (activeWorkTypeIndex == 0) ...[
                 Builder(
                   builder: (context) {
                     final authState = context.watch<AuthBloc>().state;
@@ -1831,6 +1652,10 @@ class _HomePageState extends State<HomePage> {
                         : (isClockedIn
                             ? AppColors.warningAmber
                             : AppColors.primaryNavy),
+                    disabledBackgroundColor: isCompletedToday
+                        ? AppColors.successEmerald
+                        : const Color(0xFFCBD5E1),
+                    disabledForegroundColor: Colors.white,
                     shape: RoundedRectangleBorder(
                       borderRadius: BorderRadius.circular(12),
                     ),

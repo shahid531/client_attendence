@@ -14,7 +14,7 @@ class AttendanceRecordModel extends AttendanceRecord {
     required super.status,
   });
 
-  static double _parseTotalHours(dynamic value) {
+  static double parseTotalHours(dynamic value) {
     if (value == null) return 0.0;
     if (value is num) return value.toDouble();
     if (value is String) {
@@ -31,7 +31,7 @@ class AttendanceRecordModel extends AttendanceRecord {
     return 0.0;
   }
 
-  static String _formatTimeString(dynamic value) {
+  static String formatTimeString(dynamic value) {
     if (value == null) return '--:--';
     final str = value.toString();
     if (str.isEmpty || str == '--:--') return '--:--';
@@ -71,7 +71,7 @@ class AttendanceRecordModel extends AttendanceRecord {
     final outTimeRaw = json['timeOut'] ?? json['checkOutTime'] ?? json['outTime'] ?? json['clockOutTime'];
 
     final rawTotalHours = json['totalHours'] ?? json['hours'];
-    double parsedTotalHours = _parseTotalHours(rawTotalHours);
+    double parsedTotalHours = parseTotalHours(rawTotalHours);
 
     // If totalHours is 0.0 but both inTime and outTime are present, calculate exact difference
     if (parsedTotalHours == 0.0 && inTimeRaw != null && outTimeRaw != null && outTimeRaw.toString() != '--:--' && outTimeRaw.toString().isNotEmpty) {
@@ -112,7 +112,7 @@ class AttendanceRecordModel extends AttendanceRecord {
     return AttendanceRecordModel(
       id: (json['id'] ?? json['attendanceId'] ?? 'att_${parsedDate.millisecondsSinceEpoch}').toString(),
       date: parsedDate,
-      checkInTime: _formatTimeString(inTimeRaw),
+      checkInTime: formatTimeString(inTimeRaw),
       checkOutTime: _formatNullableTimeString(outTimeRaw),
       workType: (json['attendanceType'] ?? json['workType'] ?? 'GPS').toString(),
       location: (json['location'] ?? json['locationName'] ?? json['clientName'] ?? 'HQ Office').toString(),
