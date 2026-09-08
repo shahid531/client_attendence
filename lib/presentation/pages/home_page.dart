@@ -690,35 +690,6 @@ class _HomePageState extends State<HomePage> {
     }
   }
 
-  String _formatLiveDuration(Duration duration) {
-    if (duration.isNegative) duration = Duration.zero;
-    final hours = duration.inHours;
-    final minutes = duration.inMinutes.remainder(60);
-    final seconds = duration.inSeconds.remainder(60);
-    return '${hours.toString().padLeft(2, '0')}h ${minutes.toString().padLeft(2, '0')}m ${seconds.toString().padLeft(2, '0')}s';
-  }
-
-  String _calculateAndFormatDuration(String? inStr, String? outStr) {
-    final inDt = _parseTimeString(inStr);
-    final outDt = _parseTimeString(outStr);
-    if (inDt != null && outDt != null) {
-      final diff = outDt.difference(inDt);
-      if (!diff.isNegative) {
-        final hours = diff.inHours;
-        final minutes = diff.inMinutes.remainder(60);
-        final seconds = diff.inSeconds.remainder(60);
-        if (hours > 0 || minutes > 0) {
-          return '${hours.toString().padLeft(2, '0')}h ${minutes.toString().padLeft(2, '0')}m';
-        } else if (seconds > 0) {
-          return '${seconds}s';
-        } else {
-          return '00h 00m';
-        }
-      }
-    }
-    return '-- h --';
-  }
-
   String _formatDistance(double? meters) {
     if (meters == null) return 'Calculating...';
     if (meters >= 1000) {
@@ -740,34 +711,49 @@ class _HomePageState extends State<HomePage> {
     }
   }
 
-  String _formatTotalHours(dynamic hours) {
-    if (hours == null) return '-- h --';
-    if (hours is String) {
-      if (hours.contains(':')) {
-        final parts = hours.split(':');
-        if (parts.length >= 2) {
-          final h = int.tryParse(parts[0]) ?? 0;
-          final m = int.tryParse(parts[1]) ?? 0;
-          return '${h.toString().padLeft(2, '0')}h ${m.toString().padLeft(2, '0')}m';
-        }
-      }
-      final parsedD = double.tryParse(hours);
-      if (parsedD != null) {
-        return _formatTotalHours(parsedD);
-      }
-      if (hours.isNotEmpty && hours != '--:--') {
-        return hours;
-      }
-      return '-- h --';
-    }
-    if (hours is num) {
-      final double hVal = hours.toDouble();
-      final totalMinutes = (hVal * 60).round();
-      final wholeHours = totalMinutes ~/ 60;
-      final minutes = totalMinutes % 60;
-      return '${wholeHours.toString().padLeft(2, '0')}h ${minutes.toString().padLeft(2, '0')}m';
-    }
-    return '-- h --';
+  Widget _buildBurstAccent({required bool isLeft}) {
+    return Column(
+      mainAxisSize: MainAxisSize.min,
+      crossAxisAlignment:
+          isLeft ? CrossAxisAlignment.end : CrossAxisAlignment.start,
+      children: [
+        // Upper slanted tick
+        Transform.rotate(
+          angle: isLeft ? -0.55 : 0.55,
+          child: Container(
+            width: 8,
+            height: 2.5,
+            decoration: BoxDecoration(
+              color: const Color(0xFF2563EB),
+              borderRadius: BorderRadius.circular(2),
+            ),
+          ),
+        ),
+        const SizedBox(height: 3.5),
+        // Middle horizontal tick
+        Container(
+          width: 9,
+          height: 2.5,
+          decoration: BoxDecoration(
+            color: const Color(0xFF2563EB),
+            borderRadius: BorderRadius.circular(2),
+          ),
+        ),
+        const SizedBox(height: 3.5),
+        // Lower slanted tick
+        Transform.rotate(
+          angle: isLeft ? 0.55 : -0.55,
+          child: Container(
+            width: 8,
+            height: 2.5,
+            decoration: BoxDecoration(
+              color: const Color(0xFF2563EB),
+              borderRadius: BorderRadius.circular(2),
+            ),
+          ),
+        ),
+      ],
+    );
   }
 
   void _onConfirmPressed({
@@ -1074,130 +1060,417 @@ class _HomePageState extends State<HomePage> {
               ),
               const SizedBox(height: 20),
 
-              // Total Hours Worked Card
+              // Total Hours Worked Card (Modern Mockup Layout)
               Container(
                 width: double.infinity,
                 padding: const EdgeInsets.all(20),
                 decoration: BoxDecoration(
-                  color: Colors.white,
-                  borderRadius: BorderRadius.circular(16),
+                  gradient: const LinearGradient(
+                    begin: Alignment.topLeft,
+                    end: Alignment.bottomRight,
+                    colors: [
+                      Color(0xFFEFF5FF),
+                      Color(0xFFF7FAFF),
+                      Color(0xFFEBF3FF),
+                    ],
+                  ),
+                  borderRadius: BorderRadius.circular(24),
                   border: Border.all(
-                    color: isClockedIn ? const Color(0xFFC7D2FE) : AppColors.borderGrey,
+                    color: isClockedIn
+                        ? const Color(0xFFC7D2FE)
+                        : const Color(0xFFE2EDFC),
+                    width: 1.2,
                   ),
                   boxShadow: [
                     BoxShadow(
-                      color: Colors.black.withOpacity(0.03),
-                      blurRadius: 10,
-                      offset: const Offset(0, 4),
+                      color: const Color(0xFF1D72F2).withValues(alpha: 0.05),
+                      blurRadius: 20,
+                      offset: const Offset(0, 8),
                     ),
                   ],
                 ),
                 child: Column(
                   children: [
-                    Row(
-                      mainAxisAlignment: MainAxisAlignment.center,
+                    // Header Row with Timer/Live Icon, Title, and Decorative Dot Grid
+                    Stack(
+                      alignment: Alignment.center,
                       children: [
-                        if (isClockedIn) ...[
-                          Container(
-                            width: 8,
-                            height: 8,
-                            decoration: const BoxDecoration(
-                              color: AppColors.successEmerald,
-                              shape: BoxShape.circle,
+                        Row(
+                          mainAxisAlignment: MainAxisAlignment.center,
+                          children: [
+                            if (isClockedIn) ...[
+                              Container(
+                                width: 8,
+                                height: 8,
+                                decoration: const BoxDecoration(
+                                  color: AppColors.successEmerald,
+                                  shape: BoxShape.circle,
+                                ),
+                              ),
+                              const SizedBox(width: 8),
+                            ] else ...[
+                              const Icon(
+                                Icons.timer_outlined,
+                                color: Color(0xFF1D72F2),
+                                size: 22,
+                              ),
+                              const SizedBox(width: 8),
+                            ],
+                            const Text(
+                              'TOTAL ',
+                              style: TextStyle(
+                                color: Color(0xFF0F172A),
+                                fontWeight: FontWeight.w800,
+                                fontSize: 13,
+                                letterSpacing: 0.6,
+                              ),
                             ),
-                          ),
-                          const SizedBox(width: 8),
-                        ] else ...[
-                          const Icon(
-                            Icons.timer_outlined,
-                            color: AppColors.primaryNavy,
-                            size: 20,
-                          ),
-                          const SizedBox(width: 8),
-                        ],
-                        Text(
-                          isClockedIn ? 'TOTAL HOURS WORKED (LIVE)' : 'TOTAL HOURS WORKED',
-                          style: TextStyle(
-                            color: isClockedIn ? AppColors.successEmerald : AppColors.primaryNavy,
-                            fontWeight: FontWeight.bold,
-                            fontSize: 13,
-                            letterSpacing: 0.5,
-                          ),
+                            Column(
+                              mainAxisSize: MainAxisSize.min,
+                              children: [
+                                Text(
+                                  'HOURS',
+                                  style: TextStyle(
+                                    color: isClockedIn
+                                        ? AppColors.successEmerald
+                                        : const Color(0xFF1D72F2),
+                                    fontWeight: FontWeight.w800,
+                                    fontSize: 13,
+                                    letterSpacing: 0.6,
+                                  ),
+                                ),
+                                const SizedBox(height: 2),
+                                Container(
+                                  height: 2,
+                                  width: 38,
+                                  decoration: BoxDecoration(
+                                    color: isClockedIn
+                                        ? AppColors.successEmerald
+                                        : const Color(0xFF1D72F2),
+                                    borderRadius: BorderRadius.circular(2),
+                                  ),
+                                ),
+                              ],
+                            ),
+                            Text(
+                              isClockedIn ? ' WORKED (LIVE)' : ' WORKED',
+                              style: TextStyle(
+                                color: isClockedIn
+                                    ? AppColors.successEmerald
+                                    : const Color(0xFF0F172A),
+                                fontWeight: FontWeight.w800,
+                                fontSize: 13,
+                                letterSpacing: 0.6,
+                              ),
+                            ),
+                          ],
                         ),
                       ],
                     ),
-                    const SizedBox(height: 14),
-                    Text(
-                      isClockedIn
-                          ? _formatLiveDuration(liveDuration)
-                          : (isCompletedToday
-                              ? (loginUser?.totalHours != null &&
-                                      loginUser!.totalHours.toString().isNotEmpty &&
-                                      loginUser.totalHours.toString() != '--:--'
-                                  ? _formatTotalHours(loginUser.totalHours)
-                                  : (displayTotalHours > 0
-                                      ? _formatTotalHours(displayTotalHours)
-                                      : _calculateAndFormatDuration(displayInTime, displayOutTime)))
-                              : '-- h --'),
-                      style: TextStyle(
-                        fontSize: isClockedIn ? 28 : 28,
-                        fontWeight: FontWeight.bold,
-                        color: isClockedIn ? AppColors.primaryNavy : AppColors.textDark,
-                        letterSpacing: isClockedIn ? 0.5 : 0.0,
-                      ),
+                    const SizedBox(height: 18),
+
+                    // Floating White Pill with Time Display & Burst Accent Marks
+                    Builder(
+                      builder: (context) {
+                        String hoursStr = '00';
+                        String minsStr = '00';
+                        String? secStr;
+
+                        if (isClockedIn) {
+                          hoursStr = liveDuration.inHours
+                              .toString()
+                              .padLeft(2, '0');
+                          minsStr = liveDuration.inMinutes
+                              .remainder(60)
+                              .toString()
+                              .padLeft(2, '0');
+                          secStr = liveDuration.inSeconds
+                              .remainder(60)
+                              .toString()
+                              .padLeft(2, '0');
+                        } else if (isCompletedToday) {
+                          int totalMinutes = 0;
+                          if (loginUser?.totalHours != null &&
+                              loginUser!.totalHours.toString().isNotEmpty &&
+                              loginUser.totalHours.toString() != '--:--') {
+                            final rawH = loginUser.totalHours;
+                            if (rawH is String && rawH.contains(':')) {
+                              final parts = rawH.split(':');
+                              if (parts.length >= 2) {
+                                final h = int.tryParse(parts[0]) ?? 0;
+                                final m = int.tryParse(parts[1]) ?? 0;
+                                totalMinutes = (h * 60) + m;
+                              }
+                            } else {
+                              final parsedD = double.tryParse(rawH.toString());
+                              if (parsedD != null && parsedD > 0) {
+                                totalMinutes = (parsedD * 60).round();
+                              }
+                            }
+                          }
+
+                          if (totalMinutes == 0 && displayTotalHours > 0) {
+                            totalMinutes = (displayTotalHours * 60).round();
+                          }
+
+                          if (totalMinutes == 0) {
+                            final inDt = _parseTimeString(displayInTime);
+                            final outDt = _parseTimeString(displayOutTime);
+                            if (inDt != null && outDt != null) {
+                              final diff = outDt.difference(inDt);
+                              if (!diff.isNegative) {
+                                totalMinutes = diff.inMinutes;
+                              }
+                            }
+                          }
+
+                          hoursStr =
+                              (totalMinutes ~/ 60).toString().padLeft(2, '0');
+                          minsStr =
+                              (totalMinutes % 60).toString().padLeft(2, '0');
+                        }
+
+                        return Row(
+                          mainAxisAlignment: MainAxisAlignment.center,
+                          children: [
+                            // Left Burst Accents
+                            _buildBurstAccent(isLeft: true),
+                            const SizedBox(width: 12),
+
+                            // White Pill Container
+                            Container(
+                              padding: const EdgeInsets.symmetric(
+                                horizontal: 26,
+                                vertical: 10,
+                              ),
+                              decoration: BoxDecoration(
+                                color: Colors.white,
+                                borderRadius: BorderRadius.circular(36),
+                                boxShadow: [
+                                  BoxShadow(
+                                    color: const Color(0xFF1D72F2)
+                                        .withValues(alpha: 0.08),
+                                    blurRadius: 16,
+                                    offset: const Offset(0, 4),
+                                  ),
+                                ],
+                              ),
+                              child: Row(
+                                mainAxisSize: MainAxisSize.min,
+                                crossAxisAlignment: CrossAxisAlignment.baseline,
+                                textBaseline: TextBaseline.alphabetic,
+                                children: [
+                                  Text(
+                                    hoursStr,
+                                    style: const TextStyle(
+                                      fontSize: 32,
+                                      fontWeight: FontWeight.w900,
+                                      color: Color(0xFF0F172A),
+                                      letterSpacing: -0.5,
+                                    ),
+                                  ),
+                                  const SizedBox(width: 4),
+                                  const Text(
+                                    'h',
+                                    style: TextStyle(
+                                      fontSize: 18,
+                                      fontWeight: FontWeight.w800,
+                                      color: Color(0xFF1D72F2),
+                                    ),
+                                  ),
+                                  const SizedBox(width: 10),
+                                  Text(
+                                    minsStr,
+                                    style: const TextStyle(
+                                      fontSize: 32,
+                                      fontWeight: FontWeight.w900,
+                                      color: Color(0xFF0F172A),
+                                      letterSpacing: -0.5,
+                                    ),
+                                  ),
+                                  const SizedBox(width: 4),
+                                  const Text(
+                                    'm',
+                                    style: TextStyle(
+                                      fontSize: 18,
+                                      fontWeight: FontWeight.w800,
+                                      color: Color(0xFF1D72F2),
+                                    ),
+                                  ),
+                                  if (secStr != null) ...[
+                                    const SizedBox(width: 8),
+                                    Text(
+                                      secStr,
+                                      style: TextStyle(
+                                        fontSize: 22,
+                                        fontWeight: FontWeight.w700,
+                                        color: AppColors.successEmerald,
+                                      ),
+                                    ),
+                                    const SizedBox(width: 2),
+                                    const Text(
+                                      's',
+                                      style: TextStyle(
+                                        fontSize: 14,
+                                        fontWeight: FontWeight.w700,
+                                        color: AppColors.successEmerald,
+                                      ),
+                                    ),
+                                  ],
+                                ],
+                              ),
+                            ),
+
+                            const SizedBox(width: 12),
+                            // Right Burst Accents
+                            _buildBurstAccent(isLeft: false),
+                          ],
+                        );
+                      },
                     ),
-                    const SizedBox(height: 16),
+                    const SizedBox(height: 20),
+
+                    // Dual Bottom In & Out Cards
                     Row(
                       children: [
+                        // In Time Card
                         Expanded(
-                          child: Column(
-                            children: [
-                              const Text(
-                                'In',
-                                style: TextStyle(
-                                  color: AppColors.textLight,
-                                  fontSize: 13,
-                                  fontWeight: FontWeight.w500,
+                          child: Container(
+                            padding: const EdgeInsets.symmetric(
+                              horizontal: 14,
+                              vertical: 12,
+                            ),
+                            decoration: BoxDecoration(
+                              color: Colors.white,
+                              borderRadius: BorderRadius.circular(18),
+                              boxShadow: [
+                                BoxShadow(
+                                  color: Colors.black.withValues(alpha: 0.03),
+                                  blurRadius: 10,
+                                  offset: const Offset(0, 3),
                                 ),
-                              ),
-                              const SizedBox(height: 4),
-                              Text(
-                                _formatTime(displayInTime),
-                                style: const TextStyle(
-                                  color: AppColors.textDark,
-                                  fontSize: 15,
-                                  fontWeight: FontWeight.bold,
+                              ],
+                            ),
+                            child: Row(
+                              children: [
+                                Container(
+                                  width: 40,
+                                  height: 40,
+                                  decoration: const BoxDecoration(
+                                    color: Color(0xFF1D72F2),
+                                    shape: BoxShape.circle,
+                                  ),
+                                  child: const Icon(
+                                    Icons.login_rounded,
+                                    color: Colors.white,
+                                    size: 20,
+                                  ),
                                 ),
-                              ),
-                            ],
+                                const SizedBox(width: 10),
+                                Expanded(
+                                  child: Column(
+                                    crossAxisAlignment:
+                                        CrossAxisAlignment.start,
+                                    mainAxisSize: MainAxisSize.min,
+                                    children: [
+                                      const Text(
+                                        'In',
+                                        style: TextStyle(
+                                          color: Color(0xFF64748B),
+                                          fontSize: 12,
+                                          fontWeight: FontWeight.w600,
+                                        ),
+                                      ),
+                                      const SizedBox(height: 2),
+                                      FittedBox(
+                                        fit: BoxFit.scaleDown,
+                                        alignment: Alignment.centerLeft,
+                                        child: Text(
+                                          _formatTime(displayInTime),
+                                          style: const TextStyle(
+                                            color: Color(0xFF0F172A),
+                                            fontSize: 14,
+                                            fontWeight: FontWeight.w800,
+                                          ),
+                                        ),
+                                      ),
+                                    ],
+                                  ),
+                                ),
+                              ],
+                            ),
                           ),
                         ),
-                        Container(
-                          height: 30,
-                          width: 1,
-                          color: AppColors.borderGrey,
-                        ),
+                        const SizedBox(width: 12),
+
+                        // Out Time Card
                         Expanded(
-                          child: Column(
-                            children: [
-                              const Text(
-                                'Out',
-                                style: TextStyle(
-                                  color: AppColors.textLight,
-                                  fontSize: 13,
-                                  fontWeight: FontWeight.w500,
+                          child: Container(
+                            padding: const EdgeInsets.symmetric(
+                              horizontal: 14,
+                              vertical: 12,
+                            ),
+                            decoration: BoxDecoration(
+                              color: Colors.white,
+                              borderRadius: BorderRadius.circular(18),
+                              boxShadow: [
+                                BoxShadow(
+                                  color: Colors.black.withValues(alpha: 0.03),
+                                  blurRadius: 10,
+                                  offset: const Offset(0, 3),
                                 ),
-                              ),
-                              const SizedBox(height: 4),
-                              Text(
-                                isClockedIn ? '-' : _formatTime(displayOutTime),
-                                style: const TextStyle(
-                                  color: AppColors.textDark,
-                                  fontSize: 15,
-                                  fontWeight: FontWeight.bold,
+                              ],
+                            ),
+                            child: Row(
+                              children: [
+                                Container(
+                                  width: 40,
+                                  height: 40,
+                                  decoration: const BoxDecoration(
+                                    color: Color(0xFF1D72F2),
+                                    shape: BoxShape.circle,
+                                  ),
+                                  child: const Icon(
+                                    Icons.logout_rounded,
+                                    color: Colors.white,
+                                    size: 20,
+                                  ),
                                 ),
-                              ),
-                            ],
+                                const SizedBox(width: 10),
+                                Expanded(
+                                  child: Column(
+                                    crossAxisAlignment:
+                                        CrossAxisAlignment.start,
+                                    mainAxisSize: MainAxisSize.min,
+                                    children: [
+                                      const Text(
+                                        'Out',
+                                        style: TextStyle(
+                                          color: Color(0xFF64748B),
+                                          fontSize: 12,
+                                          fontWeight: FontWeight.w600,
+                                        ),
+                                      ),
+                                      const SizedBox(height: 2),
+                                      FittedBox(
+                                        fit: BoxFit.scaleDown,
+                                        alignment: Alignment.centerLeft,
+                                        child: Text(
+                                          isClockedIn
+                                              ? '-'
+                                              : _formatTime(displayOutTime),
+                                          style: const TextStyle(
+                                            color: Color(0xFF0F172A),
+                                            fontSize: 14,
+                                            fontWeight: FontWeight.w800,
+                                          ),
+                                        ),
+                                      ),
+                                    ],
+                                  ),
+                                ),
+                              ],
+                            ),
                           ),
                         ),
                       ],
