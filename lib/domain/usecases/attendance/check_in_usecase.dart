@@ -16,6 +16,9 @@ class CheckInUseCase implements UseCase<AttendanceRecord, CheckInParams> {
       workType: params.workType,
       location: params.location,
       description: params.description,
+      latitude: params.latitude,
+      longitude: params.longitude,
+      deviceId: params.deviceId,
     );
   }
 }
@@ -24,13 +27,19 @@ class CheckInParams extends Equatable {
   final String workType;
   final String location;
   final String description;
+  final double? latitude;
+  final double? longitude;
+  final String? deviceId;
 
   const CheckInParams({
     required this.workType,
     required this.location,
     required this.description,
+    this.latitude,
+    this.longitude,
+    this.deviceId,
   });
 
   @override
-  List<Object?> get props => [workType, location, description];
+  List<Object?> get props => [workType, location, description, latitude, longitude, deviceId];
 }

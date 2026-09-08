@@ -773,12 +773,25 @@ class _HomePageState extends State<HomePage> {
   void _onConfirmPressed({
     required bool isClockedIn,
     required String? recordId,
+    required int activeWorkTypeIndex,
   }) {
     FocusScope.of(context).unfocus();
     final description = _descriptionController.text.trim();
 
+    final isGpsMode = activeWorkTypeIndex == 0;
+    if (isGpsMode && !_isInRange) {
+      ScaffoldMessenger.of(context).showSnackBar(
+        const SnackBar(
+          content: Text('You are outside the office geofence range. Attendance cannot be marked.'),
+          backgroundColor: AppColors.dangerRose,
+          behavior: SnackBarBehavior.floating,
+        ),
+      );
+      return;
+    }
+
     if (isClockedIn) {
-      final workType = _selectedWorkTypeIndex == 0 ? 'GPS' : 'WFH';
+      final workType = activeWorkTypeIndex == 0 ? 'GPS' : 'WFH';
       _showTimeOutConfirmation(
         recordId: recordId,
         workType: workType,
@@ -795,16 +808,33 @@ class _HomePageState extends State<HomePage> {
         return;
       }
 
-      final workType = _selectedWorkTypeIndex == 0 ? 'GPS' : 'WFH';
-      final location = _selectedWorkTypeIndex == 0
-          ? 'HQ Building, 5th Floor'
+      final authState = context.read<AuthBloc>().state;
+      double officeLat = 18.58742586542344;
+      double officeLng = 73.73845322922567;
+      String officeLocName = 'Deva Int';
+      if (authState is AuthenticatedState) {
+        if (authState.user.latitude != null) officeLat = authState.user.latitude!;
+        if (authState.user.longitude != null) officeLng = authState.user.longitude!;
+        if (authState.user.locationName != null && authState.user.locationName!.isNotEmpty) {
+          officeLocName = authState.user.locationName!;
+        }
+      }
+
+      final workType = activeWorkTypeIndex == 0 ? 'GPS' : 'WFH';
+      final location = activeWorkTypeIndex == 0
+          ? officeLocName
           : 'Home Office';
+      final currentLat = _currentPosition?.latitude ?? officeLat;
+      final currentLng = _currentPosition?.longitude ?? officeLng;
 
       context.read<AttendanceBloc>().add(
             CheckInRequestedEvent(
               workType: workType,
               location: location,
               description: description,
+              latitude: currentLat,
+              longitude: currentLng,
+              deviceId: 'string',
             ),
           );
     }
@@ -870,12 +900,25 @@ class _HomePageState extends State<HomePage> {
             onPressed: () {
               Navigator.of(ctx).pop();
               final description = _descriptionController.text.trim();
+              final authState = context.read<AuthBloc>().state;
+              double officeLat = 18.58742586542344;
+              double officeLng = 73.73845322922567;
+              if (authState is AuthenticatedState) {
+                if (authState.user.latitude != null) officeLat = authState.user.latitude!;
+                if (authState.user.longitude != null) officeLng = authState.user.longitude!;
+              }
+              final currentLat = _currentPosition?.latitude ?? officeLat;
+              final currentLng = _currentPosition?.longitude ?? officeLng;
+
               context.read<AttendanceBloc>().add(
                     CheckOutRequestedEvent(
                       recordId: recordId ??
                           _localRecordId ??
                           'att_${DateTime.now().millisecondsSinceEpoch}',
                       description: description,
+                      latitude: currentLat,
+                      longitude: currentLng,
+                      deviceId: 'string',
                     ),
                   );
               _descriptionController.clear();
@@ -1607,61 +1650,73 @@ class _HomePageState extends State<HomePage> {
               const SizedBox(height: 24),
 
               // Confirm Action Button
-              SizedBox(
-                width: double.infinity,
-                height: 52,
-                child: ElevatedButton.icon(
-                  onPressed: (isLoading || isCompletedToday)
-                      ? null
-                      : () => _onConfirmPressed(
-                            isClockedIn: isClockedIn,
-                            recordId: activeRecordId,
-                          ),
-                  icon: Icon(
-                    isCompletedToday
-                        ? Icons.check_circle_rounded
-                        : (isClockedIn ? Icons.logout_rounded : Icons.login_rounded),
-                    color: Colors.white,
-                    size: 20,
-                  ),
-                  label: isLoading
-                      ? const SizedBox(
-                          width: 22,
-                          height: 22,
-                          child: CircularProgressIndicator(
-                            strokeWidth: 2.5,
-                            valueColor:
-                                AlwaysStoppedAnimation<Color>(Colors.white),
-                          ),
-                        )
-                      : Text(
-                          isCompletedToday
-                              ? 'Attendance Marked for Today'
-                              : (isClockedIn
-                                  ? 'Confirm Time Out'
-                                  : 'Confirm Time In'),
-                          style: const TextStyle(
-                            color: Colors.white,
-                            fontSize: 16,
-                            fontWeight: FontWeight.bold,
-                          ),
+              Builder(
+                builder: (context) {
+                  final isGpsMode = activeWorkTypeIndex == 0;
+                  final isGpsOutOfRange = isGpsMode && !_isInRange;
+                  final isButtonDisabled =
+                      isLoading || isCompletedToday || isGpsOutOfRange;
+
+                  return SizedBox(
+                    width: double.infinity,
+                    height: 52,
+                    child: ElevatedButton.icon(
+                      onPressed: isButtonDisabled
+                          ? null
+                          : () => _onConfirmPressed(
+                                isClockedIn: isClockedIn,
+                                recordId: activeRecordId,
+                                activeWorkTypeIndex: activeWorkTypeIndex,
+                              ),
+                      icon: Icon(
+                        isCompletedToday
+                            ? Icons.check_circle_rounded
+                            : (isClockedIn
+                                ? Icons.logout_rounded
+                                : Icons.login_rounded),
+                        color: Colors.white,
+                        size: 20,
+                      ),
+                      label: isLoading
+                          ? const SizedBox(
+                              width: 22,
+                              height: 22,
+                              child: CircularProgressIndicator(
+                                strokeWidth: 2.5,
+                                valueColor:
+                                    AlwaysStoppedAnimation<Color>(Colors.white),
+                              ),
+                            )
+                          : Text(
+                              isCompletedToday
+                                  ? 'Attendance Marked for Today'
+                                  : (isClockedIn
+                                      ? 'Confirm Time Out'
+                                      : 'Confirm Time In'),
+                              style: const TextStyle(
+                                color: Colors.white,
+                                fontSize: 16,
+                                fontWeight: FontWeight.bold,
+                              ),
+                            ),
+                      style: ElevatedButton.styleFrom(
+                        backgroundColor: isCompletedToday
+                            ? AppColors.successEmerald
+                            : (isClockedIn
+                                ? AppColors.warningAmber
+                                : AppColors.primaryNavy),
+                        disabledBackgroundColor: isCompletedToday
+                            ? AppColors.successEmerald
+                            : const Color(0xFFCBD5E1),
+                        disabledForegroundColor: Colors.white,
+                        shape: RoundedRectangleBorder(
+                          borderRadius: BorderRadius.circular(12),
                         ),
-                  style: ElevatedButton.styleFrom(
-                    backgroundColor: isCompletedToday
-                        ? AppColors.successEmerald
-                        : (isClockedIn
-                            ? AppColors.warningAmber
-                            : AppColors.primaryNavy),
-                    disabledBackgroundColor: isCompletedToday
-                        ? AppColors.successEmerald
-                        : const Color(0xFFCBD5E1),
-                    disabledForegroundColor: Colors.white,
-                    shape: RoundedRectangleBorder(
-                      borderRadius: BorderRadius.circular(12),
+                        elevation: 0,
+                      ),
                     ),
-                    elevation: 0,
-                  ),
-                ),
+                  );
+                },
               ),
               const SizedBox(height: 16),
             ],

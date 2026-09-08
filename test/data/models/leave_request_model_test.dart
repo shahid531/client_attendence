@@ -29,7 +29,7 @@ void main() {
       expect(model.employeeName, "Saheed Ansari");
       expect(model.employeeId, "20173");
       expect(model.requestType, "WFH");
-      expect(model.status, "Pending");
+      expect(model.status, "PENDING");
       expect(model.reason, "hub");
       expect(model.assignedApproverName, "Administrator");
       expect(model.requestedTimeOut, "2026-09-04T11:24:42");

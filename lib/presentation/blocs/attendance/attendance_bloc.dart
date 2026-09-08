@@ -89,6 +89,9 @@ class AttendanceBloc extends Bloc<AttendanceEvent, AttendanceState> {
         workType: event.workType,
         location: event.location,
         description: event.description,
+        latitude: event.latitude,
+        longitude: event.longitude,
+        deviceId: event.deviceId,
       ),
     );
 
@@ -116,6 +119,9 @@ class AttendanceBloc extends Bloc<AttendanceEvent, AttendanceState> {
       CheckOutParams(
         recordId: event.recordId,
         description: event.description,
+        latitude: event.latitude,
+        longitude: event.longitude,
+        deviceId: event.deviceId,
       ),
     );
 

@@ -15,12 +15,18 @@ class AttendanceRepositoryImpl implements AttendanceRepository {
     required String workType,
     required String location,
     required String description,
+    double? latitude,
+    double? longitude,
+    String? deviceId,
   }) async {
     try {
       final record = await remoteDataSource.checkIn(
         workType: workType,
         location: location,
         description: description,
+        latitude: latitude,
+        longitude: longitude,
+        deviceId: deviceId,
       );
       return Right(record);
     } on ServerException catch (e) {
@@ -34,11 +40,17 @@ class AttendanceRepositoryImpl implements AttendanceRepository {
   Future<Either<Failure, AttendanceRecord>> checkOut({
     required String recordId,
     required String description,
+    double? latitude,
+    double? longitude,
+    String? deviceId,
   }) async {
     try {
       final record = await remoteDataSource.checkOut(
         recordId: recordId,
         description: description,
+        latitude: latitude,
+        longitude: longitude,
+        deviceId: deviceId,
       );
       return Right(record);
     } on ServerException catch (e) {
