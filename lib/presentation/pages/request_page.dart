@@ -38,7 +38,9 @@ class _RequestPageState extends State<RequestPage> {
           .read<LeaveBloc>()
           .add(const LoadLeaveRequestsEvent(status: 'PENDING'));
     } else {
-      context.read<LeaveBloc>().add(const LoadLeaveRequestsEvent());
+      context
+          .read<LeaveBloc>()
+          .add(const LoadLeaveRequestsEvent(status: 'APPROVED,REJECTED'));
     }
   }
 
@@ -69,7 +71,7 @@ class _RequestPageState extends State<RequestPage> {
       onRefresh: () async {
         context.read<LeaveBloc>().add(
               LoadLeaveRequestsEvent(
-                status: _selectedTabIndex == 0 ? 'PENDING' : null,
+                status: _selectedTabIndex == 0 ? 'PENDING' : 'APPROVED,REJECTED',
               ),
             );
       },

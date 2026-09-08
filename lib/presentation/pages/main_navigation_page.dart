@@ -1,8 +1,6 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_bloc/flutter_bloc.dart';
 import '../../core/constants/app_colors.dart';
-import '../blocs/attendance/attendance_bloc.dart';
-import '../blocs/attendance/attendance_event.dart';
 import '../blocs/auth/auth_bloc.dart';
 import '../blocs/auth/auth_state.dart';
 import '../blocs/leave/leave_bloc.dart';
@@ -23,6 +21,7 @@ class MainNavigationPage extends StatefulWidget {
 
 class _MainNavigationPageState extends State<MainNavigationPage> {
   int _currentIndex = 0;
+  final Set<int> _loadedIndices = {0};
 
   @override
   Widget build(BuildContext context) {
@@ -42,11 +41,6 @@ class _MainNavigationPageState extends State<MainNavigationPage> {
               activeIcon: Icon(isAdmin ? Icons.person_add_alt_1 : Icons.access_time_filled),
               label: isAdmin ? 'Create Emp' : 'Home',
             ),
-            onSelected: () {
-              if (!isAdmin) {
-                context.read<AttendanceBloc>().add(LoadTodayAttendanceEvent());
-              }
-            },
           ),
           if (isRM || isAdmin)
             _NavTabItem(
@@ -60,30 +54,27 @@ class _MainNavigationPageState extends State<MainNavigationPage> {
                 context.read<LeaveBloc>().add(const LoadLeaveRequestsEvent(status: 'PENDING'));
               },
             ),
-          if(!isAdmin)
-          _NavTabItem(
-            page: const HistoryPage(),
-            barItem: const BottomNavigationBarItem(
-              icon: Icon(Icons.note_alt_outlined),
-              activeIcon: Icon(Icons.note_alt),
-              label: 'History',
+          if (!isAdmin)
+            _NavTabItem(
+              page: const HistoryPage(),
+              barItem: const BottomNavigationBarItem(
+                icon: Icon(Icons.note_alt_outlined),
+                activeIcon: Icon(Icons.note_alt),
+                label: 'History',
+              ),
             ),
-            onSelected: () {
-              context.read<AttendanceBloc>().add(LoadAttendanceHistoryEvent());
-            },
-          ),
-          if(!isAdmin)
-          _NavTabItem(
-            page: const RequestPage(),
-            barItem: const BottomNavigationBarItem(
-              icon: Icon(Icons.bar_chart_outlined),
-              activeIcon: Icon(Icons.bar_chart),
-              label: 'Requests',
+          if (!isAdmin)
+            _NavTabItem(
+              page: const RequestPage(),
+              barItem: const BottomNavigationBarItem(
+                icon: Icon(Icons.bar_chart_outlined),
+                activeIcon: Icon(Icons.bar_chart),
+                label: 'Requests',
+              ),
+              onSelected: () {
+                context.read<LeaveBloc>().add(const LoadLeaveRequestsEvent());
+              },
             ),
-            onSelected: () {
-              context.read<LeaveBloc>().add(const LoadLeaveRequestsEvent());
-            },
-          ),
           _NavTabItem(
             page: const ProfilePage(),
             barItem: const BottomNavigationBarItem(
@@ -100,13 +91,21 @@ class _MainNavigationPageState extends State<MainNavigationPage> {
           body: SafeArea(
             child: IndexedStack(
               index: safeIndex,
-              children: tabs.map((t) => t.page).toList(),
+              children: List.generate(tabs.length, (index) {
+                if (_loadedIndices.contains(index)) {
+                  return tabs[index].page;
+                }
+                return const SizedBox.shrink();
+              }),
             ),
           ),
           bottomNavigationBar: BottomNavigationBar(
             currentIndex: safeIndex,
             onTap: (index) {
-              setState(() => _currentIndex = index);
+              setState(() {
+                _currentIndex = index;
+                _loadedIndices.add(index);
+              });
               tabs[index].onSelected?.call();
             },
             type: BottomNavigationBarType.fixed,

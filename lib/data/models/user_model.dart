@@ -17,6 +17,11 @@ class UserModel extends User {
     super.latitude,
     super.longitude,
     super.radius,
+    super.timeIn,
+    super.timeOut,
+    super.totalHours,
+    super.attendanceType,
+    super.description,
   });
 
   factory UserModel.fromJson(Map<String, dynamic> json) {
@@ -78,6 +83,11 @@ class UserModel extends User {
         json['locationRadius'] ??
         json['officeRadius']);
 
+    final desc = json['description']?.toString() ??
+        json['reason']?.toString() ??
+        json['workDescription']?.toString() ??
+        json['remarks']?.toString();
+
     return UserModel(
       id: empId,
       name: fullName,
@@ -94,6 +104,11 @@ class UserModel extends User {
       latitude: lat,
       longitude: lng,
       radius: rad,
+      timeIn: json['timeIn']?.toString(),
+      timeOut: json['timeOut']?.toString(),
+      totalHours: json['totalHours'],
+      attendanceType: json['attendanceType']?.toString(),
+      description: desc,
     );
   }
 
@@ -114,6 +129,11 @@ class UserModel extends User {
       'latitude': latitude,
       'longitude': longitude,
       'radius': radius,
+      'timeIn': timeIn,
+      'timeOut': timeOut,
+      'totalHours': totalHours,
+      'attendanceType': attendanceType,
+      'description': description,
     };
   }
 }

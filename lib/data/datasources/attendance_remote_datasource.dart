@@ -25,6 +25,7 @@ abstract class AttendanceRemoteDataSource {
     int size = 20,
   });
   Future<AttendanceRecordModel?> getTodayAttendance();
+  Future<void> saveTodayRecord(AttendanceRecordModel? record);
   void clearCache();
 }
 
@@ -95,7 +96,8 @@ class AttendanceRemoteDataSourceImpl implements AttendanceRemoteDataSource {
 
   AttendanceRecordModel? _todayRecord;
 
-  Future<void> _saveTodayRecord(AttendanceRecordModel? record) async {
+  @override
+  Future<void> saveTodayRecord(AttendanceRecordModel? record) async {
     _todayRecord = record;
     if (sharedPreferences != null) {
       if (record != null) {
@@ -243,7 +245,7 @@ class AttendanceRemoteDataSourceImpl implements AttendanceRemoteDataSource {
       status: 'Present',
     );
 
-    await _saveTodayRecord(record);
+    await saveTodayRecord(record);
     return record;
   }
 
@@ -375,7 +377,7 @@ class AttendanceRemoteDataSourceImpl implements AttendanceRemoteDataSource {
       status: 'Present',
     );
 
-    await _saveTodayRecord(updatedRecord);
+    await saveTodayRecord(updatedRecord);
     _mockRecords.insert(0, updatedRecord);
     return updatedRecord;
   }
@@ -438,19 +440,6 @@ class AttendanceRemoteDataSourceImpl implements AttendanceRemoteDataSource {
                 .toList();
           }
 
-          // Check if today's record exists in the history and sync
-          final now = DateTime.now();
-          final todayMatches = historyList.where((r) =>
-              r.date.year == now.year &&
-              r.date.month == now.month &&
-              r.date.day == now.day).toList();
-          if (todayMatches.isNotEmpty) {
-            final latestToday = todayMatches.first;
-            await _saveTodayRecord(latestToday);
-          } else {
-            await _saveTodayRecord(null);
-          }
-
           return historyList;
         }
       } on DioException catch (e) {
@@ -490,7 +479,7 @@ class AttendanceRemoteDataSourceImpl implements AttendanceRemoteDataSource {
       final recordDateStr = DateFormat('yyyy-MM-dd').format(_todayRecord!.date);
       if (recordDateStr != todayStr) {
         _todayRecord = null;
-        await _saveTodayRecord(null);
+        await saveTodayRecord(null);
       }
     } else {
       _todayRecord = _loadSavedTodayRecord();

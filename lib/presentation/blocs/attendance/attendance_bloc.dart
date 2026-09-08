@@ -53,6 +53,9 @@ class AttendanceBloc extends Bloc<AttendanceEvent, AttendanceState> {
     Emitter<AttendanceState> emit,
   ) async {
     final currentState = state;
+    final existingTodayRecord = currentState is AttendanceLoadedState
+        ? currentState.todayRecord
+        : null;
     emit(AttendanceLoadingState());
     final historyResult = await getAttendanceHistoryUseCase(
       GetAttendanceHistoryParams(
@@ -67,11 +70,10 @@ class AttendanceBloc extends Bloc<AttendanceEvent, AttendanceState> {
     historyResult.fold(
       (failure) => emit(AttendanceErrorState(failure.message)),
       (history) {
-        if (currentState is AttendanceLoadedState) {
-          emit(currentState.copyWith(history: history));
-        } else {
-          emit(AttendanceLoadedState(history: history));
-        }
+        emit(AttendanceLoadedState(
+          todayRecord: existingTodayRecord,
+          history: history,
+        ));
       },
     );
   }
