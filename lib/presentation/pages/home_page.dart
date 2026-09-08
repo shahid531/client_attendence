@@ -14,6 +14,7 @@ import '../blocs/attendance/attendance_event.dart';
 import '../blocs/attendance/attendance_state.dart';
 import '../blocs/auth/auth_bloc.dart';
 import '../blocs/auth/auth_state.dart';
+import '../../core/utils/device_info_util.dart';
 
 class HomePage extends StatefulWidget {
   const HomePage({super.key});
@@ -756,11 +757,11 @@ class _HomePageState extends State<HomePage> {
     );
   }
 
-  void _onConfirmPressed({
+  Future<void> _onConfirmPressed({
     required bool isClockedIn,
     required String? recordId,
     required int activeWorkTypeIndex,
-  }) {
+  }) async {
     FocusScope.of(context).unfocus();
     final description = _descriptionController.text.trim();
 
@@ -812,7 +813,9 @@ class _HomePageState extends State<HomePage> {
           : 'Home Office';
       final currentLat = _currentPosition?.latitude ?? officeLat;
       final currentLng = _currentPosition?.longitude ?? officeLng;
+      final deviceId = await DeviceInfoUtil.getDeviceId();
 
+      if (!mounted) return;
       context.read<AttendanceBloc>().add(
             CheckInRequestedEvent(
               workType: workType,
@@ -820,7 +823,7 @@ class _HomePageState extends State<HomePage> {
               description: description,
               latitude: currentLat,
               longitude: currentLng,
-              deviceId: 'string',
+              deviceId: deviceId,
             ),
           );
     }
@@ -883,7 +886,7 @@ class _HomePageState extends State<HomePage> {
             ),
           ),
           ElevatedButton(
-            onPressed: () {
+            onPressed: () async {
               Navigator.of(ctx).pop();
               final description = _descriptionController.text.trim();
               final authState = context.read<AuthBloc>().state;
@@ -895,7 +898,9 @@ class _HomePageState extends State<HomePage> {
               }
               final currentLat = _currentPosition?.latitude ?? officeLat;
               final currentLng = _currentPosition?.longitude ?? officeLng;
+              final deviceId = await DeviceInfoUtil.getDeviceId();
 
+              if (!mounted) return;
               context.read<AttendanceBloc>().add(
                     CheckOutRequestedEvent(
                       recordId: recordId ??
@@ -904,7 +909,7 @@ class _HomePageState extends State<HomePage> {
                       description: description,
                       latitude: currentLat,
                       longitude: currentLng,
-                      deviceId: 'string',
+                      deviceId: deviceId,
                     ),
                   );
               _descriptionController.clear();
@@ -1862,7 +1867,7 @@ class _HomePageState extends State<HomePage> {
               const SizedBox(height: 8),
 
               Container(
-                padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 14),
+                padding: const EdgeInsets.fromLTRB(14, 12, 14, 10),
                 decoration: BoxDecoration(
                   color: Colors.white,
                   borderRadius: BorderRadius.circular(14),
@@ -1902,10 +1907,14 @@ class _HomePageState extends State<HomePage> {
                         hintStyle: TextStyle(
                           color: AppColors.textLight,
                           fontSize: 14,
+                          height: 1.4,
                         ),
                         isDense: true,
                         border: InputBorder.none,
-                        contentPadding: EdgeInsets.only(top: 2, bottom: 8),
+                        enabledBorder: InputBorder.none,
+                        focusedBorder: InputBorder.none,
+                        disabledBorder: InputBorder.none,
+                        contentPadding: EdgeInsets.fromLTRB(4, 4, 4, 8),
                       ),
                     ),
                     const SizedBox(height: 4),

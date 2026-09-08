@@ -10,6 +10,7 @@ import '../blocs/auth/auth_bloc.dart';
 import '../blocs/auth/auth_event.dart';
 import 'dart:developer' as dev;
 import '../blocs/auth/auth_state.dart';
+import '../../core/utils/device_info_util.dart';
 import 'main_navigation_page.dart';
 import 'change_password_page.dart';
 
@@ -33,15 +34,20 @@ class _LoginPageState extends State<LoginPage> {
     super.dispose();
   }
 
-  void _onLoginPressed() {
+  Future<void> _onLoginPressed() async {
     if (_formKey.currentState?.validate() ?? false) {
+      final deviceId = await DeviceInfoUtil.getDeviceId();
+      final deviceModel = await DeviceInfoUtil.getDeviceModel();
+      final operatingSystem = await DeviceInfoUtil.getOperatingSystem();
+
+      if (!mounted) return;
       context.read<AuthBloc>().add(
             LoginSubmittedEvent(
               username: _usernameController.text.trim(),
               password: _passwordController.text.trim(),
-              deviceId: 'flutter_device_01',
-              deviceModel: 'Flutter App',
-              operatingSystem: 'Android',
+              deviceId: deviceId,
+              deviceModel: deviceModel,
+              operatingSystem: operatingSystem,
             ),
           );
     }
