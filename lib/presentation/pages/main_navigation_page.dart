@@ -22,6 +22,10 @@ class MainNavigationPage extends StatefulWidget {
 class _MainNavigationPageState extends State<MainNavigationPage> {
   int _currentIndex = 0;
   final Set<int> _loadedIndices = {0};
+  final GlobalKey<ApprovalsScreenState> _approvalsScreenKey =
+      GlobalKey<ApprovalsScreenState>();
+  final GlobalKey<RequestPageState> _requestPageKey =
+      GlobalKey<RequestPageState>();
 
   @override
   Widget build(BuildContext context) {
@@ -44,17 +48,17 @@ class _MainNavigationPageState extends State<MainNavigationPage> {
           ),
           if (isRM || isAdmin)
             _NavTabItem(
-              page: const ApprovalsScreen(),
+              page: ApprovalsScreen(key: _approvalsScreenKey),
               barItem: const BottomNavigationBarItem(
                 icon: Icon(Icons.history_outlined),
                 activeIcon: Icon(Icons.history),
                 label: 'Approvals',
               ),
               onSelected: () {
-                context.read<LeaveBloc>().add(const LoadLeaveRequestsEvent(status: 'PENDING'));
+                _approvalsScreenKey.currentState?.refreshCurrentTab();
               },
             ),
-          if (!isAdmin)
+          
             _NavTabItem(
               page: const HistoryPage(),
               barItem: const BottomNavigationBarItem(
@@ -65,14 +69,14 @@ class _MainNavigationPageState extends State<MainNavigationPage> {
             ),
           if (!isAdmin)
             _NavTabItem(
-              page: const RequestPage(),
+              page: RequestPage(key: _requestPageKey),
               barItem: const BottomNavigationBarItem(
                 icon: Icon(Icons.bar_chart_outlined),
                 activeIcon: Icon(Icons.bar_chart),
                 label: 'Requests',
               ),
               onSelected: () {
-                context.read<LeaveBloc>().add(const LoadLeaveRequestsEvent());
+                _requestPageKey.currentState?.refreshCurrentTab();
               },
             ),
           _NavTabItem(

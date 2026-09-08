@@ -478,8 +478,15 @@ class AttendanceRemoteDataSourceImpl implements AttendanceRemoteDataSource {
           queryParams['filter'] = filter;
         }
 
+        final role = sharedPreferences?.getString('cached_user_role')?.trim().toUpperCase() ?? '';
+        final endpoint = (role == 'ADMIN' || role.contains('ADMIN'))
+            ? '$_baseUrl/admin/attendance'
+            : (role == 'RM' || role.startsWith('RM'))
+                ? '$_baseUrl/rm/attendance'
+                : '$_baseUrl/attendance/history';
+
         final response = await dio!.get(
-          '$_baseUrl/attendance/history',
+          endpoint,
           queryParameters: queryParams,
           options: Options(headers: headers),
         );
