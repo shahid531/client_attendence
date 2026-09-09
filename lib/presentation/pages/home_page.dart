@@ -23,7 +23,7 @@ class HomePage extends StatefulWidget {
   State<HomePage> createState() => _HomePageState();
 }
 
-class _HomePageState extends State<HomePage> {
+class _HomePageState extends State<HomePage> with WidgetsBindingObserver {
   int _selectedWorkTypeIndex = 0; // 0 for GPS, 1 for WFH
   String? _localInTime;
   String? _localOutTime;
@@ -39,6 +39,7 @@ class _HomePageState extends State<HomePage> {
   bool _isLocating = false;
   double? _distanceToOffice;
   bool _isInRange = false;
+  bool _isLocationDialogOpen = false;
 
   // Cached office details from SharedPreferences
   double? _cachedOfficeLat;
@@ -50,8 +51,25 @@ class _HomePageState extends State<HomePage> {
   @override
   void initState() {
     super.initState();
+    WidgetsBinding.instance.addObserver(this);
     _loadPreferences();
     _checkLocationRange();
+  }
+
+  @override
+  void dispose() {
+    WidgetsBinding.instance.removeObserver(this);
+    _stopLiveTimer();
+    _descriptionController.dispose();
+    super.dispose();
+  }
+
+  @override
+  void didChangeAppLifecycleState(AppLifecycleState state) {
+    if (state == AppLifecycleState.resumed && _selectedWorkTypeIndex == 0) {
+      // Re-check location when returning from settings or background
+      _checkLocationRange();
+    }
   }
 
   void _startLiveTimer() {
@@ -68,7 +86,93 @@ class _HomePageState extends State<HomePage> {
     _liveTimer = null;
   }
 
-  Future<void> _checkLocationRange({bool showSnackBar = false}) async {
+  Future<void> _showEnableGpsDialog() async {
+    if (_isLocationDialogOpen || !mounted) return;
+    _isLocationDialogOpen = true;
+    await showDialog(
+      context: context,
+      barrierDismissible: false,
+      builder: (ctx) => AlertDialog(
+        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(16)),
+        title: Row(
+          children: const [
+            Icon(Icons.location_off_rounded, color: AppColors.warningAmber, size: 24),
+            SizedBox(width: 8),
+            Text('Enable Location', style: TextStyle(fontSize: 18, fontWeight: FontWeight.bold)),
+          ],
+        ),
+        content: const Text(
+          'Location services (GPS) are turned off. Please turn on device location to verify your office attendance.',
+          style: TextStyle(fontSize: 14, color: AppColors.textMuted),
+        ),
+        actions: [
+          TextButton(
+            onPressed: () {
+              Navigator.of(ctx).pop();
+            },
+            child: const Text('Cancel', style: TextStyle(color: AppColors.textLight)),
+          ),
+          ElevatedButton(
+            onPressed: () async {
+              Navigator.of(ctx).pop();
+              await Geolocator.openLocationSettings();
+            },
+            style: ElevatedButton.styleFrom(
+              backgroundColor: AppColors.primaryNavy,
+              shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(8)),
+            ),
+            child: const Text('Open Settings', style: TextStyle(color: Colors.white)),
+          ),
+        ],
+      ),
+    );
+    _isLocationDialogOpen = false;
+  }
+
+  Future<void> _showPermissionDeniedDialog() async {
+    if (_isLocationDialogOpen || !mounted) return;
+    _isLocationDialogOpen = true;
+    await showDialog(
+      context: context,
+      barrierDismissible: false,
+      builder: (ctx) => AlertDialog(
+        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(16)),
+        title: Row(
+          children: const [
+            Icon(Icons.security_rounded, color: AppColors.dangerRose, size: 24),
+            SizedBox(width: 8),
+            Text('Permission Required', style: TextStyle(fontSize: 18, fontWeight: FontWeight.bold)),
+          ],
+        ),
+        content: const Text(
+          'Location permission is permanently denied. Please allow location access from app settings to verify your attendance.',
+          style: TextStyle(fontSize: 14, color: AppColors.textMuted),
+        ),
+        actions: [
+          TextButton(
+            onPressed: () {
+              Navigator.of(ctx).pop();
+            },
+            child: const Text('Cancel', style: TextStyle(color: AppColors.textLight)),
+          ),
+          ElevatedButton(
+            onPressed: () async {
+              Navigator.of(ctx).pop();
+              await Geolocator.openAppSettings();
+            },
+            style: ElevatedButton.styleFrom(
+              backgroundColor: AppColors.primaryNavy,
+              shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(8)),
+            ),
+            child: const Text('App Settings', style: TextStyle(color: Colors.white)),
+          ),
+        ],
+      ),
+    );
+    _isLocationDialogOpen = false;
+  }
+
+  Future<void> _checkLocationRange({bool showSnackBar = false, bool promptIfDisabled = true}) async {
     if (!mounted) return;
     setState(() {
       _isLocating = true;
@@ -120,7 +224,9 @@ class _HomePageState extends State<HomePage> {
           setState(() {
             _isLocating = false;
           });
-          if (showSnackBar) {
+          if (promptIfDisabled) {
+            _showEnableGpsDialog();
+          } else if (showSnackBar) {
             ScaffoldMessenger.of(context).showSnackBar(
               const SnackBar(
                 content: Text('Location services are disabled. Please enable GPS in device settings.'),
@@ -160,7 +266,9 @@ class _HomePageState extends State<HomePage> {
           setState(() {
             _isLocating = false;
           });
-          if (showSnackBar) {
+          if (promptIfDisabled) {
+            _showPermissionDeniedDialog();
+          } else if (showSnackBar) {
             ScaffoldMessenger.of(context).showSnackBar(
               const SnackBar(
                 content: Text('Location permission is permanently denied in settings.'),
@@ -761,17 +869,13 @@ class _HomePageState extends State<HomePage> {
     setState(() {
       _selectedWorkTypeIndex = index;
     });
+    if (index == 0) {
+      _checkLocationRange(promptIfDisabled: true);
+    }
     try {
       final prefs = await SharedPreferences.getInstance();
       await prefs.setInt('selected_work_type_index', index);
     } catch (_) {}
-  }
-
-  @override
-  void dispose() {
-    _stopLiveTimer();
-    _descriptionController.dispose();
-    super.dispose();
   }
 
   DateTime? _parseTimeString(String? dateTimeStr) {
@@ -973,12 +1077,12 @@ class _HomePageState extends State<HomePage> {
             Container(
               padding: const EdgeInsets.all(8),
               decoration: BoxDecoration(
-                color: AppColors.warningAmber.withValues(alpha: 0.12),
+                color: AppColors.primaryNavy.withValues(alpha: 0.12),
                 borderRadius: BorderRadius.circular(10),
               ),
               child: const Icon(
                 Icons.logout_rounded,
-                color: AppColors.warningAmber,
+                color: AppColors.primaryNavy,
                 size: 22,
               ),
             ),
@@ -996,7 +1100,7 @@ class _HomePageState extends State<HomePage> {
           ],
         ),
         content: Text(
-          'Are you sure you want to clock out for today ($workType)? This will end your active work session.',
+          'Are you sure you want to clock out for today? This will end your active work session.',
           style: const TextStyle(
             color: AppColors.textMuted,
             fontSize: 14,
@@ -1049,7 +1153,7 @@ class _HomePageState extends State<HomePage> {
               _descriptionController.clear();
             },
             style: ElevatedButton.styleFrom(
-              backgroundColor: AppColors.warningAmber,
+              backgroundColor: AppColors.primaryNavy,
               foregroundColor: Colors.white,
               shape: RoundedRectangleBorder(
                 borderRadius: BorderRadius.circular(8),
@@ -1069,8 +1173,11 @@ class _HomePageState extends State<HomePage> {
   @override
   Widget build(BuildContext context) {
     return BlocConsumer<AttendanceBloc, AttendanceState>(
-      listener: (context, state) {
+      listener: (context, state) async {
         if (state is AttendanceLoadedState) {
+          final prefs = await SharedPreferences.getInstance();
+          final todayStr = DateFormat('yyyy-MM-dd').format(DateTime.now());
+
           if (state.todayRecord != null) {
             final isRecordClockedIn = state.todayRecord!.checkOutTime == null ||
                 state.todayRecord!.checkOutTime!.isEmpty ||
@@ -1091,13 +1198,68 @@ class _HomePageState extends State<HomePage> {
               _selectedWorkTypeIndex = 0;
               _saveSelectedWorkType(0);
             }
+
+            // Cache today's attendance record in SharedPreferences
+            try {
+              final authState = context.read<AuthBloc>().state;
+              final currentUserId = authState is AuthenticatedState ? authState.user.id : '';
+              await prefs.setString('today_attendance_date', todayStr);
+              await prefs.setString('cached_attendance_user_id', currentUserId);
+              await prefs.setBool('today_attendance_is_clocked_in', isRecordClockedIn);
+              await prefs.setString('today_attendance_work_type', state.todayRecord!.workType);
+              await prefs.setString(
+                'today_attendance_record_data',
+                jsonEncode({
+                  'id': state.todayRecord!.id,
+                  'checkInTime': state.todayRecord!.checkInTime,
+                  'checkOutTime': state.todayRecord!.checkOutTime,
+                  'totalHours': state.todayRecord!.totalHours,
+                  'workType': state.todayRecord!.workType,
+                  'location': state.todayRecord!.location,
+                  'description': state.todayRecord!.description,
+                }),
+              );
+            } catch (_) {}
           } else {
+            // Check if local cache or auth user has today's record before clearing
+            final savedDate = prefs.getString('today_attendance_date');
+            final savedJsonStr = prefs.getString('today_attendance_record_data');
             final authState = context.read<AuthBloc>().state;
             final loginUser = authState is AuthenticatedState ? authState.user : null;
             final hasLoginInTime = loginUser?.timeIn != null &&
                 loginUser!.timeIn!.trim().isNotEmpty &&
                 loginUser.timeIn != '--:--';
-            if (!hasLoginInTime) {
+
+            if (savedDate == todayStr && savedJsonStr != null && savedJsonStr.isNotEmpty) {
+              try {
+                final decoded = jsonDecode(savedJsonStr);
+                if (decoded is Map<String, dynamic>) {
+                  final model = AttendanceRecordModel.fromJson(decoded);
+                  _localInTime = model.checkInTime;
+                  _localOutTime = model.checkOutTime;
+                  _localTotalHours = model.totalHours;
+                  _localRecordId = model.id;
+                  final isRecordClockedIn = _localInTime != null &&
+                      (_localOutTime == null || _localOutTime!.isEmpty || _localOutTime == '--:--');
+                  if (isRecordClockedIn) {
+                    _startLiveTimer();
+                  } else {
+                    _stopLiveTimer();
+                  }
+                }
+              } catch (_) {}
+            } else if (hasLoginInTime) {
+              _localInTime = loginUser!.timeIn;
+              _localOutTime = loginUser.timeOut;
+              _localTotalHours = AttendanceRecordModel.parseTotalHours(loginUser.totalHours);
+              final isRecordClockedIn = _localInTime != null &&
+                  (_localOutTime == null || _localOutTime!.isEmpty || _localOutTime == '--:--');
+              if (isRecordClockedIn) {
+                _startLiveTimer();
+              } else {
+                _stopLiveTimer();
+              }
+            } else if (_localInTime == null) {
               _stopLiveTimer();
               _localInTime = null;
               _localOutTime = null;
@@ -1115,13 +1277,36 @@ class _HomePageState extends State<HomePage> {
             );
           }
         } else if (state is AttendanceInitialState) {
-          _stopLiveTimer();
+          final prefs = await SharedPreferences.getInstance();
+          final todayStr = DateFormat('yyyy-MM-dd').format(DateTime.now());
+          final savedDate = prefs.getString('today_attendance_date');
+          final savedJsonStr = prefs.getString('today_attendance_record_data');
           final authState = context.read<AuthBloc>().state;
           final loginUser = authState is AuthenticatedState ? authState.user : null;
-          if (loginUser?.timeIn != null &&
+          final hasLoginInTime = loginUser?.timeIn != null &&
               loginUser!.timeIn!.trim().isNotEmpty &&
-              loginUser.timeIn != '--:--') {
-            final isWfh = loginUser.attendanceType?.trim().toUpperCase() == 'WFH';
+              loginUser.timeIn != '--:--';
+
+          if (savedDate == todayStr && savedJsonStr != null && savedJsonStr.isNotEmpty) {
+            try {
+              final decoded = jsonDecode(savedJsonStr);
+              if (decoded is Map<String, dynamic>) {
+                final model = AttendanceRecordModel.fromJson(decoded);
+                _localInTime = model.checkInTime;
+                _localOutTime = model.checkOutTime;
+                _localTotalHours = model.totalHours;
+                _localRecordId = model.id;
+                final isRecordClockedIn = _localInTime != null &&
+                    (_localOutTime == null || _localOutTime!.isEmpty || _localOutTime == '--:--');
+                if (isRecordClockedIn) {
+                  _startLiveTimer();
+                } else {
+                  _stopLiveTimer();
+                }
+              }
+            } catch (_) {}
+          } else if (hasLoginInTime) {
+            final isWfh = loginUser!.attendanceType?.trim().toUpperCase() == 'WFH';
             _localInTime = loginUser.timeIn;
             _localOutTime = loginUser.timeOut;
             _localTotalHours = AttendanceRecordModel.parseTotalHours(loginUser.totalHours);
@@ -1130,8 +1315,11 @@ class _HomePageState extends State<HomePage> {
                 (_localOutTime == null || _localOutTime!.isEmpty || _localOutTime == '--:--');
             if (isClockedIn) {
               _startLiveTimer();
+            } else {
+              _stopLiveTimer();
             }
           } else {
+            _stopLiveTimer();
             _localInTime = null;
             _localOutTime = null;
             _localTotalHours = 0.0;

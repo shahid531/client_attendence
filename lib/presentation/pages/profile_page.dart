@@ -86,7 +86,7 @@ class _ProfilePageState extends State<ProfilePage> {
               }
             },
             style: ElevatedButton.styleFrom(
-              backgroundColor: AppColors.dangerRose,
+              backgroundColor: AppColors.primaryNavy,
               foregroundColor: Colors.white,
               shape: RoundedRectangleBorder(
                 borderRadius: BorderRadius.circular(8),

@@ -149,7 +149,7 @@ class _ChangePasswordPageState extends State<ChangePasswordPage> {
                                 ),
                                 SizedBox(height: 2),
                                 Text(
-                                  'Choose a strong password with at least 6 characters.',
+                                  'Choose a strong password with at least 8 characters.',
                                   style: TextStyle(
                                     fontSize: 12,
                                     color: AppColors.textMuted,
@@ -222,8 +222,9 @@ class _ChangePasswordPageState extends State<ChangePasswordPage> {
                       controller: _newPasswordController,
                       obscureText: _obscureNewPassword,
                       enabled: !isLoading,
+                      onChanged: (_) => setState(() {}),
                       decoration: InputDecoration(
-                        hintText: 'Enter new password (min. 6 characters)',
+                        hintText: 'Enter new password',
                         prefixIcon: const Icon(
                           Icons.lock_reset_rounded,
                           size: 20,
@@ -248,15 +249,32 @@ class _ChangePasswordPageState extends State<ChangePasswordPage> {
                         if (val == null || val.trim().isEmpty) {
                           return 'Please enter new password';
                         }
-                        if (val.trim().length < 6) {
-                          return 'Password must be at least 6 characters';
+                        final password = val.trim();
+                        if (password.length < 8) {
+                          return 'Password must be at least 8 characters';
                         }
-                        if (val.trim() == _currentPasswordController.text.trim()) {
+                        if (!RegExp(r'[A-Z]').hasMatch(password)) {
+                          return 'Password must contain at least 1 uppercase letter';
+                        }
+                        if (!RegExp(r'[a-z]').hasMatch(password)) {
+                          return 'Password must contain at least 1 lowercase letter';
+                        }
+                        if (!RegExp(r'[0-9]').hasMatch(password)) {
+                          return 'Password must contain at least 1 number';
+                        }
+                        if (!RegExp(r'[!@#\$&*~%^()_+=|<>?{}\[\]/\\-]').hasMatch(password)) {
+                          return 'Password must contain at least 1 special character';
+                        }
+                        if (password == _currentPasswordController.text.trim()) {
                           return 'New password cannot be the same as current password';
                         }
                         return null;
                       },
                     ),
+                    const SizedBox(height: 12),
+
+                    // Password Validation Criteria Indicators
+                    _buildPasswordCriteriaBox(_newPasswordController.text),
                     const SizedBox(height: 18),
 
                     // Confirm New Password
@@ -273,6 +291,7 @@ class _ChangePasswordPageState extends State<ChangePasswordPage> {
                       controller: _confirmPasswordController,
                       obscureText: _obscureConfirmPassword,
                       enabled: !isLoading,
+                      onChanged: (_) => setState(() {}),
                       decoration: InputDecoration(
                         hintText: 'Re-enter new password',
                         prefixIcon: const Icon(
@@ -345,6 +364,111 @@ class _ChangePasswordPageState extends State<ChangePasswordPage> {
           );
         },
       ),
+    );
+  }
+
+  Widget _buildPasswordCriteriaBox(String password) {
+    final hasMinLength = password.length >= 8;
+    final hasUppercase = RegExp(r'[A-Z]').hasMatch(password);
+    final hasLowercase = RegExp(r'[a-z]').hasMatch(password);
+    final hasNumber = RegExp(r'[0-9]').hasMatch(password);
+    final hasSpecialChar = RegExp(r'[!@#\$&*~%^()_+=|<>?{}\[\]/\\-]').hasMatch(password);
+
+    int satisfiedCount = 0;
+    if (hasMinLength) satisfiedCount++;
+    if (hasUppercase) satisfiedCount++;
+    if (hasLowercase) satisfiedCount++;
+    if (hasNumber) satisfiedCount++;
+    if (hasSpecialChar) satisfiedCount++;
+
+    Color strengthColor;
+    String strengthText;
+    if (satisfiedCount <= 2) {
+      strengthColor = AppColors.dangerRose;
+      strengthText = 'Weak';
+    } else if (satisfiedCount <= 4) {
+      strengthColor = AppColors.warningAmber;
+      strengthText = 'Medium';
+    } else {
+      strengthColor = AppColors.successEmerald;
+      strengthText = 'Strong';
+    }
+
+    return Container(
+      width: double.infinity,
+      padding: const EdgeInsets.all(14),
+      decoration: BoxDecoration(
+        color: const Color(0xFFF8FAFC),
+        borderRadius: BorderRadius.circular(12),
+        border: Border.all(color: const Color(0xFFE2E8F0)),
+      ),
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          Row(
+            mainAxisAlignment: MainAxisAlignment.spaceBetween,
+            children: [
+              const Text(
+                'Password Requirements',
+                style: TextStyle(
+                  fontSize: 12.5,
+                  fontWeight: FontWeight.bold,
+                  color: AppColors.textDark,
+                ),
+              ),
+              if (password.isNotEmpty)
+                Container(
+                  padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 2),
+                  decoration: BoxDecoration(
+                    color: strengthColor.withOpacity(0.12),
+                    borderRadius: BorderRadius.circular(6),
+                  ),
+                  child: Text(
+                    strengthText,
+                    style: TextStyle(
+                      fontSize: 11,
+                      fontWeight: FontWeight.bold,
+                      color: strengthColor,
+                    ),
+                  ),
+                ),
+            ],
+          ),
+          const SizedBox(height: 10),
+          _buildCriteriaRow('At least 8 characters', hasMinLength),
+          const SizedBox(height: 6),
+          _buildCriteriaRow('At least 1 uppercase letter (A-Z)', hasUppercase),
+          const SizedBox(height: 6),
+          _buildCriteriaRow('At least 1 lowercase letter (a-z)', hasLowercase),
+          const SizedBox(height: 6),
+          _buildCriteriaRow('At least 1 number (0-9)', hasNumber),
+          const SizedBox(height: 6),
+          _buildCriteriaRow('At least 1 special character (!@#\$%^&*)', hasSpecialChar),
+        ],
+      ),
+    );
+  }
+
+  Widget _buildCriteriaRow(String text, bool isSatisfied) {
+    return Row(
+      children: [
+        Icon(
+          isSatisfied ? Icons.check_circle_rounded : Icons.radio_button_unchecked_rounded,
+          size: 16,
+          color: isSatisfied ? AppColors.successEmerald : AppColors.textLight,
+        ),
+        const SizedBox(width: 8),
+        Expanded(
+          child: Text(
+            text,
+            style: TextStyle(
+              fontSize: 12,
+              fontWeight: isSatisfied ? FontWeight.w600 : FontWeight.normal,
+              color: isSatisfied ? AppColors.textDark : AppColors.textMuted,
+            ),
+          ),
+        ),
+      ],
     );
   }
 }

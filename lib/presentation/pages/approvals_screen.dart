@@ -256,17 +256,17 @@ class ApprovalsScreenState extends State<ApprovalsScreen> {
                               color: AppColors.textDark,
                             ),
                           ),
-                          const SizedBox(height: 4),
-                          Text(
-                            _selectedTabIndex == 0
-                                ? 'All employee requests have been processed.'
-                                : 'No history matches your search filter.',
-                            style: const TextStyle(
-                              fontSize: 13,
-                              color: AppColors.textMuted,
-                            ),
-                            textAlign: TextAlign.center,
-                          ),
+                          // const SizedBox(height: 4),
+                          // Text(
+                          //   _selectedTabIndex == 0
+                          //       ? 'All employee requests have been processed.'
+                          //       : 'No history matches your search filter.',
+                          //   style: const TextStyle(
+                          //     fontSize: 13,
+                          //     color: AppColors.textMuted,
+                          //   ),
+                          //   textAlign: TextAlign.center,
+                          // ),
                         ],
                       ),
                     )

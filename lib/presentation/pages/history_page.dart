@@ -681,7 +681,7 @@ class _HistoryPageState extends State<HistoryPage> {
                           elevation: 0,
                         ),
                         child: const Text(
-                          'Apply Range',
+                          'Search',
                           style: TextStyle(
                             color: Colors.white,
                             fontWeight: FontWeight.bold,
@@ -830,15 +830,15 @@ class _HistoryPageState extends State<HistoryPage> {
                                 color: Color(0xFF1E293B),
                               ),
                             ),
-                            SizedBox(height: 6),
-                            Text(
-                              'No attendance data found for the selected date range.',
-                              textAlign: TextAlign.center,
-                              style: TextStyle(
-                                fontSize: 13,
-                                color: Color(0xFF64748B),
-                              ),
-                            ),
+                            // SizedBox(height: 6),
+                            // Text(
+                            //   'No attendance data found for the selected date range.',
+                            //   textAlign: TextAlign.center,
+                            //   style: TextStyle(
+                            //     fontSize: 13,
+                            //     color: Color(0xFF64748B),
+                            //   ),
+                            // ),
                           ],
                         ),
                       ),
@@ -849,31 +849,6 @@ class _HistoryPageState extends State<HistoryPage> {
                   ],
                 );
               },
-            ),
-            const SizedBox(height: 12),
-
-            // Load Older Records Button
-            Center(
-              child: TextButton.icon(
-                onPressed: () => _applyPeriod(_selectedPeriod),
-                icon: const Icon(Icons.refresh, size: 18, color: primaryNavy),
-                label: const Text(
-                  'Refresh Records',
-                  style: TextStyle(
-                    color: primaryNavy,
-                    fontWeight: FontWeight.w600,
-                    fontSize: 14,
-                  ),
-                ),
-                style: TextButton.styleFrom(
-                  backgroundColor: const Color(0xFFE0E7FF),
-                  shape: RoundedRectangleBorder(
-                    borderRadius: BorderRadius.circular(20),
-                  ),
-                  padding: const EdgeInsets.symmetric(
-                      horizontal: 20, vertical: 10),
-                ),
-              ),
             ),
             const SizedBox(height: 16),
           ],

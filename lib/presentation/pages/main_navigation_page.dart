@@ -51,20 +51,20 @@ class _MainNavigationPageState extends State<MainNavigationPage> {
             _NavTabItem(
               page: ApprovalsScreen(key: _approvalsScreenKey),
               barItem: const BottomNavigationBarItem(
-                icon: Icon(Icons.history_outlined),
-                activeIcon: Icon(Icons.history),
+                icon: Icon(Icons.note_alt_outlined),
+                activeIcon: Icon(Icons.note_alt),
                 label: 'Approvals',
               ),
               onSelected: () {
                 _approvalsScreenKey.currentState?.refreshCurrentTab();
               },
             ),
-          
+
             _NavTabItem(
               page: const HistoryPage(),
               barItem: const BottomNavigationBarItem(
-                icon: Icon(Icons.note_alt_outlined),
-                activeIcon: Icon(Icons.note_alt),
+                icon: Icon(Icons.history_outlined),
+                activeIcon: Icon(Icons.history),
                 label: 'History',
               ),
             ),
