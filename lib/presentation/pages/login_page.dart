@@ -11,6 +11,7 @@ import '../blocs/auth/auth_event.dart';
 import 'dart:developer' as dev;
 import '../blocs/auth/auth_state.dart';
 import '../../core/utils/device_info_util.dart';
+import '../../core/utils/snackbar_helper.dart';
 import 'main_navigation_page.dart';
 import 'change_password_page.dart';
 
@@ -110,12 +111,7 @@ class _LoginPageState extends State<LoginPage> {
             );
           }
         } else if (state is AuthFailureState) {
-          ScaffoldMessenger.of(context).showSnackBar(
-            SnackBar(
-              content: Text(state.message),
-              backgroundColor: AppColors.dangerRose,
-            ),
-          );
+          SnackbarHelper.showError(context, state.message);
         }
       },
       builder: (context, state) {
@@ -149,7 +145,7 @@ class _LoginPageState extends State<LoginPage> {
                     const SizedBox(height: 24),
                     const Center(
                       child: Text(
-                        'ClientSite Attendance',
+                        'Attendance',
                         style: TextStyle(
                           fontSize: 26,
                           fontWeight: FontWeight.bold,

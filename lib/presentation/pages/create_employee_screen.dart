@@ -2,6 +2,7 @@ import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import 'package:flutter_bloc/flutter_bloc.dart';
 import '../../core/constants/app_colors.dart';
+import '../../core/utils/snackbar_helper.dart';
 import '../../domain/entities/created_employee.dart';
 import '../blocs/admin/admin_bloc.dart';
 import '../blocs/admin/admin_event.dart';
@@ -218,13 +219,10 @@ class _CreateEmployeeScreenState extends State<CreateEmployeeScreen> {
                                   text: employee.temporaryPassword!,
                                 ),
                               );
-                              ScaffoldMessenger.of(context).showSnackBar(
-                                const SnackBar(
-                                  content: Text('Temporary password copied!'),
-                                  backgroundColor: AppColors.successEmerald,
-                                  duration: Duration(seconds: 2),
-                                  behavior: SnackBarBehavior.floating,
-                                ),
+                              SnackbarHelper.showSuccess(
+                                context,
+                                'Temporary password copied!',
+                                duration: const Duration(seconds: 2),
                               );
                             },
                           ),
@@ -299,13 +297,7 @@ class _CreateEmployeeScreenState extends State<CreateEmployeeScreen> {
         if (state is CreateEmployeeSuccessState) {
           _showSuccessDialog(context, state.employee);
         } else if (state is AdminFailureState) {
-          ScaffoldMessenger.of(context).showSnackBar(
-            SnackBar(
-              content: Text(state.message),
-              backgroundColor: AppColors.dangerRose,
-              behavior: SnackBarBehavior.floating,
-            ),
-          );
+          SnackbarHelper.showError(context, state.message);
         }
       },
       builder: (context, state) {

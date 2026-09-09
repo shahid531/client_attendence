@@ -2,6 +2,7 @@ import 'package:flutter/material.dart';
 import 'package:flutter_bloc/flutter_bloc.dart';
 import 'package:intl/intl.dart';
 import '../../core/constants/app_colors.dart';
+import '../../core/utils/snackbar_helper.dart';
 import '../../domain/entities/leave_request.dart';
 import '../blocs/auth/auth_bloc.dart';
 import '../blocs/auth/auth_state.dart';
@@ -86,21 +87,9 @@ class ApprovalsScreenState extends State<ApprovalsScreen> {
       body: BlocConsumer<LeaveBloc, LeaveState>(
         listener: (context, state) {
           if (state is LeaveLoadedState && state.successMessage != null) {
-            ScaffoldMessenger.of(context).showSnackBar(
-              SnackBar(
-                content: Text(state.successMessage!),
-                backgroundColor: AppColors.successEmerald,
-                behavior: SnackBarBehavior.floating,
-              ),
-            );
+            SnackbarHelper.showSuccess(context, state.successMessage!);
           } else if (state is LeaveErrorState) {
-            ScaffoldMessenger.of(context).showSnackBar(
-              SnackBar(
-                content: Text(state.message),
-                backgroundColor: AppColors.dangerRose,
-                behavior: SnackBarBehavior.floating,
-              ),
-            );
+            SnackbarHelper.showError(context, state.message);
           }
         },
         builder: (context, state) {

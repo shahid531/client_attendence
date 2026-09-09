@@ -15,6 +15,7 @@ import '../blocs/attendance/attendance_state.dart';
 import '../blocs/auth/auth_bloc.dart';
 import '../blocs/auth/auth_state.dart';
 import '../../core/utils/device_info_util.dart';
+import '../../core/utils/snackbar_helper.dart';
 
 class HomePage extends StatefulWidget {
   const HomePage({super.key});
@@ -227,12 +228,9 @@ class _HomePageState extends State<HomePage> with WidgetsBindingObserver {
           if (promptIfDisabled) {
             _showEnableGpsDialog();
           } else if (showSnackBar) {
-            ScaffoldMessenger.of(context).showSnackBar(
-              const SnackBar(
-                content: Text('Location services are disabled. Please enable GPS in device settings.'),
-                backgroundColor: AppColors.warningAmber,
-                behavior: SnackBarBehavior.floating,
-              ),
+            SnackbarHelper.showWarning(
+              context,
+              'Location services are disabled. Please enable GPS in device settings.',
             );
           }
         }
@@ -248,12 +246,9 @@ class _HomePageState extends State<HomePage> with WidgetsBindingObserver {
               _isLocating = false;
             });
             if (showSnackBar) {
-              ScaffoldMessenger.of(context).showSnackBar(
-                const SnackBar(
-                  content: Text('Location permissions are denied.'),
-                  backgroundColor: AppColors.dangerRose,
-                  behavior: SnackBarBehavior.floating,
-                ),
+              SnackbarHelper.showError(
+                context,
+                'Location permissions are denied.',
               );
             }
           }
@@ -269,12 +264,9 @@ class _HomePageState extends State<HomePage> with WidgetsBindingObserver {
           if (promptIfDisabled) {
             _showPermissionDeniedDialog();
           } else if (showSnackBar) {
-            ScaffoldMessenger.of(context).showSnackBar(
-              const SnackBar(
-                content: Text('Location permission is permanently denied in settings.'),
-                backgroundColor: AppColors.dangerRose,
-                behavior: SnackBarBehavior.floating,
-              ),
+            SnackbarHelper.showError(
+              context,
+              'Location permission is permanently denied in settings.',
             );
           }
         }
@@ -329,17 +321,17 @@ class _HomePageState extends State<HomePage> with WidgetsBindingObserver {
 
         if (showSnackBar) {
           final distStr = _formatDistance(distance);
-          ScaffoldMessenger.of(context).showSnackBar(
-            SnackBar(
-              content: Text(
-                _isInRange
-                    ? 'Location verified: In Range ($distStr)'
-                    : 'Location updated: Out of Range ($distStr from office)',
-              ),
-              backgroundColor: _isInRange ? AppColors.successEmerald : AppColors.dangerRose,
-              behavior: SnackBarBehavior.floating,
-            ),
-          );
+          if (_isInRange) {
+            SnackbarHelper.showSuccess(
+              context,
+              'Location verified: In Range ($distStr)',
+            );
+          } else {
+            SnackbarHelper.showError(
+              context,
+              'Location updated: Out of Range ($distStr from office)',
+            );
+          }
         }
       }
     } catch (e) {
@@ -348,13 +340,7 @@ class _HomePageState extends State<HomePage> with WidgetsBindingObserver {
           _isLocating = false;
         });
         if (showSnackBar) {
-          ScaffoldMessenger.of(context).showSnackBar(
-            SnackBar(
-              content: Text('Location update: $e'),
-              backgroundColor: AppColors.dangerRose,
-              behavior: SnackBarBehavior.floating,
-            ),
-          );
+          SnackbarHelper.showError(context, 'Location update: $e');
         }
       }
     }
@@ -990,16 +976,11 @@ class _HomePageState extends State<HomePage> with WidgetsBindingObserver {
     final isGpsMode = activeWorkTypeIndex == 0;
     final isGpsCalculating = isGpsMode && (_isLocating || _distanceToOffice == null);
     if (isGpsMode && (isGpsCalculating || !_isInRange)) {
-      ScaffoldMessenger.of(context).showSnackBar(
-        SnackBar(
-          content: Text(
-            isGpsCalculating
-                ? 'Still calculating location. Please wait a moment...'
-                : 'You are outside the office geofence range. Attendance cannot be marked.',
-          ),
-          backgroundColor: AppColors.dangerRose,
-          behavior: SnackBarBehavior.floating,
-        ),
+      SnackbarHelper.showError(
+        context,
+        isGpsCalculating
+            ? 'Still calculating location. Please wait a moment...'
+            : 'You are outside the office geofence range. Attendance cannot be marked.',
       );
       return;
     }
@@ -1012,12 +993,9 @@ class _HomePageState extends State<HomePage> with WidgetsBindingObserver {
       );
     } else {
       if (description.isEmpty) {
-        ScaffoldMessenger.of(context).showSnackBar(
-          const SnackBar(
-            content: Text('Please enter a daily work description.'),
-            backgroundColor: AppColors.dangerRose,
-            behavior: SnackBarBehavior.floating,
-          ),
+        SnackbarHelper.showWarning(
+          context,
+          'Please enter a daily work description.',
         );
         return;
       }
@@ -1268,13 +1246,7 @@ class _HomePageState extends State<HomePage> with WidgetsBindingObserver {
             }
           }
           if (state.successMessage != null) {
-            ScaffoldMessenger.of(context).showSnackBar(
-              SnackBar(
-                content: Text(state.successMessage!),
-                backgroundColor: AppColors.successEmerald,
-                behavior: SnackBarBehavior.floating,
-              ),
-            );
+            SnackbarHelper.showSuccess(context, state.successMessage!);
           }
         } else if (state is AttendanceInitialState) {
           final prefs = await SharedPreferences.getInstance();
@@ -1328,13 +1300,7 @@ class _HomePageState extends State<HomePage> with WidgetsBindingObserver {
             _descriptionController.clear();
           }
         } else if (state is AttendanceErrorState) {
-          ScaffoldMessenger.of(context).showSnackBar(
-            SnackBar(
-              content: Text(state.message),
-              backgroundColor: AppColors.dangerRose,
-              behavior: SnackBarBehavior.floating,
-            ),
-          );
+          SnackbarHelper.showError(context, state.message);
         }
       },
       builder: (context, state) {

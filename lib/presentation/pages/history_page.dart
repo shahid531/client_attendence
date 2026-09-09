@@ -2,6 +2,7 @@ import 'package:flutter/material.dart';
 import 'package:flutter_bloc/flutter_bloc.dart';
 import 'package:intl/intl.dart';
 import '../../core/constants/app_colors.dart';
+import '../../core/utils/snackbar_helper.dart';
 import '../../core/utils/excel_exporter.dart';
 import '../../domain/entities/attendance_record.dart';
 import '../blocs/attendance/attendance_bloc.dart';
@@ -117,12 +118,9 @@ class _HistoryPageState extends State<HistoryPage> {
         : <AttendanceRecord>[];
 
     if (records.isEmpty) {
-      ScaffoldMessenger.of(context).showSnackBar(
-        const SnackBar(
-          content: Text('No attendance records available to export for this period.'),
-          backgroundColor: AppColors.dangerRose,
-          behavior: SnackBarBehavior.floating,
-        ),
+      SnackbarHelper.showWarning(
+        context,
+        'No attendance records available to export for this period.',
       );
       return;
     }
@@ -327,31 +325,22 @@ class _HistoryPageState extends State<HistoryPage> {
       );
 
       if (mounted) {
-        ScaffoldMessenger.of(context).showSnackBar(
-          SnackBar(
-            content: Text('Downloaded: ${result.fileName}'),
-            backgroundColor: AppColors.successEmerald,
-            duration: const Duration(seconds: 4),
-            behavior: SnackBarBehavior.floating,
-            action: SnackBarAction(
-              label: 'OPEN',
-              textColor: Colors.white,
-              onPressed: () {
-                ExcelExporter.openFile(result.filePath);
-              },
-            ),
+        SnackbarHelper.showSuccess(
+          context,
+          'Downloaded: ${result.fileName}',
+          duration: const Duration(seconds: 4),
+          action: SnackBarAction(
+            label: 'OPEN',
+            textColor: Colors.white,
+            onPressed: () {
+              ExcelExporter.openFile(result.filePath);
+            },
           ),
         );
       }
     } catch (e) {
       if (mounted) {
-        ScaffoldMessenger.of(context).showSnackBar(
-          SnackBar(
-            content: Text('Failed to download file: $e'),
-            backgroundColor: AppColors.dangerRose,
-            behavior: SnackBarBehavior.floating,
-          ),
-        );
+        SnackbarHelper.showError(context, 'Failed to download file: $e');
       }
     } finally {
       if (mounted) {
@@ -376,13 +365,7 @@ class _HistoryPageState extends State<HistoryPage> {
       );
     } catch (e) {
       if (mounted) {
-        ScaffoldMessenger.of(context).showSnackBar(
-          SnackBar(
-            content: Text('Failed to share file: $e'),
-            backgroundColor: AppColors.dangerRose,
-            behavior: SnackBarBehavior.floating,
-          ),
-        );
+        SnackbarHelper.showError(context, 'Failed to share file: $e');
       }
     } finally {
       if (mounted) {
@@ -1561,23 +1544,17 @@ class _HistoryPageState extends State<HistoryPage> {
                           child: ElevatedButton(
                             onPressed: () {
                               if (selectedOutTime == null) {
-                                ScaffoldMessenger.of(parentContext).showSnackBar(
-                                  const SnackBar(
-                                    content: Text('Please select your Time Out'),
-                                    backgroundColor: AppColors.dangerRose,
-                                    behavior: SnackBarBehavior.floating,
-                                  ),
+                                SnackbarHelper.showWarning(
+                                  parentContext,
+                                  'Please select your Time Out',
                                 );
                                 return;
                               }
 
                               if (selectedReasonOption == null) {
-                                ScaffoldMessenger.of(parentContext).showSnackBar(
-                                  const SnackBar(
-                                    content: Text('Please select a reason'),
-                                    backgroundColor: AppColors.dangerRose,
-                                    behavior: SnackBarBehavior.floating,
-                                  ),
+                                SnackbarHelper.showWarning(
+                                  parentContext,
+                                  'Please select a reason',
                                 );
                                 return;
                               }
@@ -1586,12 +1563,9 @@ class _HistoryPageState extends State<HistoryPage> {
                               if (selectedReasonOption == 'Others') {
                                 final customReason = reasonController.text.trim();
                                 if (customReason.isEmpty) {
-                                  ScaffoldMessenger.of(parentContext).showSnackBar(
-                                    const SnackBar(
-                                      content: Text('Please enter reason for regularization'),
-                                      backgroundColor: AppColors.dangerRose,
-                                      behavior: SnackBarBehavior.floating,
-                                    ),
+                                  SnackbarHelper.showWarning(
+                                    parentContext,
+                                    'Please enter reason for regularization',
                                   );
                                   return;
                                 }

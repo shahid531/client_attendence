@@ -1,6 +1,7 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_bloc/flutter_bloc.dart';
 import '../../core/constants/app_colors.dart';
+import '../../core/utils/snackbar_helper.dart';
 import '../blocs/change_password/change_password_bloc.dart';
 import '../blocs/change_password/change_password_event.dart';
 import '../blocs/change_password/change_password_state.dart';
@@ -70,13 +71,7 @@ class _ChangePasswordPageState extends State<ChangePasswordPage> {
       body: BlocConsumer<ChangePasswordBloc, ChangePasswordState>(
         listener: (context, state) {
           if (state is ChangePasswordSuccessState) {
-            ScaffoldMessenger.of(context).showSnackBar(
-              SnackBar(
-                content: Text(state.message),
-                backgroundColor: AppColors.successEmerald,
-                behavior: SnackBarBehavior.floating,
-              ),
-            );
+            SnackbarHelper.showSuccess(context, state.message);
 
             // Navigate to main screen if first login or return to previous screen
             if (widget.isFirstLogin || !Navigator.canPop(context)) {
@@ -90,13 +85,7 @@ class _ChangePasswordPageState extends State<ChangePasswordPage> {
               Navigator.pop(context);
             }
           } else if (state is ChangePasswordFailureState) {
-            ScaffoldMessenger.of(context).showSnackBar(
-              SnackBar(
-                content: Text(state.message),
-                backgroundColor: AppColors.dangerRose,
-                behavior: SnackBarBehavior.floating,
-              ),
-            );
+            SnackbarHelper.showError(context, state.message);
           }
         },
         builder: (context, state) {
