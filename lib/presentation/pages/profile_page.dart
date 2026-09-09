@@ -67,6 +67,12 @@ class _ProfilePageState extends State<ProfilePage> {
           ElevatedButton(
             onPressed: () async {
               Navigator.of(ctx).pop();
+              ScaffoldMessenger.of(context).clearSnackBars();
+              Navigator.pushAndRemoveUntil(
+                context,
+                MaterialPageRoute(builder: (_) => const LoginPage()),
+                (route) => false,
+              );
               try {
                 final prefs = await SharedPreferences.getInstance();
                 await prefs.clear();

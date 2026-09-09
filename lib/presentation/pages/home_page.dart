@@ -38,7 +38,14 @@ class _HomePageState extends State<HomePage> {
   Position? _currentPosition;
   bool _isLocating = false;
   double? _distanceToOffice;
-  bool _isInRange = true;
+  bool _isInRange = false;
+
+  // Cached office details from SharedPreferences
+  double? _cachedOfficeLat;
+  double? _cachedOfficeLng;
+  double? _cachedOfficeRadius;
+  String? _cachedOfficeName;
+  String? _cachedOfficeAddress;
 
   @override
   void initState() {
@@ -68,6 +75,45 @@ class _HomePageState extends State<HomePage> {
     });
 
     try {
+      final prefs = await SharedPreferences.getInstance();
+      final authBloc = context.read<AuthBloc>();
+      final authState = authBloc.state;
+
+      // 1. Instantly check last known position for zero-delay UI response
+      try {
+        final lastKnown = await Geolocator.getLastKnownPosition();
+        if (lastKnown != null && mounted) {
+          await prefs.setDouble('cached_last_device_lat', lastKnown.latitude);
+          await prefs.setDouble('cached_last_device_lng', lastKnown.longitude);
+
+          final offLat = (authState is AuthenticatedState && authState.user.latitude != null)
+              ? authState.user.latitude!
+              : (prefs.getDouble('cached_user_lat') ?? _cachedOfficeLat ?? 18.58742586542344);
+          final offLng = (authState is AuthenticatedState && authState.user.longitude != null)
+              ? authState.user.longitude!
+              : (prefs.getDouble('cached_user_lng') ?? _cachedOfficeLng ?? 73.73845322922567);
+          final offRadius = (authState is AuthenticatedState &&
+                  (authState.user.allowedRadius != null || authState.user.radius != null))
+              ? (authState.user.allowedRadius ?? authState.user.radius!)
+              : (prefs.getDouble('cached_user_radius') ?? _cachedOfficeRadius ?? 100.0);
+
+          final dist = Geolocator.distanceBetween(
+            lastKnown.latitude,
+            lastKnown.longitude,
+            offLat,
+            offLng,
+          );
+
+          if (mounted) {
+            setState(() {
+              _currentPosition = lastKnown;
+              _distanceToOffice = dist;
+              _isInRange = dist <= offRadius;
+            });
+          }
+        }
+      } catch (_) {}
+
       bool serviceEnabled = await Geolocator.isLocationServiceEnabled();
       if (!serviceEnabled) {
         if (mounted) {
@@ -127,8 +173,6 @@ class _HomePageState extends State<HomePage> {
         return;
       }
 
-      final authBloc = context.read<AuthBloc>();
-
       final position = await Geolocator.getCurrentPosition(
         locationSettings: const LocationSettings(
           accuracy: LocationAccuracy.high,
@@ -136,20 +180,28 @@ class _HomePageState extends State<HomePage> {
         ),
       );
 
-      final authState = authBloc.state;
-      // Fixed office geofence coordinates from backend login response / Pune HQ
-      double officeLat = 18.58742586542344;
-      double officeLng = 73.73845322922567;
+      await prefs.setDouble('cached_last_device_lat', position.latitude);
+      await prefs.setDouble('cached_last_device_lng', position.longitude);
+
+      // Office coordinates prioritizing AuthState, then SharedPreferences
+      double officeLat = (authState is AuthenticatedState && authState.user.latitude != null)
+          ? authState.user.latitude!
+          : (prefs.getDouble('cached_user_lat') ?? _cachedOfficeLat ?? 18.58742586542344);
+      double officeLng = (authState is AuthenticatedState && authState.user.longitude != null)
+          ? authState.user.longitude!
+          : (prefs.getDouble('cached_user_lng') ?? _cachedOfficeLng ?? 73.73845322922567);
       double officeRadius = 100.0;
 
       if (authState is AuthenticatedState) {
-        if (authState.user.latitude != null) officeLat = authState.user.latitude!;
-        if (authState.user.longitude != null) officeLng = authState.user.longitude!;
         if (authState.user.allowedRadius != null) {
           officeRadius = authState.user.allowedRadius!;
         } else if (authState.user.radius != null) {
           officeRadius = authState.user.radius!;
         }
+      } else if (prefs.getDouble('cached_user_radius') != null) {
+        officeRadius = prefs.getDouble('cached_user_radius')!;
+      } else if (_cachedOfficeRadius != null) {
+        officeRadius = _cachedOfficeRadius!;
       }
 
       final distance = Geolocator.distanceBetween(
@@ -543,6 +595,58 @@ class _HomePageState extends State<HomePage> {
       final savedUserId = prefs.getString('cached_attendance_user_id');
       final todayStr = DateFormat('yyyy-MM-dd').format(DateTime.now());
 
+      // Load cached office details
+      final cLat = prefs.getDouble('cached_user_lat');
+      final cLng = prefs.getDouble('cached_user_lng');
+      final cRad = prefs.getDouble('cached_user_radius');
+      final cLocName = prefs.getString('cached_user_location_name');
+      final cCompany = prefs.getString('cached_user_company');
+      final cAddress = prefs.getString('cached_user_address');
+
+      // Load last known device coordinates
+      final lastDevLat = prefs.getDouble('cached_last_device_lat');
+      final lastDevLng = prefs.getDouble('cached_last_device_lng');
+
+      Position? initPos;
+      double? initDist;
+      bool initInRange = true;
+
+      if (lastDevLat != null && lastDevLng != null) {
+        initPos = Position(
+          latitude: lastDevLat,
+          longitude: lastDevLng,
+          timestamp: DateTime.now(),
+          accuracy: 0.0,
+          altitude: 0.0,
+          altitudeAccuracy: 0.0,
+          heading: 0.0,
+          headingAccuracy: 0.0,
+          speed: 0.0,
+          speedAccuracy: 0.0,
+        );
+        final offLat = cLat ?? 18.58742586542344;
+        final offLng = cLng ?? 73.73845322922567;
+        final offRad = cRad ?? 100.0;
+        initDist = Geolocator.distanceBetween(
+          lastDevLat,
+          lastDevLng,
+          offLat,
+          offLng,
+        );
+        initInRange = initDist <= offRad;
+      }
+
+      _cachedOfficeLat = cLat;
+      _cachedOfficeLng = cLng;
+      _cachedOfficeRadius = cRad;
+      _cachedOfficeName = cLocName ?? cCompany;
+      _cachedOfficeAddress = cAddress;
+      if (initPos != null && _currentPosition == null) {
+        _currentPosition = initPos;
+        _distanceToOffice = initDist;
+        _isInRange = initInRange;
+      }
+
       String currentUserId = '';
       final authState = context.read<AuthBloc>().state;
       if (authState is AuthenticatedState) {
@@ -780,10 +884,15 @@ class _HomePageState extends State<HomePage> {
     final description = _descriptionController.text.trim();
 
     final isGpsMode = activeWorkTypeIndex == 0;
-    if (isGpsMode && !_isInRange) {
+    final isGpsCalculating = isGpsMode && (_isLocating || _distanceToOffice == null);
+    if (isGpsMode && (isGpsCalculating || !_isInRange)) {
       ScaffoldMessenger.of(context).showSnackBar(
-        const SnackBar(
-          content: Text('You are outside the office geofence range. Attendance cannot be marked.'),
+        SnackBar(
+          content: Text(
+            isGpsCalculating
+                ? 'Still calculating location. Please wait a moment...'
+                : 'You are outside the office geofence range. Attendance cannot be marked.',
+          ),
           backgroundColor: AppColors.dangerRose,
           behavior: SnackBarBehavior.floating,
         ),
@@ -809,24 +918,30 @@ class _HomePageState extends State<HomePage> {
         return;
       }
 
+      final prefs = await SharedPreferences.getInstance();
       final authState = context.read<AuthBloc>().state;
-      double officeLat = 18.58742586542344;
-      double officeLng = 73.73845322922567;
-      String officeLocName = 'Deva Int';
-      if (authState is AuthenticatedState) {
-        if (authState.user.latitude != null) officeLat = authState.user.latitude!;
-        if (authState.user.longitude != null) officeLng = authState.user.longitude!;
-        if (authState.user.locationName != null && authState.user.locationName!.isNotEmpty) {
-          officeLocName = authState.user.locationName!;
-        }
-      }
+      double officeLat = (authState is AuthenticatedState && authState.user.latitude != null)
+          ? authState.user.latitude!
+          : (prefs.getDouble('cached_user_lat') ?? _cachedOfficeLat ?? 18.58742586542344);
+      double officeLng = (authState is AuthenticatedState && authState.user.longitude != null)
+          ? authState.user.longitude!
+          : (prefs.getDouble('cached_user_lng') ?? _cachedOfficeLng ?? 73.73845322922567);
+      String officeLocName = (authState is AuthenticatedState &&
+              authState.user.locationName != null &&
+              authState.user.locationName!.isNotEmpty)
+          ? authState.user.locationName!
+          : (prefs.getString('cached_user_location_name') ?? _cachedOfficeName ?? 'Office');
 
       final workType = activeWorkTypeIndex == 0 ? 'GPS' : 'WFH';
       final location = activeWorkTypeIndex == 0
           ? officeLocName
           : 'Home Office';
-      final currentLat = _currentPosition?.latitude ?? officeLat;
-      final currentLng = _currentPosition?.longitude ?? officeLng;
+      final currentLat = _currentPosition?.latitude ??
+          prefs.getDouble('cached_last_device_lat') ??
+          officeLat;
+      final currentLng = _currentPosition?.longitude ??
+          prefs.getDouble('cached_last_device_lng') ??
+          officeLng;
       final deviceId = await DeviceInfoUtil.getDeviceId();
 
       if (!mounted) return;
@@ -903,15 +1018,20 @@ class _HomePageState extends State<HomePage> {
             onPressed: () async {
               Navigator.of(ctx).pop();
               final description = _descriptionController.text.trim();
+              final prefs = await SharedPreferences.getInstance();
               final authState = context.read<AuthBloc>().state;
-              double officeLat = 18.58742586542344;
-              double officeLng = 73.73845322922567;
-              if (authState is AuthenticatedState) {
-                if (authState.user.latitude != null) officeLat = authState.user.latitude!;
-                if (authState.user.longitude != null) officeLng = authState.user.longitude!;
-              }
-              final currentLat = _currentPosition?.latitude ?? officeLat;
-              final currentLng = _currentPosition?.longitude ?? officeLng;
+              double officeLat = (authState is AuthenticatedState && authState.user.latitude != null)
+                  ? authState.user.latitude!
+                  : (prefs.getDouble('cached_user_lat') ?? _cachedOfficeLat ?? 18.58742586542344);
+              double officeLng = (authState is AuthenticatedState && authState.user.longitude != null)
+                  ? authState.user.longitude!
+                  : (prefs.getDouble('cached_user_lng') ?? _cachedOfficeLng ?? 73.73845322922567);
+              final currentLat = _currentPosition?.latitude ??
+                  prefs.getDouble('cached_last_device_lat') ??
+                  officeLat;
+              final currentLng = _currentPosition?.longitude ??
+                  prefs.getDouble('cached_last_device_lng') ??
+                  officeLng;
               final deviceId = await DeviceInfoUtil.getDeviceId();
 
               if (!mounted) return;
@@ -1255,7 +1375,7 @@ class _HomePageState extends State<HomePage> {
               ),
               const SizedBox(height: 20),
 
-              // Segmented Control (GPS Office / WFH Remote)
+              // Segmented Control (Office / Remote)
               Center(
                 child: Container(
                   height: 48,
@@ -1281,7 +1401,7 @@ class _HomePageState extends State<HomePage> {
                             ),
                             alignment: Alignment.center,
                             child: Text(
-                              'GPS Office',
+                              'Office',
                               style: TextStyle(
                                 color: activeWorkTypeIndex == 0
                                     ? AppColors.primaryNavy
@@ -1307,7 +1427,7 @@ class _HomePageState extends State<HomePage> {
                             ),
                             alignment: Alignment.center,
                             child: Text(
-                              'WFH Remote',
+                              'Remote',
                               style: TextStyle(
                                 color: activeWorkTypeIndex == 1
                                     ? AppColors.primaryNavy
@@ -1333,27 +1453,27 @@ class _HomePageState extends State<HomePage> {
                     final authState = context.watch<AuthBloc>().state;
                     final officeLat = (authState is AuthenticatedState && authState.user.latitude != null)
                         ? authState.user.latitude!
-                        : 18.58742586542344;
+                        : (_cachedOfficeLat ?? 18.58742586542344);
                     final officeLng = (authState is AuthenticatedState && authState.user.longitude != null)
                         ? authState.user.longitude!
-                        : 73.73845322922567;
+                        : (_cachedOfficeLng ?? 73.73845322922567);
                     final officeRadius = (authState is AuthenticatedState &&
                             (authState.user.allowedRadius != null || authState.user.radius != null))
                         ? (authState.user.allowedRadius ?? authState.user.radius!)
-                        : 100.0;
+                        : (_cachedOfficeRadius ?? 100.0);
                     final officeClientName = (authState is AuthenticatedState && authState.user.company.isNotEmpty)
                         ? authState.user.company
-                        : 'Deva Interprices';
+                        : (_cachedOfficeName ?? 'ClientSite HQ');
                     final officeLocName = (authState is AuthenticatedState &&
                             authState.user.locationName != null &&
                             authState.user.locationName!.isNotEmpty)
                         ? authState.user.locationName!
-                        : 'Deva Int';
+                        : (_cachedOfficeName ?? 'Office');
                     final officeAddress = (authState is AuthenticatedState &&
                             authState.user.address != null &&
                             authState.user.address!.isNotEmpty)
                         ? authState.user.address!
-                        : 'Pune';
+                        : (_cachedOfficeAddress ?? 'Office Location');
 
                     final fullOfficeTitle = officeClientName == officeLocName
                         ? officeClientName
@@ -1662,7 +1782,9 @@ class _HomePageState extends State<HomePage> {
               Builder(
                 builder: (context) {
                   final isGpsMode = activeWorkTypeIndex == 0;
-                  final isGpsOutOfRange = isGpsMode && !_isInRange;
+                  final isGpsCalculating =
+                      isGpsMode && (_isLocating || _distanceToOffice == null);
+                  final isGpsOutOfRange = isGpsMode && (isGpsCalculating || !_isInRange);
                   final isButtonDisabled =
                       isLoading || isCompletedToday || isGpsOutOfRange;
 
@@ -1677,15 +1799,25 @@ class _HomePageState extends State<HomePage> {
                                 recordId: activeRecordId,
                                 activeWorkTypeIndex: activeWorkTypeIndex,
                               ),
-                      icon: Icon(
-                        isCompletedToday
-                            ? Icons.check_circle_rounded
-                            : (isClockedIn
-                                ? Icons.logout_rounded
-                                : Icons.login_rounded),
-                        color: Colors.white,
-                        size: 20,
-                      ),
+                      icon: isGpsCalculating
+                          ? const SizedBox(
+                              width: 18,
+                              height: 18,
+                              child: CircularProgressIndicator(
+                                strokeWidth: 2,
+                                valueColor:
+                                    AlwaysStoppedAnimation<Color>(Colors.white),
+                              ),
+                            )
+                          : Icon(
+                              isCompletedToday
+                                  ? Icons.check_circle_rounded
+                                  : (isClockedIn
+                                      ? Icons.logout_rounded
+                                      : Icons.login_rounded),
+                              color: Colors.white,
+                              size: 20,
+                            ),
                       label: isLoading
                           ? const SizedBox(
                               width: 22,
@@ -1699,9 +1831,11 @@ class _HomePageState extends State<HomePage> {
                           : Text(
                               isCompletedToday
                                   ? 'Attendance Marked for Today'
-                                  : (isClockedIn
-                                      ? 'Confirm Time Out'
-                                      : 'Confirm Time In'),
+                                  : (isGpsCalculating
+                                      ? 'Calculating Location...'
+                                      : (isClockedIn
+                                          ? 'Confirm Time Out'
+                                          : 'Confirm Time In')),
                               style: const TextStyle(
                                 color: Colors.white,
                                 fontSize: 16,

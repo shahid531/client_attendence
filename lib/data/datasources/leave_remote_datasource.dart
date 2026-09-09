@@ -62,13 +62,14 @@ class LeaveRemoteDataSourceImpl implements LeaveRemoteDataSource {
     if (dio != null && sharedPreferences != null) {
       try {
         final cachedToken = sharedPreferences!.getString('auth_bearer_token');
+        if (cachedToken == null || cachedToken.isEmpty) {
+          return [];
+        }
         final headers = <String, String>{
           'Accept': '*/*',
           'ngrok-skip-browser-warning': 'true',
+          'Authorization': 'Bearer $cachedToken',
         };
-        if (cachedToken != null && cachedToken.isNotEmpty) {
-          headers['Authorization'] = 'Bearer $cachedToken';
-        }
 
         final queryParams = <String, dynamic>{};
         if (status != null && status.isNotEmpty) {

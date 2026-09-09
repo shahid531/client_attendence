@@ -30,6 +30,7 @@ class _MainNavigationPageState extends State<MainNavigationPage> {
   @override
   Widget build(BuildContext context) {
     return BlocBuilder<AuthBloc, AuthState>(
+      buildWhen: (previous, current) => current is AuthenticatedState,
       builder: (context, authState) {
         final roleUpper = (authState is AuthenticatedState)
             ? authState.user.role.trim().toUpperCase()
