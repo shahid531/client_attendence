@@ -1,5 +1,6 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_bloc/flutter_bloc.dart';
+import 'package:shared_preferences/shared_preferences.dart';
 import '../../core/constants/app_colors.dart';
 import '../../core/utils/snackbar_helper.dart';
 import '../blocs/change_password/change_password_bloc.dart';
@@ -69,9 +70,19 @@ class _ChangePasswordPageState extends State<ChangePasswordPage> {
         foregroundColor: AppColors.textDark,
       ),
       body: BlocConsumer<ChangePasswordBloc, ChangePasswordState>(
-        listener: (context, state) {
+        listener: (context, state) async {
           if (state is ChangePasswordSuccessState) {
             SnackbarHelper.showSuccess(context, state.message);
+
+            try {
+              final prefs = await SharedPreferences.getInstance();
+              final newPass = _newPasswordController.text.trim();
+              if (newPass.isNotEmpty) {
+                await prefs.setString('last_logged_in_password', newPass);
+              }
+            } catch (_) {}
+
+            if (!mounted) return;
 
             // Navigate to main screen if first login or return to previous screen
             if (widget.isFirstLogin || !Navigator.canPop(context)) {

@@ -105,7 +105,8 @@ class AuthRemoteDataSourceImpl implements AuthRemoteDataSource {
         if (user.timeIn != null) await sharedPreferences.setString('cached_user_time_in', user.timeIn!);
         if (user.timeOut != null) await sharedPreferences.setString('cached_user_time_out', user.timeOut!);
         if (user.totalHours != null) await sharedPreferences.setString('cached_user_total_hours', user.totalHours.toString());
-        if (user.attendanceType != null) await sharedPreferences.setString('cached_user_attendance_type', user.attendanceType!);
+        await sharedPreferences.setString('last_logged_in_username', username);
+        await sharedPreferences.setString('last_logged_in_password', password);
 
         return user;
       }
@@ -128,7 +129,15 @@ class AuthRemoteDataSourceImpl implements AuthRemoteDataSource {
 
   @override
   Future<void> logout() async {
+    final lastUser = sharedPreferences.getString('last_logged_in_username');
+    final lastPass = sharedPreferences.getString('last_logged_in_password');
     await sharedPreferences.clear();
+    if (lastUser != null) {
+      await sharedPreferences.setString('last_logged_in_username', lastUser);
+    }
+    if (lastPass != null) {
+      await sharedPreferences.setString('last_logged_in_password', lastPass);
+    }
   }
 
   @override

@@ -1,5 +1,6 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_bloc/flutter_bloc.dart';
+import 'package:shared_preferences/shared_preferences.dart';
 import '../../core/constants/app_colors.dart';
 import '../../core/di/injection_container.dart';
 import '../../data/datasources/attendance_remote_datasource.dart';
@@ -16,7 +17,14 @@ import 'main_navigation_page.dart';
 import 'change_password_page.dart';
 
 class LoginPage extends StatefulWidget {
-  const LoginPage({super.key});
+  final String? initialUsername;
+  final String? initialPassword;
+
+  const LoginPage({
+    super.key,
+    this.initialUsername,
+    this.initialPassword,
+  });
 
   @override
   State<LoginPage> createState() => _LoginPageState();
@@ -24,9 +32,34 @@ class LoginPage extends StatefulWidget {
 
 class _LoginPageState extends State<LoginPage> {
   final _formKey = GlobalKey<FormState>();
-  final _usernameController = TextEditingController(text: 'ADMIN001');
-  final _passwordController = TextEditingController(text: 'user@123');
+  late final TextEditingController _usernameController;
+  late final TextEditingController _passwordController;
   bool _obscurePassword = true;
+
+  @override
+  void initState() {
+    super.initState();
+    _usernameController = TextEditingController(text: widget.initialUsername ?? 'ADMIN001');
+    _passwordController = TextEditingController(text: widget.initialPassword ?? 'user@123');
+    _loadSavedCredentials();
+  }
+
+  Future<void> _loadSavedCredentials() async {
+    try {
+      final prefs = await SharedPreferences.getInstance();
+      final savedUser = widget.initialUsername ?? prefs.getString('last_logged_in_username');
+      final savedPass = widget.initialPassword ?? prefs.getString('last_logged_in_password');
+
+      if (mounted) {
+        if (savedUser != null && savedUser.isNotEmpty) {
+          _usernameController.text = savedUser;
+        }
+        if (savedPass != null && savedPass.isNotEmpty) {
+          _passwordController.text = savedPass;
+        }
+      }
+    } catch (_) {}
+  }
 
   @override
   void dispose() {

@@ -31,13 +31,29 @@ class _HistoryPageState extends State<HistoryPage> {
   String _displayRangeStr = '';
   bool _isExporting = false;
 
+  bool get _isAdmin {
+    final authState = context.read<AuthBloc>().state;
+    if (authState is AuthenticatedState) {
+      return authState.user.role.trim().toUpperCase() == 'ADMIN';
+    }
+    return false;
+  }
+
   @override
   void initState() {
     super.initState();
     final now = DateTime.now();
     _fromDate = DateTime(now.year, now.month, 1);
+    // For non-admin, default to yesterday if today is 1st or past yesterday
+    final yesterday = now.subtract(const Duration(days: 1));
     _toDate = now;
     WidgetsBinding.instance.addPostFrameCallback((_) {
+      if (!_isAdmin && _toDate.year == now.year && _toDate.month == now.month && _toDate.day == now.day) {
+        if (yesterday.isBefore(_fromDate)) {
+          _fromDate = yesterday;
+        }
+        _toDate = yesterday;
+      }
       _applyPeriod('This Month');
     });
   }
@@ -84,11 +100,23 @@ class _HistoryPageState extends State<HistoryPage> {
   }
 
   Future<void> _selectDate(BuildContext context, bool isFromDate) async {
+    final now = DateTime.now();
+    final today = DateTime(now.year, now.month, now.day);
+    final yesterday = today.subtract(const Duration(days: 1));
+
+    // Admin has no restriction; RM and Employee cannot select current date (last selectable date is yesterday)
+    final DateTime maxSelectableDate = _isAdmin ? DateTime(2035) : yesterday;
+
+    DateTime initialDate = isFromDate ? _fromDate : _toDate;
+    if (initialDate.isAfter(maxSelectableDate)) {
+      initialDate = maxSelectableDate;
+    }
+
     final DateTime? picked = await showDatePicker(
       context: context,
-      initialDate: isFromDate ? _fromDate : _toDate,
+      initialDate: initialDate,
       firstDate: DateTime(2020),
-      lastDate: DateTime(2035),
+      lastDate: maxSelectableDate,
     );
     if (picked != null) {
       setState(() {
@@ -459,6 +487,16 @@ class _HistoryPageState extends State<HistoryPage> {
                         if (newValue != null) {
                           setState(() {
                             _selectedPeriod = newValue;
+                            if (newValue == 'Custom' && !_isAdmin) {
+                              final now = DateTime.now();
+                              final yesterday = now.subtract(const Duration(days: 1));
+                              if (!_toDate.isBefore(now)) {
+                                _toDate = yesterday;
+                              }
+                              if (_fromDate.isAfter(_toDate)) {
+                                _fromDate = _toDate;
+                              }
+                            }
                           });
                           _applyPeriod(newValue);
                         }
@@ -922,7 +960,7 @@ class _HistoryPageState extends State<HistoryPage> {
             Icon(Icons.logout_rounded, size: 16, color: Color(0xFF64748B)),
             SizedBox(width: 4),
             Text(
-              '-',
+              '--:--',
               style: TextStyle(
                 fontSize: 13,
                 fontWeight: FontWeight.w500,
