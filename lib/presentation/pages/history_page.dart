@@ -9,6 +9,8 @@ import '../blocs/attendance/attendance_event.dart';
 import '../blocs/attendance/attendance_state.dart';
 import '../blocs/auth/auth_bloc.dart';
 import '../blocs/auth/auth_state.dart';
+import '../blocs/leave/leave_bloc.dart';
+import '../blocs/leave/leave_event.dart';
 
 class HistoryPage extends StatefulWidget {
   const HistoryPage({super.key});
@@ -878,6 +880,7 @@ class _HistoryPageState extends State<HistoryPage> {
     final isAbsent = statusLower.contains('absent') || statusLower.contains('leave');
     final isWFH = record.workType.toUpperCase() == 'WFH';
     final isHalfDay = statusLower.contains('half');
+    final isIncomplete = statusLower.contains('incomplete');
 
     Color accentColor = const Color(0xFF2563EB); // Present
     Widget statusBadge;
@@ -890,11 +893,11 @@ class _HistoryPageState extends State<HistoryPage> {
         bgColor: const Color(0xFFFEE2E2),
         textColor: const Color(0xFFB91C1C),
       );
-    } else if (isWFH) {
+    } else if (isIncomplete) {
       accentColor = const Color(0xFFD97706);
       statusBadge = _buildStatusBadge(
-        label: 'WFH',
-        icon: Icons.home_outlined,
+        label: 'Incomplete',
+        icon: Icons.pending_outlined,
         bgColor: const Color(0xFFFEF3C7),
         textColor: const Color(0xFFB45309),
       );
@@ -907,6 +910,7 @@ class _HistoryPageState extends State<HistoryPage> {
         textColor: primaryNavy,
       );
     } else {
+      // Both Office and WFH show "Present" status badge when complete
       accentColor = const Color(0xFF2563EB);
       statusBadge = _buildStatusBadge(
         label: 'Present',
@@ -920,6 +924,75 @@ class _HistoryPageState extends State<HistoryPage> {
         ? record.location
         : (isWFH ? 'Remote Setup (Home Office)' : 'HQ Office');
 
+    final hasNoOutTime = (record.checkOutTime == null ||
+        record.checkOutTime!.isEmpty ||
+        record.checkOutTime == '--:--');
+
+    Widget? customOutWidget;
+    VoidCallback? onCardTap;
+
+    if (hasNoOutTime && !isAbsent) {
+      if (isToday) {
+        // For current date, show standard '-' icon & dash
+        customOutWidget = const Row(
+          children: [
+            Icon(Icons.logout_rounded, size: 16, color: Color(0xFF64748B)),
+            SizedBox(width: 4),
+            Text(
+              '-',
+              style: TextStyle(
+                fontSize: 13,
+                fontWeight: FontWeight.w500,
+                color: Color(0xFF1E293B),
+              ),
+            ),
+          ],
+        );
+      } else {
+        // Check if within 48 working hours (excluding Sat & Sun)
+        final isEligible = _isEligibleForRegularization(record.date);
+        if (isEligible) {
+          onCardTap = () => _showRegularizationModal(context, record);
+          customOutWidget = const Row(
+            mainAxisSize: MainAxisSize.min,
+            children: [
+              Icon(
+                Icons.logout_rounded,
+                size: 16,
+                color: AppColors.dangerRose,
+              ),
+              SizedBox(width: 4),
+              Text(
+                '--:--',
+                style: TextStyle(
+                  color: AppColors.dangerRose,
+                  fontWeight: FontWeight.w600,
+                  fontSize: 13,
+                ),
+              ),
+            ],
+          );
+        } else {
+          // For past dates beyond 48 business hours
+          customOutWidget = const Row(
+            children: [
+              Icon(Icons.warning_amber_rounded,
+                  size: 16, color: Color(0xFFDC2626)),
+              SizedBox(width: 4),
+              Text(
+                'Missing Out',
+                style: TextStyle(
+                  color: Color(0xFFDC2626),
+                  fontWeight: FontWeight.w500,
+                  fontSize: 13,
+                ),
+              ),
+            ],
+          );
+        }
+      }
+    }
+
     return _buildAttendanceCard(
       accentColor: accentColor,
       dayLabel: dayLabel,
@@ -929,23 +1002,9 @@ class _HistoryPageState extends State<HistoryPage> {
       inTime: record.checkInTime,
       outTime: record.checkOutTime,
       isNoRecord: isAbsent,
-      customOutWidget: (record.checkOutTime == null || record.checkOutTime!.isEmpty) && !isAbsent
-          ? const Row(
-              children: [
-                Icon(Icons.warning_amber_rounded,
-                    size: 16, color: Color(0xFFDC2626)),
-                SizedBox(width: 4),
-                Text(
-                  'Missing Out',
-                  style: TextStyle(
-                    color: Color(0xFFDC2626),
-                    fontWeight: FontWeight.w500,
-                    fontSize: 13,
-                  ),
-                ),
-              ],
-            )
-          : null,
+      isWFH: isWFH,
+      customOutWidget: customOutWidget,
+      onTap: onCardTap,
     );
   }
 
@@ -1025,6 +1084,8 @@ class _HistoryPageState extends State<HistoryPage> {
     String? outTime,
     Widget? customOutWidget,
     bool isNoRecord = false,
+    bool isWFH = false,
+    VoidCallback? onTap,
   }) {
     return Container(
       margin: const EdgeInsets.only(bottom: 12),
@@ -1040,118 +1101,536 @@ class _HistoryPageState extends State<HistoryPage> {
         ],
       ),
       clipBehavior: Clip.antiAlias,
-      child: IntrinsicHeight(
-        child: Row(
-          crossAxisAlignment: CrossAxisAlignment.stretch,
-          children: [
-            Container(
-              width: 4,
-              color: accentColor,
-            ),
-            Expanded(
-              child: Padding(
-                padding: const EdgeInsets.all(14.0),
-                child: Column(
-                  crossAxisAlignment: CrossAxisAlignment.start,
-                  children: [
-                    Row(
-                      mainAxisAlignment: MainAxisAlignment.spaceBetween,
+      child: Material(
+        color: Colors.transparent,
+        child: InkWell(
+          onTap: onTap,
+          borderRadius: BorderRadius.circular(12),
+          child: IntrinsicHeight(
+            child: Row(
+              crossAxisAlignment: CrossAxisAlignment.stretch,
+              children: [
+                Container(
+                  width: 4,
+                  color: accentColor,
+                ),
+                Expanded(
+                  child: Padding(
+                    padding: const EdgeInsets.all(14.0),
+                    child: Column(
                       crossAxisAlignment: CrossAxisAlignment.start,
                       children: [
-                        Column(
+                        Row(
+                          mainAxisAlignment: MainAxisAlignment.spaceBetween,
                           crossAxisAlignment: CrossAxisAlignment.start,
                           children: [
-                            Text(
-                              dayLabel,
-                              style: const TextStyle(
-                                fontSize: 12,
-                                fontWeight: FontWeight.bold,
-                                color: Color(0xFF94A3B8),
-                              ),
+                            Column(
+                              crossAxisAlignment: CrossAxisAlignment.start,
+                              children: [
+                                Text(
+                                  dayLabel,
+                                  style: const TextStyle(
+                                    fontSize: 12,
+                                    fontWeight: FontWeight.bold,
+                                    color: Color(0xFF94A3B8),
+                                  ),
+                                ),
+                                const SizedBox(height: 2),
+                                Text(
+                                  dateStr,
+                                  style: const TextStyle(
+                                    fontSize: 16,
+                                    fontWeight: FontWeight.bold,
+                                    color: Color(0xFF1E293B),
+                                  ),
+                                ),
+                              ],
                             ),
-                            const SizedBox(height: 2),
-                            Text(
-                              dateStr,
-                              style: const TextStyle(
-                                fontSize: 16,
-                                fontWeight: FontWeight.bold,
-                                color: Color(0xFF1E293B),
-                              ),
-                            ),
+                            statusBadge,
                           ],
                         ),
-                        statusBadge,
+                        const SizedBox(height: 8),
+                        Text(
+                          clientStr,
+                          style: const TextStyle(
+                            fontSize: 13,
+                            color: Color(0xFF64748B),
+                          ),
+                        ),
+                        const SizedBox(height: 12),
+                        if (isNoRecord)
+                          const Row(
+                            children: [
+                              Text(
+                                '—  ',
+                                style: TextStyle(color: Color(0xFF94A3B8)),
+                              ),
+                              Text(
+                                'No Record',
+                                style: TextStyle(
+                                  color: Color(0xFF94A3B8),
+                                  fontSize: 13,
+                                ),
+                              ),
+                            ],
+                          )
+                        else
+                          Row(
+                            mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                            children: [
+                              Row(
+                                children: [
+                                  const Icon(Icons.login_rounded,
+                                      size: 16, color: Color(0xFF64748B)),
+                                  const SizedBox(width: 4),
+                                  Text(
+                                    inTime ?? '--:--',
+                                    style: const TextStyle(
+                                      fontSize: 13,
+                                      fontWeight: FontWeight.w500,
+                                      color: Color(0xFF1E293B),
+                                    ),
+                                  ),
+                                  const SizedBox(width: 14),
+                                  Container(
+                                      height: 12,
+                                      width: 1,
+                                      color: const Color(0xFFCBD5E1)),
+                                  const SizedBox(width: 14),
+                                  if (customOutWidget != null)
+                                    customOutWidget
+                                  else ...[
+                                    const Icon(Icons.logout_rounded,
+                                        size: 16, color: Color(0xFF64748B)),
+                                    const SizedBox(width: 4),
+                                    Text(
+                                      outTime ?? '--:--',
+                                      style: const TextStyle(
+                                        fontSize: 13,
+                                        fontWeight: FontWeight.w500,
+                                        color: Color(0xFF1E293B),
+                                      ),
+                                    ),
+                                  ],
+                                ],
+                              ),
+                              // Bottom-right Office or WFH badge
+                              Container(
+                                padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 3),
+                                decoration: BoxDecoration(
+                                  color: isWFH
+                                      ? const Color(0xFFFEF3C7)
+                                      : const Color(0xFFEEF2FF),
+                                  borderRadius: BorderRadius.circular(8),
+                                  border: Border.all(
+                                    color: isWFH
+                                        ? const Color(0xFFFDE68A)
+                                        : const Color(0xFFC7D2FE),
+                                  ),
+                                ),
+                                child: Row(
+                                  mainAxisSize: MainAxisSize.min,
+                                  children: [
+                                    Icon(
+                                      isWFH ? Icons.home_work_outlined : Icons.business_rounded,
+                                      size: 13,
+                                      color: isWFH
+                                          ? const Color(0xFFB45309)
+                                          : const Color(0xFF1E40AF),
+                                    ),
+                                    const SizedBox(width: 4),
+                                    Text(
+                                      isWFH ? 'WFH' : 'Office',
+                                      style: TextStyle(
+                                        fontSize: 11,
+                                        fontWeight: FontWeight.bold,
+                                        color: isWFH
+                                            ? const Color(0xFFB45309)
+                                            : const Color(0xFF1E40AF),
+                                      ),
+                                    ),
+                                  ],
+                                ),
+                              ),
+                            ],
+                          ),
                       ],
                     ),
-                    const SizedBox(height: 8),
-                    Text(
-                      clientStr,
-                      style: const TextStyle(
-                        fontSize: 13,
-                        color: Color(0xFF64748B),
-                      ),
-                    ),
-                    const SizedBox(height: 12),
-                    if (isNoRecord)
-                      const Row(
-                        children: [
-                          Text(
-                            '—  ',
-                            style: TextStyle(color: Color(0xFF94A3B8)),
-                          ),
-                          Text(
-                            'No Record',
-                            style: TextStyle(
-                              color: Color(0xFF94A3B8),
-                              fontSize: 13,
-                            ),
-                          ),
-                        ],
-                      )
-                    else
-                      Row(
-                        children: [
-                          const Icon(Icons.login_rounded,
-                              size: 16, color: Color(0xFF64748B)),
-                          const SizedBox(width: 4),
-                          Text(
-                            inTime ?? '--:--',
-                            style: const TextStyle(
-                              fontSize: 13,
-                              fontWeight: FontWeight.w500,
-                              color: Color(0xFF1E293B),
-                            ),
-                          ),
-                          const SizedBox(width: 16),
-                          Container(
-                              height: 12,
-                              width: 1,
-                              color: const Color(0xFFCBD5E1)),
-                          const SizedBox(width: 16),
-                          if (customOutWidget != null)
-                            customOutWidget
-                          else ...[
-                            const Icon(Icons.logout_rounded,
-                                size: 16, color: Color(0xFF64748B)),
-                            const SizedBox(width: 4),
-                            Text(
-                              outTime ?? '--:--',
-                              style: const TextStyle(
-                                fontSize: 13,
-                                fontWeight: FontWeight.w500,
-                                color: Color(0xFF1E293B),
-                              ),
-                            ),
-                          ],
-                        ],
-                      ),
-                  ],
+                  ),
                 ),
-              ),
+              ],
             ),
-          ],
+          ),
         ),
       ),
+    );
+  }
+
+  bool _isEligibleForRegularization(DateTime recordDate) {
+    final now = DateTime.now();
+    // If record date is today or in future, no regularization needed
+    final today = DateTime(now.year, now.month, now.day);
+    final recDay = DateTime(recordDate.year, recordDate.month, recordDate.day);
+    if (!recDay.isBefore(today)) return false;
+
+    // Calculate elapsed working hours (skipping Saturday and Sunday)
+    int workingHours = 0;
+    DateTime current = DateTime(recordDate.year, recordDate.month, recordDate.day, 23, 59, 59);
+
+    while (current.isBefore(now)) {
+      current = current.add(const Duration(hours: 1));
+      if (current.weekday != DateTime.saturday && current.weekday != DateTime.sunday) {
+        workingHours++;
+      }
+    }
+
+    return workingHours <= 48;
+  }
+
+  void _showRegularizationModal(BuildContext parentContext, AttendanceRecord record) {
+    final dateStr = DateFormat('MMM dd, yyyy').format(record.date);
+    TimeOfDay? selectedOutTime;
+    String? selectedReasonOption;
+    final List<String> reasonOptions = [
+      'Forget To PunchIn',
+      'Forget To PunchOut',
+      'Out-of-office',
+      'Medical Emergency',
+      'Others',
+    ];
+    final reasonController = TextEditingController();
+
+    showModalBottomSheet(
+      context: parentContext,
+      isScrollControlled: true,
+      backgroundColor: Colors.transparent,
+      builder: (modalCtx) {
+        return StatefulBuilder(
+          builder: (context, setModalState) {
+            final formattedTime = selectedOutTime != null
+                ? selectedOutTime!.format(context)
+                : null;
+
+            return Container(
+              padding: EdgeInsets.only(
+                bottom: MediaQuery.of(modalCtx).viewInsets.bottom + 20,
+                top: 20,
+                left: 20,
+                right: 20,
+              ),
+              decoration: const BoxDecoration(
+                color: Colors.white,
+                borderRadius: BorderRadius.vertical(top: Radius.circular(24)),
+              ),
+              child: SingleChildScrollView(
+                child: Column(
+                  mainAxisSize: MainAxisSize.min,
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    Center(
+                      child: Container(
+                        width: 40,
+                        height: 4,
+                        decoration: BoxDecoration(
+                          color: const Color(0xFFCBD5E1),
+                          borderRadius: BorderRadius.circular(2),
+                        ),
+                      ),
+                    ),
+                    const SizedBox(height: 16),
+                    Row(
+                      children: [
+                        Container(
+                          padding: const EdgeInsets.all(8),
+                          decoration: BoxDecoration(
+                            color: AppColors.primaryNavy.withOpacity(0.08),
+                            borderRadius: BorderRadius.circular(10),
+                          ),
+                          child: const Icon(
+                            Icons.edit_calendar_rounded,
+                            color: AppColors.primaryNavy,
+                            size: 22,
+                          ),
+                        ),
+                        const SizedBox(width: 12),
+                        const Expanded(
+                          child: Column(
+                            crossAxisAlignment: CrossAxisAlignment.start,
+                            children: [
+                              Text(
+                                'Attendance Regularization',
+                                style: TextStyle(
+                                  fontSize: 17,
+                                  fontWeight: FontWeight.bold,
+                                  color: AppColors.textDark,
+                                ),
+                              ),
+                              SizedBox(height: 2),
+                              Text(
+                                'Submit clock-out for missing attendance',
+                                style: TextStyle(
+                                  fontSize: 12,
+                                  color: AppColors.textMuted,
+                                ),
+                              ),
+                            ],
+                          ),
+                        ),
+                      ],
+                    ),
+                    const SizedBox(height: 18),
+
+                    // Attendance Info Card
+                    Container(
+                      padding: const EdgeInsets.all(14),
+                      decoration: BoxDecoration(
+                        color: const Color(0xFFF8FAFC),
+                        borderRadius: BorderRadius.circular(12),
+                        border: Border.all(color: const Color(0xFFE2E8F0)),
+                      ),
+                      child: Row(
+                        children: [
+                          Expanded(
+                            child: Column(
+                              crossAxisAlignment: CrossAxisAlignment.start,
+                              children: [
+                                const Text('Date', style: TextStyle(fontSize: 11, color: AppColors.textLight, fontWeight: FontWeight.bold)),
+                                const SizedBox(height: 2),
+                                Text(dateStr, style: const TextStyle(fontSize: 13, fontWeight: FontWeight.bold, color: AppColors.textDark)),
+                              ],
+                            ),
+                          ),
+                          Container(height: 24, width: 1, color: const Color(0xFFE2E8F0)),
+                          const SizedBox(width: 16),
+                          Expanded(
+                            child: Column(
+                              crossAxisAlignment: CrossAxisAlignment.start,
+                              children: [
+                                const Text('Time In', style: TextStyle(fontSize: 11, color: AppColors.textLight, fontWeight: FontWeight.bold)),
+                                const SizedBox(height: 2),
+                                Text(record.checkInTime, style: const TextStyle(fontSize: 13, fontWeight: FontWeight.bold, color: AppColors.textDark)),
+                              ],
+                            ),
+                          ),
+                        ],
+                      ),
+                    ),
+                    const SizedBox(height: 16),
+
+                    // Time Out Selector
+                    const Text(
+                      'Select Time Out *',
+                      style: TextStyle(
+                        fontSize: 13,
+                        fontWeight: FontWeight.bold,
+                        color: AppColors.textDark,
+                      ),
+                    ),
+                    const SizedBox(height: 6),
+                    InkWell(
+                      onTap: () async {
+                        final picked = await showTimePicker(
+                          context: context,
+                          initialTime: selectedOutTime ?? const TimeOfDay(hour: 18, minute: 0),
+                        );
+                        if (picked != null) {
+                          setModalState(() {
+                            selectedOutTime = picked;
+                          });
+                        }
+                      },
+                      borderRadius: BorderRadius.circular(10),
+                      child: Container(
+                        padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 12),
+                        decoration: BoxDecoration(
+                          color: const Color(0xFFF1F5F9),
+                          borderRadius: BorderRadius.circular(10),
+                          border: Border.all(color: AppColors.borderGrey),
+                        ),
+                        child: Row(
+                          mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                          children: [
+                            Text(
+                              formattedTime ?? 'Choose Time Out (e.g. 06:00 PM)',
+                              style: TextStyle(
+                                fontSize: 14,
+                                fontWeight: formattedTime != null ? FontWeight.bold : FontWeight.w500,
+                                color: formattedTime != null ? AppColors.textDark : AppColors.textLight,
+                              ),
+                            ),
+                            const Icon(Icons.access_time_rounded, size: 18, color: AppColors.primaryNavy),
+                          ],
+                        ),
+                      ),
+                    ),
+                    const SizedBox(height: 16),
+
+                    // Reason Category Dropdown
+                    const Text(
+                      'Select Reason *',
+                      style: TextStyle(
+                        fontSize: 13,
+                        fontWeight: FontWeight.bold,
+                        color: AppColors.textDark,
+                      ),
+                    ),
+                    const SizedBox(height: 6),
+                    Container(
+                      padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 4),
+                      decoration: BoxDecoration(
+                        color: const Color(0xFFF1F5F9),
+                        borderRadius: BorderRadius.circular(10),
+                        border: Border.all(color: AppColors.borderGrey),
+                      ),
+                      child: DropdownButtonHideUnderline(
+                        child: DropdownButton<String>(
+                          value: selectedReasonOption,
+                          isExpanded: true,
+                          hint: const Text(
+                            'Select reason for regularizing',
+                            style: TextStyle(fontSize: 14, color: AppColors.textLight, fontWeight: FontWeight.w500),
+                          ),
+                          icon: const Icon(Icons.keyboard_arrow_down, color: AppColors.primaryNavy),
+                          items: reasonOptions.map((String option) {
+                            return DropdownMenuItem<String>(
+                              value: option,
+                              child: Text(
+                                option,
+                                style: const TextStyle(
+                                  fontSize: 14,
+                                  color: AppColors.textDark,
+                                  fontWeight: FontWeight.w500,
+                                ),
+                              ),
+                            );
+                          }).toList(),
+                          onChanged: (String? val) {
+                            setModalState(() {
+                              selectedReasonOption = val;
+                            });
+                          },
+                        ),
+                      ),
+                    ),
+
+                    // Reason Field (Visible only when 'Others' is selected)
+                    if (selectedReasonOption == 'Others') ...[
+                      const SizedBox(height: 16),
+                      const Text(
+                        'Reason for Regularization *',
+                        style: TextStyle(
+                          fontSize: 13,
+                          fontWeight: FontWeight.bold,
+                          color: AppColors.textDark,
+                        ),
+                      ),
+                      const SizedBox(height: 6),
+                      TextField(
+                        controller: reasonController,
+                        maxLines: 3,
+                        maxLength: 200,
+                        decoration: InputDecoration(
+                          hintText: 'Please specify the reason...',
+                          hintStyle: const TextStyle(fontSize: 13, color: AppColors.textLight),
+                          border: OutlineInputBorder(
+                            borderRadius: BorderRadius.circular(10),
+                            borderSide: const BorderSide(color: AppColors.borderGrey),
+                          ),
+                          contentPadding: const EdgeInsets.all(12),
+                        ),
+                      ),
+                    ],
+                    const SizedBox(height: 20),
+
+                    // Action Buttons (Equal width)
+                    Row(
+                      children: [
+                        Expanded(
+                          child: OutlinedButton(
+                            onPressed: () => Navigator.of(modalCtx).pop(),
+                            style: OutlinedButton.styleFrom(
+                              side: const BorderSide(color: AppColors.borderGrey),
+                              shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(10)),
+                              padding: const EdgeInsets.symmetric(vertical: 13),
+                            ),
+                            child: const Text('Cancel', style: TextStyle(color: AppColors.textLight, fontWeight: FontWeight.w600)),
+                          ),
+                        ),
+                        const SizedBox(width: 12),
+                        Expanded(
+                          child: ElevatedButton(
+                            onPressed: () {
+                              if (selectedOutTime == null) {
+                                ScaffoldMessenger.of(parentContext).showSnackBar(
+                                  const SnackBar(
+                                    content: Text('Please select your Time Out'),
+                                    backgroundColor: AppColors.dangerRose,
+                                    behavior: SnackBarBehavior.floating,
+                                  ),
+                                );
+                                return;
+                              }
+
+                              if (selectedReasonOption == null) {
+                                ScaffoldMessenger.of(parentContext).showSnackBar(
+                                  const SnackBar(
+                                    content: Text('Please select a reason'),
+                                    backgroundColor: AppColors.dangerRose,
+                                    behavior: SnackBarBehavior.floating,
+                                  ),
+                                );
+                                return;
+                              }
+
+                              String finalReason = selectedReasonOption!;
+                              if (selectedReasonOption == 'Others') {
+                                final customReason = reasonController.text.trim();
+                                if (customReason.isEmpty) {
+                                  ScaffoldMessenger.of(parentContext).showSnackBar(
+                                    const SnackBar(
+                                      content: Text('Please enter reason for regularization'),
+                                      backgroundColor: AppColors.dangerRose,
+                                      behavior: SnackBarBehavior.floating,
+                                    ),
+                                  );
+                                  return;
+                                }
+                                finalReason = 'Others: $customReason';
+                              }
+
+                              Navigator.of(modalCtx).pop();
+
+                              // Submit Regularization Leave Request
+                              parentContext.read<LeaveBloc>().add(
+                                    SubmitLeaveRequestEvent(
+                                      title: 'Regularization - $dateStr',
+                                      requestType: 'ADJUSTMENT',
+                                      startDate: record.date,
+                                      endDate: record.date,
+                                      reason: 'Time Out: $formattedTime | $finalReason',
+                                    ),
+                                  );
+                            },
+            style: ElevatedButton.styleFrom(
+              backgroundColor: AppColors.primaryNavy,
+              shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(10)),
+              padding: const EdgeInsets.symmetric(vertical: 13),
+            ),
+            child: const Text(
+              'Submit Request',
+              style: TextStyle(color: Colors.white, fontWeight: FontWeight.bold, fontSize: 14),
+            ),
+          ),
+        ),
+      ],
+    ),
+  ],
+),
+              ),
+            );
+          },
+        );
+      },
     );
   }
 }
