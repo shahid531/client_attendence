@@ -39,8 +39,8 @@ class _LoginPageState extends State<LoginPage> {
   @override
   void initState() {
     super.initState();
-    _usernameController = TextEditingController(text: widget.initialUsername ?? 'ADMIN001');
-    _passwordController = TextEditingController(text: widget.initialPassword ?? 'user@123');
+    _usernameController = TextEditingController(text: widget.initialUsername ?? '');
+    _passwordController = TextEditingController(text: widget.initialPassword ?? '');
     _loadSavedCredentials();
   }
 
@@ -210,7 +210,7 @@ class _LoginPageState extends State<LoginPage> {
                       controller: _usernameController,
                       keyboardType: TextInputType.text,
                       decoration: const InputDecoration(
-                        hintText: 'e.g. ADMIN001',
+                        hintText: 'Enter username or employee ID',
                         prefixIcon: Icon(Icons.person_outline),
                       ),
                       validator: (val) {
@@ -234,7 +234,7 @@ class _LoginPageState extends State<LoginPage> {
                       controller: _passwordController,
                       obscureText: _obscurePassword,
                       decoration: InputDecoration(
-                        hintText: '••••••••',
+                        hintText: 'Enter your password',
                         prefixIcon: const Icon(Icons.lock_outline),
                         suffixIcon: IconButton(
                           icon: Icon(
