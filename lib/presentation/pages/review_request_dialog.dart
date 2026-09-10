@@ -1,5 +1,6 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_bloc/flutter_bloc.dart';
+import '../../core/constants/app_colors.dart';
 import '../../domain/entities/leave_request.dart';
 import '../blocs/leave/leave_bloc.dart';
 import '../blocs/leave/leave_event.dart';
@@ -104,7 +105,7 @@ class _ReviewRequestDialogState extends State<ReviewRequestDialog> {
                   const SizedBox(height: 16),
                 ],
                 const Text(
-                  'DESCRIPTION',
+                  'Comment',
                   style: TextStyle(
                     fontSize: 12,
                     fontWeight: FontWeight.w700,
@@ -112,45 +113,35 @@ class _ReviewRequestDialogState extends State<ReviewRequestDialog> {
                     letterSpacing: 0.5,
                   ),
                 ),
-                const SizedBox(height: 10),
-                Container(
-                  height: 130,
-                  decoration: BoxDecoration(
-                    color: const Color(0xFFF8FAFC),
-                    borderRadius: BorderRadius.circular(10),
-                    border: Border.all(color: const Color(0xFFE2E8F0)),
+                TextField(
+                  controller: _controller,
+                  maxLines: 4,
+                  minLines: 3,
+                  style: const TextStyle(
+                    fontSize: 14,
+                    color: Color(0xFF1E293B),
                   ),
-                  child: Stack(
-                    children: [
-                      TextField(
-                        controller: _controller,
-                        maxLines: null,
-                        expands: true,
-                        style: const TextStyle(
-                          fontSize: 14,
-                          color: Color(0xFF1E293B),
-                        ),
-                        decoration: const InputDecoration(
-                          hintText: 'Add a reason or notes for your\ndecision...',
-                          hintStyle: TextStyle(
-                            color: Color(0xFF94A3B8),
-                            fontSize: 14,
-                            height: 1.4,
-                          ),
-                          border: InputBorder.none,
-                          contentPadding: EdgeInsets.all(12),
-                        ),
-                      ),
-                      Positioned(
-                        bottom: 4,
-                        right: 4,
-                        child: Icon(
-                          Icons.signal_cellular_0_bar_rounded,
-                          size: 10,
-                          color: Colors.grey.shade400,
-                        ),
-                      ),
-                    ],
+                  decoration: InputDecoration(
+                    hintText: 'Add a reason or notes for your decision...',
+                    hintStyle: const TextStyle(
+                      color: Color(0xFF94A3B8),
+                      fontSize: 14,
+                    ),
+                    filled: true,
+                    fillColor: const Color(0xFFF8FAFC),
+                    border: OutlineInputBorder(
+                      borderRadius: BorderRadius.circular(10),
+                      borderSide: const BorderSide(color: Color(0xFFCBD5E1), width: 1),
+                    ),
+                    enabledBorder: OutlineInputBorder(
+                      borderRadius: BorderRadius.circular(10),
+                      borderSide: const BorderSide(color: Color(0xFFCBD5E1), width: 1),
+                    ),
+                    focusedBorder: OutlineInputBorder(
+                      borderRadius: BorderRadius.circular(10),
+                      borderSide: const BorderSide(color: Color(0xFFCBD5E1), width: 1),
+                    ),
+                    contentPadding: const EdgeInsets.all(12),
                   ),
                 ),
               ],
@@ -199,7 +190,7 @@ class _ReviewRequestDialogState extends State<ReviewRequestDialog> {
                     child: ElevatedButton(
                       onPressed: () => _handleDecision(true),
                       style: ElevatedButton.styleFrom(
-                        backgroundColor: const Color(0xFF0038FF),
+                        backgroundColor: AppColors.primaryNavy,
                         foregroundColor: Colors.white,
                         elevation: 0,
                         shape: RoundedRectangleBorder(
