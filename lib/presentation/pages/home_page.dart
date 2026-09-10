@@ -15,6 +15,7 @@ import '../blocs/attendance/attendance_state.dart';
 import '../blocs/auth/auth_bloc.dart';
 import '../blocs/auth/auth_state.dart';
 import '../../core/utils/device_info_util.dart';
+import '../../core/utils/snackbar_helper.dart';
 
 class HomePage extends StatefulWidget {
   const HomePage({super.key});
@@ -23,7 +24,7 @@ class HomePage extends StatefulWidget {
   State<HomePage> createState() => _HomePageState();
 }
 
-class _HomePageState extends State<HomePage> {
+class _HomePageState extends State<HomePage> with WidgetsBindingObserver {
   int _selectedWorkTypeIndex = 0; // 0 for GPS, 1 for WFH
   String? _localInTime;
   String? _localOutTime;
@@ -38,13 +39,38 @@ class _HomePageState extends State<HomePage> {
   Position? _currentPosition;
   bool _isLocating = false;
   double? _distanceToOffice;
-  bool _isInRange = true;
+  bool _isInRange = false;
+  bool _isLocationDialogOpen = false;
+
+  // Cached office details from SharedPreferences
+  double? _cachedOfficeLat;
+  double? _cachedOfficeLng;
+  double? _cachedOfficeRadius;
+  String? _cachedOfficeName;
+  String? _cachedOfficeAddress;
 
   @override
   void initState() {
     super.initState();
+    WidgetsBinding.instance.addObserver(this);
     _loadPreferences();
     _checkLocationRange();
+  }
+
+  @override
+  void dispose() {
+    WidgetsBinding.instance.removeObserver(this);
+    _stopLiveTimer();
+    _descriptionController.dispose();
+    super.dispose();
+  }
+
+  @override
+  void didChangeAppLifecycleState(AppLifecycleState state) {
+    if (state == AppLifecycleState.resumed && _selectedWorkTypeIndex == 0) {
+      // Re-check location when returning from settings or background
+      _checkLocationRange();
+    }
   }
 
   void _startLiveTimer() {
@@ -61,26 +87,150 @@ class _HomePageState extends State<HomePage> {
     _liveTimer = null;
   }
 
-  Future<void> _checkLocationRange({bool showSnackBar = false}) async {
+  Future<void> _showEnableGpsDialog() async {
+    if (_isLocationDialogOpen || !mounted) return;
+    _isLocationDialogOpen = true;
+    await showDialog(
+      context: context,
+      barrierDismissible: false,
+      builder: (ctx) => AlertDialog(
+        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(16)),
+        title: Row(
+          children: const [
+            Icon(Icons.location_off_rounded, color: AppColors.warningAmber, size: 24),
+            SizedBox(width: 8),
+            Text('Enable Location', style: TextStyle(fontSize: 18, fontWeight: FontWeight.bold)),
+          ],
+        ),
+        content: const Text(
+          'Location services (GPS) are turned off. Please turn on device location to verify your office attendance.',
+          style: TextStyle(fontSize: 14, color: AppColors.textMuted),
+        ),
+        actions: [
+          TextButton(
+            onPressed: () {
+              Navigator.of(ctx).pop();
+            },
+            child: const Text('Cancel', style: TextStyle(color: AppColors.textLight)),
+          ),
+          ElevatedButton(
+            onPressed: () async {
+              Navigator.of(ctx).pop();
+              await Geolocator.openLocationSettings();
+            },
+            style: ElevatedButton.styleFrom(
+              backgroundColor: AppColors.primaryNavy,
+              shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(8)),
+            ),
+            child: const Text('Open Settings', style: TextStyle(color: Colors.white)),
+          ),
+        ],
+      ),
+    );
+    _isLocationDialogOpen = false;
+  }
+
+  Future<void> _showPermissionDeniedDialog() async {
+    if (_isLocationDialogOpen || !mounted) return;
+    _isLocationDialogOpen = true;
+    await showDialog(
+      context: context,
+      barrierDismissible: false,
+      builder: (ctx) => AlertDialog(
+        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(16)),
+        title: Row(
+          children: const [
+            Icon(Icons.security_rounded, color: AppColors.dangerRose, size: 24),
+            SizedBox(width: 8),
+            Text('Permission Required', style: TextStyle(fontSize: 18, fontWeight: FontWeight.bold)),
+          ],
+        ),
+        content: const Text(
+          'Location permission is permanently denied. Please allow location access from app settings to verify your attendance.',
+          style: TextStyle(fontSize: 14, color: AppColors.textMuted),
+        ),
+        actions: [
+          TextButton(
+            onPressed: () {
+              Navigator.of(ctx).pop();
+            },
+            child: const Text('Cancel', style: TextStyle(color: AppColors.textLight)),
+          ),
+          ElevatedButton(
+            onPressed: () async {
+              Navigator.of(ctx).pop();
+              await Geolocator.openAppSettings();
+            },
+            style: ElevatedButton.styleFrom(
+              backgroundColor: AppColors.primaryNavy,
+              shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(8)),
+            ),
+            child: const Text('App Settings', style: TextStyle(color: Colors.white)),
+          ),
+        ],
+      ),
+    );
+    _isLocationDialogOpen = false;
+  }
+
+  Future<void> _checkLocationRange({bool showSnackBar = false, bool promptIfDisabled = true}) async {
     if (!mounted) return;
     setState(() {
       _isLocating = true;
     });
 
     try {
+      final prefs = await SharedPreferences.getInstance();
+      final authBloc = context.read<AuthBloc>();
+      final authState = authBloc.state;
+
+      // 1. Instantly check last known position for zero-delay UI response
+      try {
+        final lastKnown = await Geolocator.getLastKnownPosition();
+        if (lastKnown != null && mounted) {
+          await prefs.setDouble('cached_last_device_lat', lastKnown.latitude);
+          await prefs.setDouble('cached_last_device_lng', lastKnown.longitude);
+
+          final offLat = (authState is AuthenticatedState && authState.user.latitude != null)
+              ? authState.user.latitude!
+              : (prefs.getDouble('cached_user_lat') ?? _cachedOfficeLat ?? 18.58742586542344);
+          final offLng = (authState is AuthenticatedState && authState.user.longitude != null)
+              ? authState.user.longitude!
+              : (prefs.getDouble('cached_user_lng') ?? _cachedOfficeLng ?? 73.73845322922567);
+          final offRadius = (authState is AuthenticatedState &&
+                  (authState.user.allowedRadius != null || authState.user.radius != null))
+              ? (authState.user.allowedRadius ?? authState.user.radius!)
+              : (prefs.getDouble('cached_user_radius') ?? _cachedOfficeRadius ?? 100.0);
+
+          final dist = Geolocator.distanceBetween(
+            lastKnown.latitude,
+            lastKnown.longitude,
+            offLat,
+            offLng,
+          );
+
+          if (mounted) {
+            setState(() {
+              _currentPosition = lastKnown;
+              _distanceToOffice = dist;
+              _isInRange = dist <= offRadius;
+            });
+          }
+        }
+      } catch (_) {}
+
       bool serviceEnabled = await Geolocator.isLocationServiceEnabled();
       if (!serviceEnabled) {
         if (mounted) {
           setState(() {
             _isLocating = false;
           });
-          if (showSnackBar) {
-            ScaffoldMessenger.of(context).showSnackBar(
-              const SnackBar(
-                content: Text('Location services are disabled. Please enable GPS in device settings.'),
-                backgroundColor: AppColors.warningAmber,
-                behavior: SnackBarBehavior.floating,
-              ),
+          if (promptIfDisabled) {
+            _showEnableGpsDialog();
+          } else if (showSnackBar) {
+            SnackbarHelper.showWarning(
+              context,
+              'Location services are disabled. Please enable GPS in device settings.',
             );
           }
         }
@@ -96,12 +246,9 @@ class _HomePageState extends State<HomePage> {
               _isLocating = false;
             });
             if (showSnackBar) {
-              ScaffoldMessenger.of(context).showSnackBar(
-                const SnackBar(
-                  content: Text('Location permissions are denied.'),
-                  backgroundColor: AppColors.dangerRose,
-                  behavior: SnackBarBehavior.floating,
-                ),
+              SnackbarHelper.showError(
+                context,
+                'Location permissions are denied.',
               );
             }
           }
@@ -114,20 +261,17 @@ class _HomePageState extends State<HomePage> {
           setState(() {
             _isLocating = false;
           });
-          if (showSnackBar) {
-            ScaffoldMessenger.of(context).showSnackBar(
-              const SnackBar(
-                content: Text('Location permission is permanently denied in settings.'),
-                backgroundColor: AppColors.dangerRose,
-                behavior: SnackBarBehavior.floating,
-              ),
+          if (promptIfDisabled) {
+            _showPermissionDeniedDialog();
+          } else if (showSnackBar) {
+            SnackbarHelper.showError(
+              context,
+              'Location permission is permanently denied in settings.',
             );
           }
         }
         return;
       }
-
-      final authBloc = context.read<AuthBloc>();
 
       final position = await Geolocator.getCurrentPosition(
         locationSettings: const LocationSettings(
@@ -136,20 +280,28 @@ class _HomePageState extends State<HomePage> {
         ),
       );
 
-      final authState = authBloc.state;
-      // Fixed office geofence coordinates from backend login response / Pune HQ
-      double officeLat = 18.58742586542344;
-      double officeLng = 73.73845322922567;
+      await prefs.setDouble('cached_last_device_lat', position.latitude);
+      await prefs.setDouble('cached_last_device_lng', position.longitude);
+
+      // Office coordinates prioritizing AuthState, then SharedPreferences
+      double officeLat = (authState is AuthenticatedState && authState.user.latitude != null)
+          ? authState.user.latitude!
+          : (prefs.getDouble('cached_user_lat') ?? _cachedOfficeLat ?? 18.58742586542344);
+      double officeLng = (authState is AuthenticatedState && authState.user.longitude != null)
+          ? authState.user.longitude!
+          : (prefs.getDouble('cached_user_lng') ?? _cachedOfficeLng ?? 73.73845322922567);
       double officeRadius = 100.0;
 
       if (authState is AuthenticatedState) {
-        if (authState.user.latitude != null) officeLat = authState.user.latitude!;
-        if (authState.user.longitude != null) officeLng = authState.user.longitude!;
         if (authState.user.allowedRadius != null) {
           officeRadius = authState.user.allowedRadius!;
         } else if (authState.user.radius != null) {
           officeRadius = authState.user.radius!;
         }
+      } else if (prefs.getDouble('cached_user_radius') != null) {
+        officeRadius = prefs.getDouble('cached_user_radius')!;
+      } else if (_cachedOfficeRadius != null) {
+        officeRadius = _cachedOfficeRadius!;
       }
 
       final distance = Geolocator.distanceBetween(
@@ -169,17 +321,17 @@ class _HomePageState extends State<HomePage> {
 
         if (showSnackBar) {
           final distStr = _formatDistance(distance);
-          ScaffoldMessenger.of(context).showSnackBar(
-            SnackBar(
-              content: Text(
-                _isInRange
-                    ? 'Location verified: In Range ($distStr)'
-                    : 'Location updated: Out of Range ($distStr from office)',
-              ),
-              backgroundColor: _isInRange ? AppColors.successEmerald : AppColors.dangerRose,
-              behavior: SnackBarBehavior.floating,
-            ),
-          );
+          if (_isInRange) {
+            SnackbarHelper.showSuccess(
+              context,
+              'Location verified: In Range ($distStr)',
+            );
+          } else {
+            SnackbarHelper.showError(
+              context,
+              'Location updated: Out of Range ($distStr from office)',
+            );
+          }
         }
       }
     } catch (e) {
@@ -188,13 +340,7 @@ class _HomePageState extends State<HomePage> {
           _isLocating = false;
         });
         if (showSnackBar) {
-          ScaffoldMessenger.of(context).showSnackBar(
-            SnackBar(
-              content: Text('Location update: $e'),
-              backgroundColor: AppColors.dangerRose,
-              behavior: SnackBarBehavior.floating,
-            ),
-          );
+          SnackbarHelper.showError(context, 'Location update: $e');
         }
       }
     }
@@ -543,6 +689,58 @@ class _HomePageState extends State<HomePage> {
       final savedUserId = prefs.getString('cached_attendance_user_id');
       final todayStr = DateFormat('yyyy-MM-dd').format(DateTime.now());
 
+      // Load cached office details
+      final cLat = prefs.getDouble('cached_user_lat');
+      final cLng = prefs.getDouble('cached_user_lng');
+      final cRad = prefs.getDouble('cached_user_radius');
+      final cLocName = prefs.getString('cached_user_location_name');
+      final cCompany = prefs.getString('cached_user_company');
+      final cAddress = prefs.getString('cached_user_address');
+
+      // Load last known device coordinates
+      final lastDevLat = prefs.getDouble('cached_last_device_lat');
+      final lastDevLng = prefs.getDouble('cached_last_device_lng');
+
+      Position? initPos;
+      double? initDist;
+      bool initInRange = true;
+
+      if (lastDevLat != null && lastDevLng != null) {
+        initPos = Position(
+          latitude: lastDevLat,
+          longitude: lastDevLng,
+          timestamp: DateTime.now(),
+          accuracy: 0.0,
+          altitude: 0.0,
+          altitudeAccuracy: 0.0,
+          heading: 0.0,
+          headingAccuracy: 0.0,
+          speed: 0.0,
+          speedAccuracy: 0.0,
+        );
+        final offLat = cLat ?? 18.58742586542344;
+        final offLng = cLng ?? 73.73845322922567;
+        final offRad = cRad ?? 100.0;
+        initDist = Geolocator.distanceBetween(
+          lastDevLat,
+          lastDevLng,
+          offLat,
+          offLng,
+        );
+        initInRange = initDist <= offRad;
+      }
+
+      _cachedOfficeLat = cLat;
+      _cachedOfficeLng = cLng;
+      _cachedOfficeRadius = cRad;
+      _cachedOfficeName = cLocName ?? cCompany;
+      _cachedOfficeAddress = cAddress;
+      if (initPos != null && _currentPosition == null) {
+        _currentPosition = initPos;
+        _distanceToOffice = initDist;
+        _isInRange = initInRange;
+      }
+
       String currentUserId = '';
       final authState = context.read<AuthBloc>().state;
       if (authState is AuthenticatedState) {
@@ -657,17 +855,13 @@ class _HomePageState extends State<HomePage> {
     setState(() {
       _selectedWorkTypeIndex = index;
     });
+    if (index == 0) {
+      _checkLocationRange(promptIfDisabled: true);
+    }
     try {
       final prefs = await SharedPreferences.getInstance();
       await prefs.setInt('selected_work_type_index', index);
     } catch (_) {}
-  }
-
-  @override
-  void dispose() {
-    _stopLiveTimer();
-    _descriptionController.dispose();
-    super.dispose();
   }
 
   DateTime? _parseTimeString(String? dateTimeStr) {
@@ -766,13 +960,13 @@ class _HomePageState extends State<HomePage> {
     final description = _descriptionController.text.trim();
 
     final isGpsMode = activeWorkTypeIndex == 0;
-    if (isGpsMode && !_isInRange) {
-      ScaffoldMessenger.of(context).showSnackBar(
-        const SnackBar(
-          content: Text('You are outside the office geofence range. Attendance cannot be marked.'),
-          backgroundColor: AppColors.dangerRose,
-          behavior: SnackBarBehavior.floating,
-        ),
+    final isGpsCalculating = isGpsMode && (_isLocating || _distanceToOffice == null);
+    if (isGpsMode && (isGpsCalculating || !_isInRange)) {
+      SnackbarHelper.showError(
+        context,
+        isGpsCalculating
+            ? 'Still calculating location. Please wait a moment...'
+            : 'You are outside the office geofence range. Attendance cannot be marked.',
       );
       return;
     }
@@ -785,34 +979,37 @@ class _HomePageState extends State<HomePage> {
       );
     } else {
       if (description.isEmpty) {
-        ScaffoldMessenger.of(context).showSnackBar(
-          const SnackBar(
-            content: Text('Please enter a daily work description.'),
-            backgroundColor: AppColors.dangerRose,
-            behavior: SnackBarBehavior.floating,
-          ),
+        SnackbarHelper.showWarning(
+          context,
+          'Please enter a daily work description.',
         );
         return;
       }
 
+      final prefs = await SharedPreferences.getInstance();
       final authState = context.read<AuthBloc>().state;
-      double officeLat = 18.58742586542344;
-      double officeLng = 73.73845322922567;
-      String officeLocName = 'Deva Int';
-      if (authState is AuthenticatedState) {
-        if (authState.user.latitude != null) officeLat = authState.user.latitude!;
-        if (authState.user.longitude != null) officeLng = authState.user.longitude!;
-        if (authState.user.locationName != null && authState.user.locationName!.isNotEmpty) {
-          officeLocName = authState.user.locationName!;
-        }
-      }
+      double officeLat = (authState is AuthenticatedState && authState.user.latitude != null)
+          ? authState.user.latitude!
+          : (prefs.getDouble('cached_user_lat') ?? _cachedOfficeLat ?? 18.58742586542344);
+      double officeLng = (authState is AuthenticatedState && authState.user.longitude != null)
+          ? authState.user.longitude!
+          : (prefs.getDouble('cached_user_lng') ?? _cachedOfficeLng ?? 73.73845322922567);
+      String officeLocName = (authState is AuthenticatedState &&
+              authState.user.locationName != null &&
+              authState.user.locationName!.isNotEmpty)
+          ? authState.user.locationName!
+          : (prefs.getString('cached_user_location_name') ?? _cachedOfficeName ?? 'Office');
 
       final workType = activeWorkTypeIndex == 0 ? 'GPS' : 'WFH';
       final location = activeWorkTypeIndex == 0
           ? officeLocName
           : 'Home Office';
-      final currentLat = _currentPosition?.latitude ?? officeLat;
-      final currentLng = _currentPosition?.longitude ?? officeLng;
+      final currentLat = _currentPosition?.latitude ??
+          prefs.getDouble('cached_last_device_lat') ??
+          officeLat;
+      final currentLng = _currentPosition?.longitude ??
+          prefs.getDouble('cached_last_device_lng') ??
+          officeLng;
       final deviceId = await DeviceInfoUtil.getDeviceId();
 
       if (!mounted) return;
@@ -844,12 +1041,12 @@ class _HomePageState extends State<HomePage> {
             Container(
               padding: const EdgeInsets.all(8),
               decoration: BoxDecoration(
-                color: AppColors.warningAmber.withValues(alpha: 0.12),
+                color: AppColors.primaryNavy.withValues(alpha: 0.12),
                 borderRadius: BorderRadius.circular(10),
               ),
               child: const Icon(
                 Icons.logout_rounded,
-                color: AppColors.warningAmber,
+                color: AppColors.primaryNavy,
                 size: 22,
               ),
             ),
@@ -867,7 +1064,7 @@ class _HomePageState extends State<HomePage> {
           ],
         ),
         content: Text(
-          'Are you sure you want to clock out for today ($workType)? This will end your active work session.',
+          'Are you sure you want to clock out for today? This will end your active work session.',
           style: const TextStyle(
             color: AppColors.textMuted,
             fontSize: 14,
@@ -889,15 +1086,20 @@ class _HomePageState extends State<HomePage> {
             onPressed: () async {
               Navigator.of(ctx).pop();
               final description = _descriptionController.text.trim();
+              final prefs = await SharedPreferences.getInstance();
               final authState = context.read<AuthBloc>().state;
-              double officeLat = 18.58742586542344;
-              double officeLng = 73.73845322922567;
-              if (authState is AuthenticatedState) {
-                if (authState.user.latitude != null) officeLat = authState.user.latitude!;
-                if (authState.user.longitude != null) officeLng = authState.user.longitude!;
-              }
-              final currentLat = _currentPosition?.latitude ?? officeLat;
-              final currentLng = _currentPosition?.longitude ?? officeLng;
+              double officeLat = (authState is AuthenticatedState && authState.user.latitude != null)
+                  ? authState.user.latitude!
+                  : (prefs.getDouble('cached_user_lat') ?? _cachedOfficeLat ?? 18.58742586542344);
+              double officeLng = (authState is AuthenticatedState && authState.user.longitude != null)
+                  ? authState.user.longitude!
+                  : (prefs.getDouble('cached_user_lng') ?? _cachedOfficeLng ?? 73.73845322922567);
+              final currentLat = _currentPosition?.latitude ??
+                  prefs.getDouble('cached_last_device_lat') ??
+                  officeLat;
+              final currentLng = _currentPosition?.longitude ??
+                  prefs.getDouble('cached_last_device_lng') ??
+                  officeLng;
               final deviceId = await DeviceInfoUtil.getDeviceId();
 
               if (!mounted) return;
@@ -915,7 +1117,7 @@ class _HomePageState extends State<HomePage> {
               _descriptionController.clear();
             },
             style: ElevatedButton.styleFrom(
-              backgroundColor: AppColors.warningAmber,
+              backgroundColor: AppColors.primaryNavy,
               foregroundColor: Colors.white,
               shape: RoundedRectangleBorder(
                 borderRadius: BorderRadius.circular(8),
@@ -935,8 +1137,11 @@ class _HomePageState extends State<HomePage> {
   @override
   Widget build(BuildContext context) {
     return BlocConsumer<AttendanceBloc, AttendanceState>(
-      listener: (context, state) {
+      listener: (context, state) async {
         if (state is AttendanceLoadedState) {
+          final prefs = await SharedPreferences.getInstance();
+          final todayStr = DateFormat('yyyy-MM-dd').format(DateTime.now());
+
           if (state.todayRecord != null) {
             final isRecordClockedIn = state.todayRecord!.checkOutTime == null ||
                 state.todayRecord!.checkOutTime!.isEmpty ||
@@ -957,13 +1162,68 @@ class _HomePageState extends State<HomePage> {
               _selectedWorkTypeIndex = 0;
               _saveSelectedWorkType(0);
             }
+
+            // Cache today's attendance record in SharedPreferences
+            try {
+              final authState = context.read<AuthBloc>().state;
+              final currentUserId = authState is AuthenticatedState ? authState.user.id : '';
+              await prefs.setString('today_attendance_date', todayStr);
+              await prefs.setString('cached_attendance_user_id', currentUserId);
+              await prefs.setBool('today_attendance_is_clocked_in', isRecordClockedIn);
+              await prefs.setString('today_attendance_work_type', state.todayRecord!.workType);
+              await prefs.setString(
+                'today_attendance_record_data',
+                jsonEncode({
+                  'id': state.todayRecord!.id,
+                  'checkInTime': state.todayRecord!.checkInTime,
+                  'checkOutTime': state.todayRecord!.checkOutTime,
+                  'totalHours': state.todayRecord!.totalHours,
+                  'workType': state.todayRecord!.workType,
+                  'location': state.todayRecord!.location,
+                  'description': state.todayRecord!.description,
+                }),
+              );
+            } catch (_) {}
           } else {
+            // Check if local cache or auth user has today's record before clearing
+            final savedDate = prefs.getString('today_attendance_date');
+            final savedJsonStr = prefs.getString('today_attendance_record_data');
             final authState = context.read<AuthBloc>().state;
             final loginUser = authState is AuthenticatedState ? authState.user : null;
             final hasLoginInTime = loginUser?.timeIn != null &&
                 loginUser!.timeIn!.trim().isNotEmpty &&
                 loginUser.timeIn != '--:--';
-            if (!hasLoginInTime) {
+
+            if (savedDate == todayStr && savedJsonStr != null && savedJsonStr.isNotEmpty) {
+              try {
+                final decoded = jsonDecode(savedJsonStr);
+                if (decoded is Map<String, dynamic>) {
+                  final model = AttendanceRecordModel.fromJson(decoded);
+                  _localInTime = model.checkInTime;
+                  _localOutTime = model.checkOutTime;
+                  _localTotalHours = model.totalHours;
+                  _localRecordId = model.id;
+                  final isRecordClockedIn = _localInTime != null &&
+                      (_localOutTime == null || _localOutTime!.isEmpty || _localOutTime == '--:--');
+                  if (isRecordClockedIn) {
+                    _startLiveTimer();
+                  } else {
+                    _stopLiveTimer();
+                  }
+                }
+              } catch (_) {}
+            } else if (hasLoginInTime) {
+              _localInTime = loginUser!.timeIn;
+              _localOutTime = loginUser.timeOut;
+              _localTotalHours = AttendanceRecordModel.parseTotalHours(loginUser.totalHours);
+              final isRecordClockedIn = _localInTime != null &&
+                  (_localOutTime == null || _localOutTime!.isEmpty || _localOutTime == '--:--');
+              if (isRecordClockedIn) {
+                _startLiveTimer();
+              } else {
+                _stopLiveTimer();
+              }
+            } else if (_localInTime == null) {
               _stopLiveTimer();
               _localInTime = null;
               _localOutTime = null;
@@ -972,22 +1232,39 @@ class _HomePageState extends State<HomePage> {
             }
           }
           if (state.successMessage != null) {
-            ScaffoldMessenger.of(context).showSnackBar(
-              SnackBar(
-                content: Text(state.successMessage!),
-                backgroundColor: AppColors.successEmerald,
-                behavior: SnackBarBehavior.floating,
-              ),
-            );
+            SnackbarHelper.showSuccess(context, state.successMessage!);
           }
         } else if (state is AttendanceInitialState) {
-          _stopLiveTimer();
+          final prefs = await SharedPreferences.getInstance();
+          final todayStr = DateFormat('yyyy-MM-dd').format(DateTime.now());
+          final savedDate = prefs.getString('today_attendance_date');
+          final savedJsonStr = prefs.getString('today_attendance_record_data');
           final authState = context.read<AuthBloc>().state;
           final loginUser = authState is AuthenticatedState ? authState.user : null;
-          if (loginUser?.timeIn != null &&
+          final hasLoginInTime = loginUser?.timeIn != null &&
               loginUser!.timeIn!.trim().isNotEmpty &&
-              loginUser.timeIn != '--:--') {
-            final isWfh = loginUser.attendanceType?.trim().toUpperCase() == 'WFH';
+              loginUser.timeIn != '--:--';
+
+          if (savedDate == todayStr && savedJsonStr != null && savedJsonStr.isNotEmpty) {
+            try {
+              final decoded = jsonDecode(savedJsonStr);
+              if (decoded is Map<String, dynamic>) {
+                final model = AttendanceRecordModel.fromJson(decoded);
+                _localInTime = model.checkInTime;
+                _localOutTime = model.checkOutTime;
+                _localTotalHours = model.totalHours;
+                _localRecordId = model.id;
+                final isRecordClockedIn = _localInTime != null &&
+                    (_localOutTime == null || _localOutTime!.isEmpty || _localOutTime == '--:--');
+                if (isRecordClockedIn) {
+                  _startLiveTimer();
+                } else {
+                  _stopLiveTimer();
+                }
+              }
+            } catch (_) {}
+          } else if (hasLoginInTime) {
+            final isWfh = loginUser!.attendanceType?.trim().toUpperCase() == 'WFH';
             _localInTime = loginUser.timeIn;
             _localOutTime = loginUser.timeOut;
             _localTotalHours = AttendanceRecordModel.parseTotalHours(loginUser.totalHours);
@@ -996,8 +1273,11 @@ class _HomePageState extends State<HomePage> {
                 (_localOutTime == null || _localOutTime!.isEmpty || _localOutTime == '--:--');
             if (isClockedIn) {
               _startLiveTimer();
+            } else {
+              _stopLiveTimer();
             }
           } else {
+            _stopLiveTimer();
             _localInTime = null;
             _localOutTime = null;
             _localTotalHours = 0.0;
@@ -1006,13 +1286,7 @@ class _HomePageState extends State<HomePage> {
             _descriptionController.clear();
           }
         } else if (state is AttendanceErrorState) {
-          ScaffoldMessenger.of(context).showSnackBar(
-            SnackBar(
-              content: Text(state.message),
-              backgroundColor: AppColors.dangerRose,
-              behavior: SnackBarBehavior.floating,
-            ),
-          );
+          SnackbarHelper.showError(context, state.message);
         }
       },
       builder: (context, state) {
@@ -1528,7 +1802,7 @@ class _HomePageState extends State<HomePage> {
               ),
               const SizedBox(height: 20),
 
-              // Segmented Control (GPS Office / WFH Remote)
+              // Segmented Control (Office / Remote)
               Center(
                 child: Container(
                   height: 48,
@@ -1554,7 +1828,7 @@ class _HomePageState extends State<HomePage> {
                             ),
                             alignment: Alignment.center,
                             child: Text(
-                              'GPS Office',
+                              'Office',
                               style: TextStyle(
                                 color: activeWorkTypeIndex == 0
                                     ? AppColors.primaryNavy
@@ -1580,7 +1854,7 @@ class _HomePageState extends State<HomePage> {
                             ),
                             alignment: Alignment.center,
                             child: Text(
-                              'WFH Remote',
+                              'Remote',
                               style: TextStyle(
                                 color: activeWorkTypeIndex == 1
                                     ? AppColors.primaryNavy
@@ -1606,27 +1880,27 @@ class _HomePageState extends State<HomePage> {
                     final authState = context.watch<AuthBloc>().state;
                     final officeLat = (authState is AuthenticatedState && authState.user.latitude != null)
                         ? authState.user.latitude!
-                        : 18.58742586542344;
+                        : (_cachedOfficeLat ?? 18.58742586542344);
                     final officeLng = (authState is AuthenticatedState && authState.user.longitude != null)
                         ? authState.user.longitude!
-                        : 73.73845322922567;
+                        : (_cachedOfficeLng ?? 73.73845322922567);
                     final officeRadius = (authState is AuthenticatedState &&
                             (authState.user.allowedRadius != null || authState.user.radius != null))
                         ? (authState.user.allowedRadius ?? authState.user.radius!)
-                        : 100.0;
+                        : (_cachedOfficeRadius ?? 100.0);
                     final officeClientName = (authState is AuthenticatedState && authState.user.company.isNotEmpty)
                         ? authState.user.company
-                        : 'Deva Interprices';
+                        : (_cachedOfficeName ?? 'ClientSite HQ');
                     final officeLocName = (authState is AuthenticatedState &&
                             authState.user.locationName != null &&
                             authState.user.locationName!.isNotEmpty)
                         ? authState.user.locationName!
-                        : 'Deva Int';
+                        : (_cachedOfficeName ?? 'Office');
                     final officeAddress = (authState is AuthenticatedState &&
                             authState.user.address != null &&
                             authState.user.address!.isNotEmpty)
                         ? authState.user.address!
-                        : 'Pune';
+                        : (_cachedOfficeAddress ?? 'Office Location');
 
                     final fullOfficeTitle = officeClientName == officeLocName
                         ? officeClientName
@@ -1935,7 +2209,9 @@ class _HomePageState extends State<HomePage> {
               Builder(
                 builder: (context) {
                   final isGpsMode = activeWorkTypeIndex == 0;
-                  final isGpsOutOfRange = isGpsMode && !_isInRange;
+                  final isGpsCalculating =
+                      isGpsMode && (_isLocating || _distanceToOffice == null);
+                  final isGpsOutOfRange = isGpsMode && (isGpsCalculating || !_isInRange);
                   final isButtonDisabled =
                       isLoading || isCompletedToday || isGpsOutOfRange;
 
@@ -1950,15 +2226,25 @@ class _HomePageState extends State<HomePage> {
                                 recordId: activeRecordId,
                                 activeWorkTypeIndex: activeWorkTypeIndex,
                               ),
-                      icon: Icon(
-                        isCompletedToday
-                            ? Icons.check_circle_rounded
-                            : (isClockedIn
-                                ? Icons.logout_rounded
-                                : Icons.login_rounded),
-                        color: Colors.white,
-                        size: 20,
-                      ),
+                      icon: isGpsCalculating
+                          ? const SizedBox(
+                              width: 18,
+                              height: 18,
+                              child: CircularProgressIndicator(
+                                strokeWidth: 2,
+                                valueColor:
+                                    AlwaysStoppedAnimation<Color>(Colors.white),
+                              ),
+                            )
+                          : Icon(
+                              isCompletedToday
+                                  ? Icons.check_circle_rounded
+                                  : (isClockedIn
+                                      ? Icons.logout_rounded
+                                      : Icons.login_rounded),
+                              color: Colors.white,
+                              size: 20,
+                            ),
                       label: isLoading
                           ? const SizedBox(
                               width: 22,
@@ -1972,9 +2258,11 @@ class _HomePageState extends State<HomePage> {
                           : Text(
                               isCompletedToday
                                   ? 'Attendance Marked for Today'
-                                  : (isClockedIn
-                                      ? 'Confirm Time Out'
-                                      : 'Confirm Time In'),
+                                  : (isGpsCalculating
+                                      ? 'Calculating Location...'
+                                      : (isClockedIn
+                                          ? 'Confirm Time Out'
+                                          : 'Confirm Time In')),
                               style: const TextStyle(
                                 color: Colors.white,
                                 fontSize: 16,

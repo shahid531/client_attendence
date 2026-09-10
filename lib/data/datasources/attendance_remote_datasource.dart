@@ -455,14 +455,15 @@ class AttendanceRemoteDataSourceImpl implements AttendanceRemoteDataSource {
     if (dio != null && sharedPreferences != null) {
       try {
         final token = sharedPreferences!.getString('auth_bearer_token');
+        if (token == null || token.isEmpty) {
+          return [];
+        }
         final headers = <String, String>{
           'Content-Type': 'application/json',
           'Accept': '*/*',
           'ngrok-skip-browser-warning': 'true',
+          'Authorization': 'Bearer $token',
         };
-        if (token != null && token.isNotEmpty) {
-          headers['Authorization'] = 'Bearer $token';
-        }
 
         final queryParams = <String, dynamic>{
           'page': page,

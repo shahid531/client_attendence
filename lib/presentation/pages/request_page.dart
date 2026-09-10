@@ -2,6 +2,7 @@ import 'package:flutter/material.dart';
 import 'package:flutter_bloc/flutter_bloc.dart';
 import 'package:intl/intl.dart';
 import '../../core/constants/app_colors.dart';
+import '../../core/utils/snackbar_helper.dart';
 import '../../domain/entities/leave_request.dart';
 import '../blocs/auth/auth_bloc.dart';
 import '../blocs/auth/auth_state.dart';
@@ -138,49 +139,45 @@ class RequestPageState extends State<RequestPage> {
                 }
 
                 return Container(
-                  height: 48,
+                  height: 44,
                   padding: const EdgeInsets.all(4),
                   decoration: BoxDecoration(
                     color: const Color(0xFFF1F5F9),
-                    borderRadius: BorderRadius.circular(24),
+                    borderRadius: BorderRadius.circular(12),
+                    border: Border.all(color: AppColors.borderGrey),
                   ),
                   child: Row(
                     children: [
                       Expanded(
                         child: GestureDetector(
                           onTap: () => _onTabSelected(0),
-                          child: AnimatedContainer(
-                            duration: const Duration(milliseconds: 200),
+                          child: Container(
                             decoration: BoxDecoration(
-                              color: _selectedTabIndex == 0
-                                  ? Colors.white
-                                  : Colors.transparent,
-                              borderRadius: BorderRadius.circular(20),
+                              color: _selectedTabIndex == 0 ? Colors.white : Colors.transparent,
+                              borderRadius: BorderRadius.circular(8),
                               boxShadow: _selectedTabIndex == 0
                                   ? [
                                       BoxShadow(
                                         color: Colors.black.withOpacity(0.04),
                                         blurRadius: 4,
                                         offset: const Offset(0, 2),
-                                      )
+                                      ),
                                     ]
-                                  : [],
+                                  : null,
                             ),
                             alignment: Alignment.center,
                             child: Text(
-                              _selectedTabIndex == 0 && firstTabCount > 0
-                                  ? (_isAdmin
-                                      ? 'Rejected ($firstTabCount)'
-                                      : 'Pending ($firstTabCount)')
-                                  : (_isAdmin ? 'Rejected' : 'Pending'),
+                              _isAdmin
+                                  ? 'Rejected ($firstTabCount)'
+                                  : 'Pending ($firstTabCount)',
                               style: TextStyle(
-                                color: _selectedTabIndex == 0
-                                    ? const Color(0xFF2563EB)
-                                    : const Color(0xFF64748B),
                                 fontWeight: _selectedTabIndex == 0
-                                    ? FontWeight.w600
-                                    : FontWeight.normal,
-                                fontSize: 14,
+                                    ? FontWeight.bold
+                                    : FontWeight.w500,
+                                color: _selectedTabIndex == 0
+                                    ? AppColors.primaryNavy
+                                    : AppColors.textLight,
+                                fontSize: 13,
                               ),
                             ),
                           ),
@@ -189,36 +186,31 @@ class RequestPageState extends State<RequestPage> {
                       Expanded(
                         child: GestureDetector(
                           onTap: () => _onTabSelected(1),
-                          child: AnimatedContainer(
-                            duration: const Duration(milliseconds: 200),
+                          child: Container(
                             decoration: BoxDecoration(
-                              color: _selectedTabIndex == 1
-                                  ? Colors.white
-                                  : Colors.transparent,
-                              borderRadius: BorderRadius.circular(20),
+                              color: _selectedTabIndex == 1 ? Colors.white : Colors.transparent,
+                              borderRadius: BorderRadius.circular(8),
                               boxShadow: _selectedTabIndex == 1
                                   ? [
                                       BoxShadow(
                                         color: Colors.black.withOpacity(0.04),
                                         blurRadius: 4,
                                         offset: const Offset(0, 2),
-                                      )
+                                      ),
                                     ]
-                                  : [],
+                                  : null,
                             ),
                             alignment: Alignment.center,
                             child: Text(
-                              _selectedTabIndex == 1 && completedCount > 0
-                                  ? 'Completed ($completedCount)'
-                                  : 'Completed',
+                              'Completed ($completedCount)',
                               style: TextStyle(
-                                color: _selectedTabIndex == 1
-                                    ? const Color(0xFF2563EB)
-                                    : const Color(0xFF64748B),
                                 fontWeight: _selectedTabIndex == 1
-                                    ? FontWeight.w600
-                                    : FontWeight.normal,
-                                fontSize: 14,
+                                    ? FontWeight.bold
+                                    : FontWeight.w500,
+                                color: _selectedTabIndex == 1
+                                    ? AppColors.primaryNavy
+                                    : AppColors.textLight,
+                                fontSize: 13,
                               ),
                             ),
                           ),
@@ -235,12 +227,9 @@ class RequestPageState extends State<RequestPage> {
             BlocConsumer<LeaveBloc, LeaveState>(
               listener: (context, state) {
                 if (state is LeaveLoadedState && state.successMessage != null) {
-                  ScaffoldMessenger.of(context).showSnackBar(
-                    SnackBar(
-                      content: Text(state.successMessage!),
-                      backgroundColor: AppColors.successEmerald,
-                    ),
-                  );
+                  SnackbarHelper.showSuccess(context, state.successMessage!);
+                } else if (state is LeaveErrorState) {
+                  SnackbarHelper.showError(context, state.message);
                 }
               },
               builder: (context, state) {
@@ -363,19 +352,19 @@ class RequestPageState extends State<RequestPage> {
                             color: Color(0xFF1E293B),
                           ),
                         ),
-                        const SizedBox(height: 6),
-                        Text(
-                          _selectedTabIndex == 0
-                              ? (_isAdmin
-                                  ? 'There are no rejected requests found.'
-                                  : 'You have no attendance or leave requests awaiting approval.')
-                              : 'No completed request history available.',
-                          textAlign: TextAlign.center,
-                          style: const TextStyle(
-                            fontSize: 13,
-                            color: Color(0xFF64748B),
-                          ),
-                        ),
+                        // const SizedBox(height: 6),
+                        // Text(
+                        //   _selectedTabIndex == 0
+                        //       ? (_isAdmin
+                        //           ? 'There are no rejected requests found.'
+                        //           : 'You have no attendance or leave requests awaiting approval.')
+                        //       : 'No completed request history available.',
+                        //   textAlign: TextAlign.center,
+                        //   style: const TextStyle(
+                        //     fontSize: 13,
+                        //     color: Color(0xFF64748B),
+                        //   ),
+                        // ),
                       ],
                     ),
                   );

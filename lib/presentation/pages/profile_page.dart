@@ -2,6 +2,7 @@ import 'package:flutter/material.dart';
 import 'package:flutter_bloc/flutter_bloc.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 import '../../core/constants/app_colors.dart';
+import '../../core/utils/snackbar_helper.dart';
 import '../../core/di/injection_container.dart';
 import '../../data/datasources/attendance_remote_datasource.dart';
 import '../blocs/attendance/attendance_bloc.dart';
@@ -67,9 +68,23 @@ class _ProfilePageState extends State<ProfilePage> {
           ElevatedButton(
             onPressed: () async {
               Navigator.of(ctx).pop();
+              ScaffoldMessenger.of(context).clearSnackBars();
+              Navigator.pushAndRemoveUntil(
+                context,
+                MaterialPageRoute(builder: (_) => const LoginPage()),
+                (route) => false,
+              );
               try {
                 final prefs = await SharedPreferences.getInstance();
+                final lastUser = prefs.getString('last_logged_in_username');
+                final lastPass = prefs.getString('last_logged_in_password');
                 await prefs.clear();
+                if (lastUser != null) {
+                  await prefs.setString('last_logged_in_username', lastUser);
+                }
+                if (lastPass != null) {
+                  await prefs.setString('last_logged_in_password', lastPass);
+                }
               } catch (_) {}
               try {
                 sl<AttendanceRemoteDataSource>().clearCache();
@@ -80,7 +95,7 @@ class _ProfilePageState extends State<ProfilePage> {
               }
             },
             style: ElevatedButton.styleFrom(
-              backgroundColor: AppColors.dangerRose,
+              backgroundColor: AppColors.primaryNavy,
               foregroundColor: Colors.white,
               shape: RoundedRectangleBorder(
                 borderRadius: BorderRadius.circular(8),
@@ -107,13 +122,7 @@ class _ProfilePageState extends State<ProfilePage> {
               (route) => false,
             );
           } else if (state is AuthFailureState) {
-            ScaffoldMessenger.of(context).showSnackBar(
-              SnackBar(
-                content: Text(state.message),
-                backgroundColor: AppColors.dangerRose,
-                behavior: SnackBarBehavior.floating,
-              ),
-            );
+            SnackbarHelper.showError(context, state.message);
           }
         },
         builder: (context, state) {

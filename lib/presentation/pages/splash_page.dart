@@ -44,47 +44,28 @@ class _SplashPageState extends State<SplashPage> {
             mainAxisAlignment: MainAxisAlignment.center,
             children: [
               Container(
-                width: 80,
-                height: 80,
+                padding: const EdgeInsets.symmetric(horizontal: 28, vertical: 20),
                 decoration: BoxDecoration(
                   color: Colors.white,
                   borderRadius: BorderRadius.circular(20),
                   boxShadow: [
                     BoxShadow(
-                      color: Colors.black.withValues(alpha: 0.2),
+                      color: Colors.black.withOpacity(0.2),
                       blurRadius: 15,
                       offset: const Offset(0, 5),
                     ),
                   ],
                 ),
-                child: const Icon(
-                  Icons.access_time_filled_rounded,
-                  size: 44,
-                  color: AppColors.primaryNavy,
+                child: Image.asset(
+                  'assets/images/idealake_logo.png',
+                  width: 180,
+                  fit: BoxFit.contain,
                 ),
               ),
-              const SizedBox(height: 24),
-              const Text(
-                'ClientSite Attendance',
-                style: TextStyle(
-                  color: Colors.white,
-                  fontSize: 24,
-                  fontWeight: FontWeight.bold,
-                  letterSpacing: 0.5,
-                ),
-              ),
-              const SizedBox(height: 8),
-              Text(
-                'Clean Architecture & BLoC',
-                style: TextStyle(
-                  color: Colors.white.withValues(alpha: 0.8),
-                  fontSize: 14,
-                ),
-              ),
-              const SizedBox(height: 40),
-              const CircularProgressIndicator(
-                valueColor: AlwaysStoppedAnimation<Color>(Colors.white),
-              ),
+              // const SizedBox(height: 40),
+              // const CircularProgressIndicator(
+              //   valueColor: AlwaysStoppedAnimation<Color>(Colors.white),
+              // ),
             ],
           ),
         ),
