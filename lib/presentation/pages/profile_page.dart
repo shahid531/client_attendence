@@ -150,19 +150,19 @@ class _ProfilePageState extends State<ProfilePage> {
                           ),
                         ),
                       ),
-                      Container(
-                        padding: const EdgeInsets.all(4),
-                        decoration: BoxDecoration(
-                          color: AppColors.successEmerald,
-                          shape: BoxShape.circle,
-                          border: Border.all(color: Colors.white, width: 2),
-                        ),
-                        child: const Icon(
-                          Icons.check,
-                          color: Colors.white,
-                          size: 12,
-                        ),
-                      ),
+                      // Container(
+                      //   padding: const EdgeInsets.all(4),
+                      //   decoration: BoxDecoration(
+                      //     color: AppColors.successEmerald,
+                      //     shape: BoxShape.circle,
+                      //     border: Border.all(color: Colors.white, width: 2),
+                      //   ),
+                      //   child: const Icon(
+                      //     Icons.check,
+                      //     color: Colors.white,
+                      //     size: 12,
+                      //   ),
+                      // ),
                     ],
                   ),
                   const SizedBox(height: 14),
@@ -177,53 +177,53 @@ class _ProfilePageState extends State<ProfilePage> {
                     ),
                     textAlign: TextAlign.center,
                   ),
-                  const SizedBox(height: 4),
-
-                  // Role & Status Badges
-                  Row(
-                    mainAxisAlignment: MainAxisAlignment.center,
-                    children: [
-                      Container(
-                        padding: const EdgeInsets.symmetric(
-                          horizontal: 10,
-                          vertical: 4,
-                        ),
-                        decoration: BoxDecoration(
-                          color: const Color(0xFFEEF2FF),
-                          borderRadius: BorderRadius.circular(12),
-                          border: Border.all(color: const Color(0xFFC7D2FE)),
-                        ),
-                        child: Text(
-                          user?.role ?? 'ADMIN',
-                          style: const TextStyle(
-                            fontSize: 12,
-                            fontWeight: FontWeight.bold,
-                            color: AppColors.primaryNavy,
-                          ),
-                        ),
-                      ),
-                      const SizedBox(width: 8),
-                      Container(
-                        padding: const EdgeInsets.symmetric(
-                          horizontal: 10,
-                          vertical: 4,
-                        ),
-                        decoration: BoxDecoration(
-                          color: AppColors.successBg,
-                          borderRadius: BorderRadius.circular(12),
-                          border: Border.all(color: const Color(0xFFA7F3D0)),
-                        ),
-                        child: Text(
-                          user?.status ?? 'ACTIVE',
-                          style: const TextStyle(
-                            fontSize: 12,
-                            fontWeight: FontWeight.bold,
-                            color: AppColors.successEmerald,
-                          ),
-                        ),
-                      ),
-                    ],
-                  ),
+                  // const SizedBox(height: 4),
+                  //
+                  // // Role & Status Badges
+                  // Row(
+                  //   mainAxisAlignment: MainAxisAlignment.center,
+                  //   children: [
+                  //     Container(
+                  //       padding: const EdgeInsets.symmetric(
+                  //         horizontal: 10,
+                  //         vertical: 4,
+                  //       ),
+                  //       decoration: BoxDecoration(
+                  //         color: const Color(0xFFEEF2FF),
+                  //         borderRadius: BorderRadius.circular(12),
+                  //         border: Border.all(color: const Color(0xFFC7D2FE)),
+                  //       ),
+                  //       child: Text(
+                  //         user?.role ?? 'ADMIN',
+                  //         style: const TextStyle(
+                  //           fontSize: 12,
+                  //           fontWeight: FontWeight.bold,
+                  //           color: AppColors.primaryNavy,
+                  //         ),
+                  //       ),
+                  //     ),
+                  //     const SizedBox(width: 8),
+                  //     Container(
+                  //       padding: const EdgeInsets.symmetric(
+                  //         horizontal: 10,
+                  //         vertical: 4,
+                  //       ),
+                  //       decoration: BoxDecoration(
+                  //         color: AppColors.successBg,
+                  //         borderRadius: BorderRadius.circular(12),
+                  //         border: Border.all(color: const Color(0xFFA7F3D0)),
+                  //       ),
+                  //       child: Text(
+                  //         user?.status ?? 'ACTIVE',
+                  //         style: const TextStyle(
+                  //           fontSize: 12,
+                  //           fontWeight: FontWeight.bold,
+                  //           color: AppColors.successEmerald,
+                  //         ),
+                  //       ),
+                  //     ),
+                  //   ],
+                  // ),
                   const SizedBox(height: 24),
 
                   // Information Card
@@ -251,7 +251,7 @@ class _ProfilePageState extends State<ProfilePage> {
                               ? user!.id
                               : 'ADMIN001',
                         ),
-                        const Divider(height: 1, indent: 56),
+                        const Divider(height: 1,indent: 8,endIndent: 8,),
                         _buildProfileTile(
                           icon: Icons.email_outlined,
                           title: 'Email Address',
@@ -259,13 +259,13 @@ class _ProfilePageState extends State<ProfilePage> {
                               ? user!.email
                               : 'admin@attendance.com',
                         ),
-                        const Divider(height: 1, indent: 56),
+                          const Divider(height: 1,indent: 8,endIndent: 8,),
                         _buildProfileTile(
                           icon: Icons.phone_outlined,
                           title: 'Contact Number',
                           value: user?.contactNumber ?? 'Not Provided',
                         ),
-                        const Divider(height: 1, indent: 56),
+                          const Divider(height: 1,indent: 8,endIndent: 8,),
                         _buildProfileTile(
                           icon: Icons.business_outlined,
                           title: 'Company / Client',
@@ -274,14 +274,14 @@ class _ProfilePageState extends State<ProfilePage> {
                               : 'ClientSite HQ',
                         ),
                         if (user?.reportingManagerName != null) ...[
-                          const Divider(height: 1, indent: 56),
+                          const Divider(height: 1,indent: 8,endIndent: 8,),
                           _buildProfileTile(
                             icon: Icons.supervisor_account_outlined,
                             title: 'Reporting Manager',
                             value: user!.reportingManagerName!,
                           ),
                         ],
-                        const Divider(height: 1, indent: 56),
+                          const Divider(height: 1,indent: 8,endIndent: 8,),
                         ListTile(
                           leading: Container(
                             width: 38,
