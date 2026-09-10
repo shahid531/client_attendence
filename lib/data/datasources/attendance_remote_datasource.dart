@@ -202,24 +202,20 @@ class AttendanceRemoteDataSourceImpl implements AttendanceRemoteDataSource {
         }
 
         final isWfh = workType.toUpperCase() == 'WFH';
-        final endpoint = isWfh
-            ? '$_baseUrl/attendance/wfh/time-in'
-            : '$_baseUrl/attendance/time-in';
+        const endpoint = '$_baseUrl/attendance';
 
         final effectiveDeviceId = (deviceId != null && deviceId.isNotEmpty && deviceId != 'string')
             ? deviceId
             : await DeviceInfoUtil.getDeviceId();
 
-        final Map<String, dynamic> requestBody = isWfh
-            ? {
-                'reason': description,
-                'deviceId': effectiveDeviceId,
-              }
-            : {
-                'latitude': latitude ?? 18.58742586542344,
-                'longitude': longitude ?? 73.73845322922567,
-                'deviceId': effectiveDeviceId,
-              };
+        final Map<String, dynamic> requestBody = {
+          'action': 'TIME_IN',
+          'attendanceType': isWfh ? 'WFH' : 'OFFICE',
+          'latitude': latitude ?? 18.58742586542344,
+          'longitude': longitude ?? 73.73845322922567,
+          'deviceId': effectiveDeviceId,
+          'description': description,
+        };
 
         final response = await dio!.post(
           endpoint,
@@ -315,24 +311,20 @@ class AttendanceRemoteDataSourceImpl implements AttendanceRemoteDataSource {
         }
 
         final isWfh = workType.toUpperCase() == 'WFH';
-        final endpoint = isWfh
-            ? '$_baseUrl/attendance/wfh/time-out'
-            : '$_baseUrl/attendance/time-out';
+        const endpoint = '$_baseUrl/attendance';
 
         final effectiveDeviceId = (deviceId != null && deviceId.isNotEmpty && deviceId != 'string')
             ? deviceId
             : await DeviceInfoUtil.getDeviceId();
 
-        final Map<String, dynamic> requestBody = isWfh
-            ? {
-                'reason': description,
-                'deviceId': effectiveDeviceId,
-              }
-            : {
-                'latitude': latitude ?? 18.58742586542344,
-                'longitude': longitude ?? 73.73845322922567,
-                'deviceId': effectiveDeviceId,
-              };
+        final Map<String, dynamic> requestBody = {
+          'action': 'TIME_OUT',
+          'attendanceType': isWfh ? 'WFH' : 'OFFICE',
+          'latitude': latitude ?? 18.58742586542344,
+          'longitude': longitude ?? 73.73845322922567,
+          'deviceId': effectiveDeviceId,
+          'description': description,
+        };
 
         final response = await dio!.post(
           endpoint,
