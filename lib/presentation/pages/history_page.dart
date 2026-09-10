@@ -57,7 +57,10 @@ class _HistoryPageState extends State<HistoryPage> {
     final yesterday = now.subtract(const Duration(days: 1));
     _toDate = now;
     WidgetsBinding.instance.addPostFrameCallback((_) {
-      if (!_isAdmin && _toDate.year == now.year && _toDate.month == now.month && _toDate.day == now.day) {
+      if (!_isAdmin &&
+          _toDate.year == now.year &&
+          _toDate.month == now.month &&
+          _toDate.day == now.day) {
         if (yesterday.isBefore(_fromDate)) {
           _fromDate = yesterday;
         }
@@ -84,7 +87,9 @@ class _HistoryPageState extends State<HistoryPage> {
 
   void _loadMore() {
     final state = context.read<AttendanceBloc>().state;
-    if (state is AttendanceLoadedState && !state.isLoadingMore && state.hasNext) {
+    if (state is AttendanceLoadedState &&
+        !state.isLoadingMore &&
+        state.hasNext) {
       _applyPeriod(_selectedPeriod, page: state.page + 1, isLoadMore: true);
     }
   }
@@ -214,7 +219,8 @@ class _HistoryPageState extends State<HistoryPage> {
   void _showExportModal(BuildContext context, List<AttendanceRecord> records) {
     final authState = context.read<AuthBloc>().state;
     final user = authState is AuthenticatedState ? authState.user : null;
-    final dateRange = _displayRangeStr.isNotEmpty ? _displayRangeStr : _selectedPeriod;
+    final dateRange =
+        _displayRangeStr.isNotEmpty ? _displayRangeStr : _selectedPeriod;
 
     showModalBottomSheet(
       context: context,
@@ -263,11 +269,13 @@ class _HistoryPageState extends State<HistoryPage> {
                 InkWell(
                   onTap: () async {
                     Navigator.of(modalCtx).pop();
-                    await _handleDirectDownload(records, dateRange, user?.name, user?.id);
+                    await _handleDirectDownload(
+                        records, dateRange, user?.name, user?.id);
                   },
                   borderRadius: BorderRadius.circular(12),
                   child: Container(
-                    padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 14),
+                    padding: const EdgeInsets.symmetric(
+                        horizontal: 16, vertical: 14),
                     decoration: BoxDecoration(
                       color: const Color(0xFFF8FAFC),
                       borderRadius: BorderRadius.circular(12),
@@ -326,11 +334,13 @@ class _HistoryPageState extends State<HistoryPage> {
                 InkWell(
                   onTap: () async {
                     Navigator.of(modalCtx).pop();
-                    await _handleShareReport(records, dateRange, user?.name, user?.id);
+                    await _handleShareReport(
+                        records, dateRange, user?.name, user?.id);
                   },
                   borderRadius: BorderRadius.circular(12),
                   child: Container(
-                    padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 14),
+                    padding: const EdgeInsets.symmetric(
+                        horizontal: 16, vertical: 14),
                     decoration: BoxDecoration(
                       color: const Color(0xFFF8FAFC),
                       borderRadius: BorderRadius.circular(12),
@@ -342,7 +352,8 @@ class _HistoryPageState extends State<HistoryPage> {
                           width: 40,
                           height: 40,
                           decoration: BoxDecoration(
-                            color: AppColors.successEmerald.withValues(alpha: 0.1),
+                            color:
+                                AppColors.successEmerald.withValues(alpha: 0.1),
                             borderRadius: BorderRadius.circular(10),
                           ),
                           child: const Icon(
@@ -496,7 +507,8 @@ class _HistoryPageState extends State<HistoryPage> {
                                 AlwaysStoppedAnimation<Color>(primaryNavy),
                           ),
                         )
-                      : const Icon(Icons.download, size: 16, color: primaryNavy),
+                      : const Icon(Icons.download,
+                          size: 16, color: primaryNavy),
                   label: Text(
                     _isExporting ? 'Exporting...' : 'Export',
                     style: const TextStyle(
@@ -511,8 +523,8 @@ class _HistoryPageState extends State<HistoryPage> {
                     shape: RoundedRectangleBorder(
                       borderRadius: BorderRadius.circular(8),
                     ),
-                    padding: const EdgeInsets.symmetric(
-                        horizontal: 12, vertical: 8),
+                    padding:
+                        const EdgeInsets.symmetric(horizontal: 12, vertical: 8),
                   ),
                 ),
               ],
@@ -545,7 +557,8 @@ class _HistoryPageState extends State<HistoryPage> {
                             _selectedPeriod = newValue;
                             if (newValue == 'Custom' && !_isAdmin) {
                               final now = DateTime.now();
-                              final yesterday = now.subtract(const Duration(days: 1));
+                              final yesterday =
+                                  now.subtract(const Duration(days: 1));
                               if (!_toDate.isBefore(now)) {
                                 _toDate = yesterday;
                               }
@@ -675,10 +688,8 @@ class _HistoryPageState extends State<HistoryPage> {
                                     mainAxisAlignment:
                                         MainAxisAlignment.spaceBetween,
                                     children: [
-                                      const Icon(
-                                          Icons.calendar_today_outlined,
-                                          size: 16,
-                                          color: Color(0xFF64748B)),
+                                      const Icon(Icons.calendar_today_outlined,
+                                          size: 16, color: Color(0xFF64748B)),
                                       Text(
                                         _formatDate(_fromDate),
                                         style: const TextStyle(
@@ -723,10 +734,8 @@ class _HistoryPageState extends State<HistoryPage> {
                                     mainAxisAlignment:
                                         MainAxisAlignment.spaceBetween,
                                     children: [
-                                      const Icon(
-                                          Icons.calendar_today_outlined,
-                                          size: 16,
-                                          color: Color(0xFF64748B)),
+                                      const Icon(Icons.calendar_today_outlined,
+                                          size: 16, color: Color(0xFF64748B)),
                                       Text(
                                         _formatDate(_toDate),
                                         style: const TextStyle(
@@ -750,8 +759,11 @@ class _HistoryPageState extends State<HistoryPage> {
                     SizedBox(
                       width: double.infinity,
                       height: 42,
-                      child: ElevatedButton(
+                      child: ElevatedButton.icon(
                         onPressed: () => _applyPeriod('Custom'),
+                        icon: const Icon(Icons.search_rounded,
+                            size: 18, color: Colors.white),
+
                         style: ElevatedButton.styleFrom(
                           backgroundColor: primaryNavy,
                           shape: RoundedRectangleBorder(
@@ -759,7 +771,7 @@ class _HistoryPageState extends State<HistoryPage> {
                           ),
                           elevation: 0,
                         ),
-                        child: const Text(
+                        label: const Text(
                           'Search',
                           style: TextStyle(
                             color: Colors.white,
@@ -767,6 +779,14 @@ class _HistoryPageState extends State<HistoryPage> {
                             fontSize: 14,
                           ),
                         ),
+                        // child: const Text(
+                        //   'Search',
+                        //   style: TextStyle(
+                        //     color: Colors.white,
+                        //     fontWeight: FontWeight.bold,
+                        //     fontSize: 14,
+                        //   ),
+                        // ),
                       ),
                     )
                   ],
@@ -801,8 +821,10 @@ class _HistoryPageState extends State<HistoryPage> {
                     final location = r.location.toLowerCase();
                     final desc = r.description.toLowerCase();
                     final reqId = (r.requestId ?? '').toLowerCase();
-                    final dateStr = DateFormat('dd/MM/yyyy').format(r.date).toLowerCase();
-                    final dateStr2 = DateFormat('MMM dd, yyyy').format(r.date).toLowerCase();
+                    final dateStr =
+                        DateFormat('dd/MM/yyyy').format(r.date).toLowerCase();
+                    final dateStr2 =
+                        DateFormat('MMM dd, yyyy').format(r.date).toLowerCase();
                     return empName.contains(q) ||
                         empId.contains(q) ||
                         id.contains(q) ||
@@ -818,7 +840,11 @@ class _HistoryPageState extends State<HistoryPage> {
 
                 int presentCount = displayedRecords.where((r) {
                   final s = r.status.toLowerCase();
-                  return s == 'present' || s == 'half day' || (!s.contains('absent') && !s.contains('leave') && !s.contains('incomplete'));
+                  return s == 'present' ||
+                      s == 'half day' ||
+                      (!s.contains('absent') &&
+                          !s.contains('leave') &&
+                          !s.contains('incomplete'));
                 }).length;
 
                 int wfhCount = displayedRecords.where((r) {
@@ -842,14 +868,14 @@ class _HistoryPageState extends State<HistoryPage> {
                       ),
                       child: Row(
                         children: [
-                          _buildStatItem(
-                              '$presentCount', 'Present', const Color(0xFF2563EB)),
+                          _buildStatItem('$presentCount', 'Present',
+                              const Color(0xFF2563EB)),
                           _buildDivider(),
                           _buildStatItem(
                               '$wfhCount', 'WFH', const Color(0xFF1E293B)),
                           _buildDivider(),
-                          _buildStatItem(
-                              '$absentCount', 'Absent', const Color(0xFFDC2626)),
+                          _buildStatItem('$absentCount', 'Absent',
+                              const Color(0xFFDC2626)),
                         ],
                       ),
                     ),
@@ -949,7 +975,8 @@ class _HistoryPageState extends State<HistoryPage> {
                       ),
                     ] else ...[
                       // Attendance Logs List
-                      ...displayedRecords.map((record) => _buildRecordCard(record, primaryNavy)),
+                      ...displayedRecords.map(
+                          (record) => _buildRecordCard(record, primaryNavy)),
 
                       // Scroll Pagination Footer
                       if (state is AttendanceLoadedState)
@@ -1015,7 +1042,8 @@ class _HistoryPageState extends State<HistoryPage> {
           height: 42,
           child: ElevatedButton.icon(
             onPressed: () => _applyPeriod(_selectedPeriod, page: 0),
-            icon: const Icon(Icons.search_rounded, size: 18, color: Colors.white),
+            icon:
+                const Icon(Icons.search_rounded, size: 18, color: Colors.white),
             label: const Text(
               'Search',
               style: TextStyle(
@@ -1050,7 +1078,8 @@ class _HistoryPageState extends State<HistoryPage> {
               height: 18,
               child: CircularProgressIndicator(
                 strokeWidth: 2,
-                valueColor: AlwaysStoppedAnimation<Color>(AppColors.primaryNavy),
+                valueColor:
+                    AlwaysStoppedAnimation<Color>(AppColors.primaryNavy),
               ),
             ),
             SizedBox(width: 10),
@@ -1068,7 +1097,8 @@ class _HistoryPageState extends State<HistoryPage> {
     }
 
     if (!state.hasNext && state.history.isNotEmpty) {
-      final total = state.totalElements > 0 ? state.totalElements : state.history.length;
+      final total =
+          state.totalElements > 0 ? state.totalElements : state.history.length;
       return Container(
         padding: const EdgeInsets.symmetric(vertical: 20),
         alignment: Alignment.center,
@@ -1104,7 +1134,8 @@ class _HistoryPageState extends State<HistoryPage> {
     final dateStr = DateFormat('MMM dd, yyyy').format(record.date);
 
     final statusLower = record.status.toLowerCase();
-    final isAbsent = statusLower.contains('absent') || statusLower.contains('leave');
+    final isAbsent =
+        statusLower.contains('absent') || statusLower.contains('leave');
     final isWFH = record.workType.toUpperCase() == 'WFH';
     final isHalfDay = statusLower.contains('half');
     final isIncomplete = statusLower.contains('incomplete');
@@ -1380,7 +1411,8 @@ class _HistoryPageState extends State<HistoryPage> {
                             statusBadge,
                           ],
                         ),
-                        if (employeeName != null && employeeName.trim().isNotEmpty) ...[
+                        if (employeeName != null &&
+                            employeeName.trim().isNotEmpty) ...[
                           const SizedBox(height: 6),
                           Row(
                             children: [
@@ -1468,7 +1500,8 @@ class _HistoryPageState extends State<HistoryPage> {
                               ),
                               // Bottom-right Office or WFH badge
                               Container(
-                                padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 3),
+                                padding: const EdgeInsets.symmetric(
+                                    horizontal: 8, vertical: 3),
                                 decoration: BoxDecoration(
                                   color: isWFH
                                       ? const Color(0xFFFEF3C7)
@@ -1484,7 +1517,9 @@ class _HistoryPageState extends State<HistoryPage> {
                                   mainAxisSize: MainAxisSize.min,
                                   children: [
                                     Icon(
-                                      isWFH ? Icons.home_work_outlined : Icons.business_rounded,
+                                      isWFH
+                                          ? Icons.home_work_outlined
+                                          : Icons.business_rounded,
                                       size: 13,
                                       color: isWFH
                                           ? const Color(0xFFB45309)
@@ -1527,11 +1562,13 @@ class _HistoryPageState extends State<HistoryPage> {
 
     // Calculate elapsed working hours (skipping Saturday and Sunday)
     int workingHours = 0;
-    DateTime current = DateTime(recordDate.year, recordDate.month, recordDate.day, 23, 59, 59);
+    DateTime current =
+        DateTime(recordDate.year, recordDate.month, recordDate.day, 23, 59, 59);
 
     while (current.isBefore(now)) {
       current = current.add(const Duration(hours: 1));
-      if (current.weekday != DateTime.saturday && current.weekday != DateTime.sunday) {
+      if (current.weekday != DateTime.saturday &&
+          current.weekday != DateTime.sunday) {
         workingHours++;
       }
     }
@@ -1539,7 +1576,8 @@ class _HistoryPageState extends State<HistoryPage> {
     return workingHours <= 48;
   }
 
-  void _showRegularizationModal(BuildContext parentContext, AttendanceRecord record) {
+  void _showRegularizationModal(
+      BuildContext parentContext, AttendanceRecord record) {
     final dateStr = DateFormat('MMM dd, yyyy').format(record.date);
     TimeOfDay? selectedOutTime;
     String? selectedReasonOption;
@@ -1646,21 +1684,40 @@ class _HistoryPageState extends State<HistoryPage> {
                             child: Column(
                               crossAxisAlignment: CrossAxisAlignment.start,
                               children: [
-                                const Text('Date', style: TextStyle(fontSize: 11, color: AppColors.textLight, fontWeight: FontWeight.bold)),
+                                const Text('Date',
+                                    style: TextStyle(
+                                        fontSize: 11,
+                                        color: AppColors.textLight,
+                                        fontWeight: FontWeight.bold)),
                                 const SizedBox(height: 2),
-                                Text(dateStr, style: const TextStyle(fontSize: 13, fontWeight: FontWeight.bold, color: AppColors.textDark)),
+                                Text(dateStr,
+                                    style: const TextStyle(
+                                        fontSize: 13,
+                                        fontWeight: FontWeight.bold,
+                                        color: AppColors.textDark)),
                               ],
                             ),
                           ),
-                          Container(height: 24, width: 1, color: const Color(0xFFE2E8F0)),
+                          Container(
+                              height: 24,
+                              width: 1,
+                              color: const Color(0xFFE2E8F0)),
                           const SizedBox(width: 16),
                           Expanded(
                             child: Column(
                               crossAxisAlignment: CrossAxisAlignment.start,
                               children: [
-                                const Text('Time In', style: TextStyle(fontSize: 11, color: AppColors.textLight, fontWeight: FontWeight.bold)),
+                                const Text('Time In',
+                                    style: TextStyle(
+                                        fontSize: 11,
+                                        color: AppColors.textLight,
+                                        fontWeight: FontWeight.bold)),
                                 const SizedBox(height: 2),
-                                Text(record.checkInTime, style: const TextStyle(fontSize: 13, fontWeight: FontWeight.bold, color: AppColors.textDark)),
+                                Text(record.checkInTime,
+                                    style: const TextStyle(
+                                        fontSize: 13,
+                                        fontWeight: FontWeight.bold,
+                                        color: AppColors.textDark)),
                               ],
                             ),
                           ),
@@ -1683,7 +1740,8 @@ class _HistoryPageState extends State<HistoryPage> {
                       onTap: () async {
                         final picked = await showTimePicker(
                           context: context,
-                          initialTime: selectedOutTime ?? const TimeOfDay(hour: 18, minute: 0),
+                          initialTime: selectedOutTime ??
+                              const TimeOfDay(hour: 18, minute: 0),
                         );
                         if (picked != null) {
                           setModalState(() {
@@ -1693,7 +1751,8 @@ class _HistoryPageState extends State<HistoryPage> {
                       },
                       borderRadius: BorderRadius.circular(10),
                       child: Container(
-                        padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 12),
+                        padding: const EdgeInsets.symmetric(
+                            horizontal: 14, vertical: 12),
                         decoration: BoxDecoration(
                           color: const Color(0xFFF1F5F9),
                           borderRadius: BorderRadius.circular(10),
@@ -1703,14 +1762,20 @@ class _HistoryPageState extends State<HistoryPage> {
                           mainAxisAlignment: MainAxisAlignment.spaceBetween,
                           children: [
                             Text(
-                              formattedTime ?? 'Choose Time Out (e.g. 06:00 PM)',
+                              formattedTime ??
+                                  'Choose Time Out (e.g. 06:00 PM)',
                               style: TextStyle(
                                 fontSize: 14,
-                                fontWeight: formattedTime != null ? FontWeight.bold : FontWeight.w500,
-                                color: formattedTime != null ? AppColors.textDark : AppColors.textLight,
+                                fontWeight: formattedTime != null
+                                    ? FontWeight.bold
+                                    : FontWeight.w500,
+                                color: formattedTime != null
+                                    ? AppColors.textDark
+                                    : AppColors.textLight,
                               ),
                             ),
-                            const Icon(Icons.access_time_rounded, size: 18, color: AppColors.primaryNavy),
+                            const Icon(Icons.access_time_rounded,
+                                size: 18, color: AppColors.primaryNavy),
                           ],
                         ),
                       ),
@@ -1728,7 +1793,8 @@ class _HistoryPageState extends State<HistoryPage> {
                     ),
                     const SizedBox(height: 6),
                     Container(
-                      padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 4),
+                      padding: const EdgeInsets.symmetric(
+                          horizontal: 14, vertical: 4),
                       decoration: BoxDecoration(
                         color: const Color(0xFFF1F5F9),
                         borderRadius: BorderRadius.circular(10),
@@ -1740,9 +1806,13 @@ class _HistoryPageState extends State<HistoryPage> {
                           isExpanded: true,
                           hint: const Text(
                             'Select reason for regularizing',
-                            style: TextStyle(fontSize: 14, color: AppColors.textLight, fontWeight: FontWeight.w500),
+                            style: TextStyle(
+                                fontSize: 14,
+                                color: AppColors.textLight,
+                                fontWeight: FontWeight.w500),
                           ),
-                          icon: const Icon(Icons.keyboard_arrow_down, color: AppColors.primaryNavy),
+                          icon: const Icon(Icons.keyboard_arrow_down,
+                              color: AppColors.primaryNavy),
                           items: reasonOptions.map((String option) {
                             return DropdownMenuItem<String>(
                               value: option,
@@ -1783,10 +1853,12 @@ class _HistoryPageState extends State<HistoryPage> {
                         maxLength: 200,
                         decoration: InputDecoration(
                           hintText: 'Please specify the reason...',
-                          hintStyle: const TextStyle(fontSize: 13, color: AppColors.textLight),
+                          hintStyle: const TextStyle(
+                              fontSize: 13, color: AppColors.textLight),
                           border: OutlineInputBorder(
                             borderRadius: BorderRadius.circular(10),
-                            borderSide: const BorderSide(color: AppColors.borderGrey),
+                            borderSide:
+                                const BorderSide(color: AppColors.borderGrey),
                           ),
                           contentPadding: const EdgeInsets.all(12),
                         ),
@@ -1801,11 +1873,16 @@ class _HistoryPageState extends State<HistoryPage> {
                           child: OutlinedButton(
                             onPressed: () => Navigator.of(modalCtx).pop(),
                             style: OutlinedButton.styleFrom(
-                              side: const BorderSide(color: AppColors.borderGrey),
-                              shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(10)),
+                              side:
+                                  const BorderSide(color: AppColors.borderGrey),
+                              shape: RoundedRectangleBorder(
+                                  borderRadius: BorderRadius.circular(10)),
                               padding: const EdgeInsets.symmetric(vertical: 13),
                             ),
-                            child: const Text('Cancel', style: TextStyle(color: AppColors.textLight, fontWeight: FontWeight.w600)),
+                            child: const Text('Cancel',
+                                style: TextStyle(
+                                    color: AppColors.textLight,
+                                    fontWeight: FontWeight.w600)),
                           ),
                         ),
                         const SizedBox(width: 12),
@@ -1830,7 +1907,8 @@ class _HistoryPageState extends State<HistoryPage> {
 
                               String finalReason = selectedReasonOption!;
                               if (selectedReasonOption == 'Others') {
-                                final customReason = reasonController.text.trim();
+                                final customReason =
+                                    reasonController.text.trim();
                                 if (customReason.isEmpty) {
                                   SnackbarHelper.showWarning(
                                     parentContext,
@@ -1850,25 +1928,30 @@ class _HistoryPageState extends State<HistoryPage> {
                                       requestType: 'ADJUSTMENT',
                                       startDate: record.date,
                                       endDate: record.date,
-                                      reason: 'Time Out: $formattedTime | $finalReason',
+                                      reason:
+                                          'Time Out: $formattedTime | $finalReason',
                                     ),
                                   );
                             },
-            style: ElevatedButton.styleFrom(
-              backgroundColor: AppColors.primaryNavy,
-              shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(10)),
-              padding: const EdgeInsets.symmetric(vertical: 13),
-            ),
-            child: const Text(
-              'Submit Request',
-              style: TextStyle(color: Colors.white, fontWeight: FontWeight.bold, fontSize: 14),
-            ),
-          ),
-        ),
-      ],
-    ),
-  ],
-),
+                            style: ElevatedButton.styleFrom(
+                              backgroundColor: AppColors.primaryNavy,
+                              shape: RoundedRectangleBorder(
+                                  borderRadius: BorderRadius.circular(10)),
+                              padding: const EdgeInsets.symmetric(vertical: 13),
+                            ),
+                            child: const Text(
+                              'Submit Request',
+                              style: TextStyle(
+                                  color: Colors.white,
+                                  fontWeight: FontWeight.bold,
+                                  fontSize: 14),
+                            ),
+                          ),
+                        ),
+                      ],
+                    ),
+                  ],
+                ),
               ),
             );
           },
