@@ -252,6 +252,8 @@ class _ProfilePageState extends State<ProfilePage> {
                         ],
                       ),
                       child: Column(
+                       // crossAxisAlignment: CrossAxisAlignment.start,
+                       // mainAxisAlignment: MainAxisAlignment.start,
                         children: [
                         _buildProfileTile(
                           icon: Icons.badge_outlined,
@@ -313,13 +315,13 @@ class _ProfilePageState extends State<ProfilePage> {
                               color: AppColors.textDark,
                             ),
                           ),
-                          subtitle: const Text(
-                            'Update your security credentials',
-                            style: TextStyle(
-                              fontSize: 12,
-                              color: AppColors.textMuted,
-                            ),
-                          ),
+                          // subtitle: const Text(
+                          //   'Update your security credentials',
+                          //   style: TextStyle(
+                          //     fontSize: 12,
+                          //     color: AppColors.textMuted,
+                          //   ),
+                          // ),
                           trailing: const Icon(
                             Icons.chevron_right_rounded,
                             color: AppColors.textLight,
@@ -377,36 +379,57 @@ class _ProfilePageState extends State<ProfilePage> {
     required String title,
     required String value,
   }) {
-    return ListTile(
-      leading: Container(
-        width: 38,
-        height: 38,
-        decoration: BoxDecoration(
-          color: AppColors.primaryNavy.withOpacity(0.08),
-          borderRadius: BorderRadius.circular(10),
-        ),
-        child: Icon(
-          icon,
-          color: AppColors.primaryNavy,
-          size: 20,
-        ),
+    return Padding(
+      padding: const EdgeInsets.symmetric(
+        horizontal: 16,
+        vertical: 12,
       ),
-      title: Text(
-        title,
-        style: const TextStyle(
-          fontSize: 12,
-          color: AppColors.textMuted,
-          fontWeight: FontWeight.w500,
-        ),
-      ),
-      subtitle: Text(
-        value,
-        style: const TextStyle(
-          fontSize: 14,
-          fontWeight: FontWeight.w600,
-          color: AppColors.textDark,
-        ),
+      child: Row(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          // Icon
+          Container(
+            width: 38,
+            height: 38,
+            decoration: BoxDecoration(
+              color: AppColors.primaryNavy.withOpacity(0.08),
+              borderRadius: BorderRadius.circular(10),
+            ),
+            child: Icon(
+              icon,
+              color: AppColors.primaryNavy,
+              size: 20,
+            ),
+          ),
+
+          const SizedBox(width: 16),
+
+          // Title + Value
+          Expanded(
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                Text(
+                  title,
+                  style: const TextStyle(
+                    fontSize: 12,
+                    color: AppColors.textMuted,
+                    fontWeight: FontWeight.w500,
+                  ),
+                ),
+                const SizedBox(height: 3),
+                Text(
+                  value,
+                  style: const TextStyle(
+                    fontSize: 14,
+                    fontWeight: FontWeight.w600,
+                    color: AppColors.textDark,
+                  ),
+                ),
+              ],
+            ),
+          ),
+        ],
       ),
     );
-  }
-}
+  }}

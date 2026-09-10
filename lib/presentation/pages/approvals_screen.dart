@@ -522,7 +522,7 @@ class ApprovalsScreenState extends State<ApprovalsScreen> {
         controller: _searchController,
         onChanged: (val) => setState(() => _searchQuery = val),
         decoration: InputDecoration(
-          hintText: 'Search requests or employees...',
+          hintText: 'Type Employee name or ID',
           hintStyle: const TextStyle(
             color: AppColors.textLight,
             fontSize: 13,
