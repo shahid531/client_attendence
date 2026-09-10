@@ -919,7 +919,7 @@ class _HomePageState extends State<HomePage> with WidgetsBindingObserver {
             width: 8,
             height: 2.5,
             decoration: BoxDecoration(
-              color: const Color(0xFF2563EB),
+              color:  AppColors.primaryNavy,
               borderRadius: BorderRadius.circular(2),
             ),
           ),
@@ -930,7 +930,7 @@ class _HomePageState extends State<HomePage> with WidgetsBindingObserver {
           width: 9,
           height: 2.5,
           decoration: BoxDecoration(
-            color: const Color(0xFF2563EB),
+            color: AppColors.primaryNavy,
             borderRadius: BorderRadius.circular(2),
           ),
         ),
@@ -942,7 +942,7 @@ class _HomePageState extends State<HomePage> with WidgetsBindingObserver {
             width: 8,
             height: 2.5,
             decoration: BoxDecoration(
-              color: const Color(0xFF2563EB),
+              color: AppColors.primaryNavy,
               borderRadius: BorderRadius.circular(2),
             ),
           ),
@@ -1433,7 +1433,7 @@ class _HomePageState extends State<HomePage> with WidgetsBindingObserver {
                             ] else ...[
                               const Icon(
                                 Icons.timer_outlined,
-                                color: Color(0xFF1D72F2),
+                                color: AppColors.primaryNavy,
                                 size: 22,
                               ),
                               const SizedBox(width: 8),
@@ -1453,33 +1453,19 @@ class _HomePageState extends State<HomePage> with WidgetsBindingObserver {
                                 Text(
                                   'HOURS',
                                   style: TextStyle(
-                                    color: isClockedIn
-                                        ? AppColors.successEmerald
-                                        : const Color(0xFF1D72F2),
+                                    color: const Color(0xFF0F172A),
                                     fontWeight: FontWeight.w800,
                                     fontSize: 13,
                                     letterSpacing: 0.6,
                                   ),
                                 ),
-                                const SizedBox(height: 2),
-                                Container(
-                                  height: 2,
-                                  width: 38,
-                                  decoration: BoxDecoration(
-                                    color: isClockedIn
-                                        ? AppColors.successEmerald
-                                        : const Color(0xFF1D72F2),
-                                    borderRadius: BorderRadius.circular(2),
-                                  ),
-                                ),
+                                //const SizedBox(height: 2),
                               ],
                             ),
                             Text(
-                              isClockedIn ? ' WORKED (LIVE)' : ' WORKED',
+                              ' WORKED',
                               style: TextStyle(
-                                color: isClockedIn
-                                    ? AppColors.successEmerald
-                                    : const Color(0xFF0F172A),
+                                color: const Color(0xFF0F172A),
                                 fontWeight: FontWeight.w800,
                                 fontSize: 13,
                                 letterSpacing: 0.6,
@@ -1597,7 +1583,7 @@ class _HomePageState extends State<HomePage> with WidgetsBindingObserver {
                                     style: TextStyle(
                                       fontSize: 18,
                                       fontWeight: FontWeight.w800,
-                                      color: Color(0xFF1D72F2),
+                                      color: AppColors.primaryNavy,
                                     ),
                                   ),
                                   const SizedBox(width: 10),
@@ -1616,7 +1602,8 @@ class _HomePageState extends State<HomePage> with WidgetsBindingObserver {
                                     style: TextStyle(
                                       fontSize: 18,
                                       fontWeight: FontWeight.w800,
-                                      color: Color(0xFF1D72F2),
+                                     // color: Color(0xFF1D72F2),
+                                      color: AppColors.primaryNavy,
                                     ),
                                   ),
                                   if (secStr != null) ...[
@@ -1679,7 +1666,7 @@ class _HomePageState extends State<HomePage> with WidgetsBindingObserver {
                                   width: 40,
                                   height: 40,
                                   decoration: const BoxDecoration(
-                                    color: Color(0xFF1D72F2),
+                                    color: AppColors.primaryNavy,
                                     shape: BoxShape.circle,
                                   ),
                                   child: const Icon(
@@ -1749,7 +1736,7 @@ class _HomePageState extends State<HomePage> with WidgetsBindingObserver {
                                   width: 40,
                                   height: 40,
                                   decoration: const BoxDecoration(
-                                    color: Color(0xFF1D72F2),
+                                    color: AppColors.primaryNavy,
                                     shape: BoxShape.circle,
                                   ),
                                   child: const Icon(
