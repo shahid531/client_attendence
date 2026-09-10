@@ -62,14 +62,22 @@ class MockAttendanceRepository implements AttendanceRepository {
   }
 
   @override
-  Future<Either<Failure, List<AttendanceRecord>>> getAttendanceHistory({
+  Future<Either<Failure, AttendanceHistoryResult>> getAttendanceHistory({
     String? startDate,
     String? endDate,
     String? filter,
+    String? employeeId,
+    String? employeeName,
     int page = 0,
-    int size = 20,
+    int size = 10,
   }) async {
-    return Right(_history);
+    return Right(AttendanceHistoryResult(
+      records: _history,
+      totalPages: 1,
+      totalElements: _history.length,
+      page: page,
+      hasNext: false,
+    ));
   }
 
   @override
@@ -176,6 +184,32 @@ void main() {
     ));
     await expectation;
   });
+
+  test('should emit [AttendanceLoadedState(isLoadingMore: true), AttendanceLoadedState(isLoadingMore: false)] when isLoadMore is true', () async {
+    // Initial load
+    bloc.add(const LoadAttendanceHistoryEvent(
+      startDate: '2026-09-01',
+      endDate: '2026-09-30',
+      page: 0,
+    ));
+    await Future.delayed(const Duration(milliseconds: 50));
+
+    final expectation = expectLater(
+      bloc.stream,
+      emitsInOrder([
+        const AttendanceLoadedState(history: [], isLoadingMore: true),
+        const AttendanceLoadedState(history: [], page: 1, isLoadingMore: false),
+      ]),
+    );
+
+    bloc.add(const LoadAttendanceHistoryEvent(
+      startDate: '2026-09-01',
+      endDate: '2026-09-30',
+      page: 1,
+      isLoadMore: true,
+    ));
+    await expectation;
+  });
 }
 
 class FailingAttendanceRepository implements AttendanceRepository {
@@ -207,14 +241,22 @@ class FailingAttendanceRepository implements AttendanceRepository {
   }
 
   @override
-  Future<Either<Failure, List<AttendanceRecord>>> getAttendanceHistory({
+  Future<Either<Failure, AttendanceHistoryResult>> getAttendanceHistory({
     String? startDate,
     String? endDate,
     String? filter,
+    String? employeeId,
+    String? employeeName,
     int page = 0,
-    int size = 20,
+    int size = 10,
   }) async {
-    return const Right([]);
+    return const Right(AttendanceHistoryResult(
+      records: [],
+      totalPages: 0,
+      totalElements: 0,
+      page: 0,
+      hasNext: false,
+    ));
   }
 
   @override

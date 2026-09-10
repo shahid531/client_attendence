@@ -4,6 +4,7 @@ import 'package:intl/intl.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 import '../../core/errors/exceptions.dart';
 import '../../core/utils/device_info_util.dart';
+import '../../domain/entities/attendance_record.dart';
 import '../models/attendance_record_model.dart';
 
 abstract class AttendanceRemoteDataSource {
@@ -24,12 +25,14 @@ abstract class AttendanceRemoteDataSource {
     String? deviceId,
   });
 
-  Future<List<AttendanceRecordModel>> getAttendanceHistory({
+  Future<AttendanceHistoryResult> getAttendanceHistory({
     String? startDate,
     String? endDate,
     String? filter,
     int page = 0,
-    int size = 20,
+    int size = 10,
+    String? employeeId,
+    String? employeeName,
   });
   Future<AttendanceRecordModel?> getTodayAttendance();
   Future<void> saveTodayRecord(AttendanceRecordModel? record);
@@ -437,18 +440,20 @@ class AttendanceRemoteDataSourceImpl implements AttendanceRemoteDataSource {
   }
 
   @override
-  Future<List<AttendanceRecordModel>> getAttendanceHistory({
+  Future<AttendanceHistoryResult> getAttendanceHistory({
     String? startDate,
     String? endDate,
     String? filter,
     int page = 0,
-    int size = 20,
+    int size = 10,
+    String? employeeId,
+    String? employeeName,
   }) async {
     if (dio != null && sharedPreferences != null) {
       try {
         final token = sharedPreferences!.getString('auth_bearer_token');
         if (token == null || token.isEmpty) {
-          return [];
+          return const AttendanceHistoryResult(records: []);
         }
         final headers = <String, String>{
           'Content-Type': 'application/json',
@@ -458,25 +463,22 @@ class AttendanceRemoteDataSourceImpl implements AttendanceRemoteDataSource {
         };
 
         final queryParams = <String, dynamic>{
+          'employeeId': employeeId ?? '',
+          'employeeName': employeeName ?? '',
           'page': page,
-          'size': size,
+          'pageSize': size > 0 ? size : 10,
+          'status': (filter != null && filter.isNotEmpty)
+              ? filter
+              : 'PRESENT,INCOMPLETE,ABSENT',
         };
         if (startDate != null && startDate.isNotEmpty) {
-          queryParams['startDate'] = startDate;
+          queryParams['fromDate'] = startDate;
         }
         if (endDate != null && endDate.isNotEmpty) {
-          queryParams['endDate'] = endDate;
-        }
-        if (filter != null && filter.isNotEmpty) {
-          queryParams['filter'] = filter;
+          queryParams['toDate'] = endDate;
         }
 
-        final role = sharedPreferences?.getString('cached_user_role')?.trim().toUpperCase() ?? '';
-        final endpoint = (role == 'ADMIN' || role.contains('ADMIN'))
-            ? '$_baseUrl/admin/attendance'
-            : (role == 'RM' || role.startsWith('RM'))
-                ? '$_baseUrl/rm/attendance'
-                : '$_baseUrl/attendance/history';
+        const endpoint = '$_baseUrl/attendance';
 
         final response = await dio!.get(
           endpoint,
@@ -491,18 +493,43 @@ class AttendanceRemoteDataSourceImpl implements AttendanceRemoteDataSource {
           }
           final resData = data['data'];
           List<AttendanceRecordModel> historyList = [];
-          if (resData is Map<String, dynamic> && resData['content'] is List) {
-            final contentList = resData['content'] as List;
-            historyList = contentList
-                .map((item) => AttendanceRecordModel.fromJson(item as Map<String, dynamic>))
-                .toList();
+          int resPage = page;
+          int resPageSize = size;
+          int resTotalElements = 0;
+          int resTotalPages = 1;
+          bool resHasNext = false;
+          bool resHasPrevious = false;
+
+          if (resData is Map<String, dynamic>) {
+            resPage = (resData['page'] as num?)?.toInt() ?? page;
+            resPageSize = (resData['pageSize'] as num?)?.toInt() ?? size;
+            resTotalElements = (resData['totalElements'] as num?)?.toInt() ?? 0;
+            resTotalPages = (resData['totalPages'] as num?)?.toInt() ?? 1;
+            resHasNext = resData['hasNext'] == true;
+            resHasPrevious = resData['hasPrevious'] == true;
+
+            if (resData['content'] is List) {
+              final contentList = resData['content'] as List;
+              historyList = contentList
+                  .map((item) => AttendanceRecordModel.fromJson(item as Map<String, dynamic>))
+                  .toList();
+            }
           } else if (resData is List) {
             historyList = resData
                 .map((item) => AttendanceRecordModel.fromJson(item as Map<String, dynamic>))
                 .toList();
+            resTotalElements = historyList.length;
           }
 
-          return historyList;
+          return AttendanceHistoryResult(
+            records: historyList,
+            page: resPage,
+            pageSize: resPageSize,
+            totalElements: resTotalElements,
+            totalPages: resTotalPages,
+            hasNext: resHasNext,
+            hasPrevious: resHasPrevious,
+          );
         }
       } on DioException catch (e) {
         if (e.response != null && e.response?.data is Map<String, dynamic>) {
@@ -522,7 +549,15 @@ class AttendanceRemoteDataSourceImpl implements AttendanceRemoteDataSource {
     if (_todayRecord != null && !list.any((r) => r.id == _todayRecord!.id)) {
       list.insert(0, _todayRecord!);
     }
-    return list;
+    return AttendanceHistoryResult(
+      records: list,
+      page: 0,
+      pageSize: size,
+      totalElements: list.length,
+      totalPages: 1,
+      hasNext: false,
+      hasPrevious: false,
+    );
   }
 
   @override

@@ -7,21 +7,37 @@ import '../../repositories/leave_repository.dart';
 
 class GetLeaveRequestsParams extends Equatable {
   final String? status;
+  final int page;
+  final int pageSize;
+  final String? employeeId;
+  final String? employeeName;
 
-  const GetLeaveRequestsParams({this.status});
+  const GetLeaveRequestsParams({
+    this.status,
+    this.page = 0,
+    this.pageSize = 10,
+    this.employeeId,
+    this.employeeName,
+  });
 
   @override
-  List<Object?> get props => [status];
+  List<Object?> get props => [status, page, pageSize, employeeId, employeeName];
 }
 
-class GetLeaveRequestsUseCase implements UseCase<List<LeaveRequest>, GetLeaveRequestsParams> {
+class GetLeaveRequestsUseCase implements UseCase<LeaveRequestsResult, GetLeaveRequestsParams> {
   final LeaveRepository repository;
 
   GetLeaveRequestsUseCase(this.repository);
 
   @override
-  Future<Either<Failure, List<LeaveRequest>>> call(GetLeaveRequestsParams params) async {
-    return await repository.getLeaveRequests(status: params.status);
+  Future<Either<Failure, LeaveRequestsResult>> call(GetLeaveRequestsParams params) async {
+    return await repository.getLeaveRequests(
+      status: params.status,
+      page: params.page,
+      pageSize: params.pageSize,
+      employeeId: params.employeeId,
+      employeeName: params.employeeName,
+    );
   }
 }
 

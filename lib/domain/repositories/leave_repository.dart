@@ -11,7 +11,13 @@ abstract class LeaveRepository {
     required String reason,
   });
 
-  Future<Either<Failure, List<LeaveRequest>>> getLeaveRequests({String? status});
+  Future<Either<Failure, LeaveRequestsResult>> getLeaveRequests({
+    String? status,
+    int page = 0,
+    int pageSize = 10,
+    String? employeeId,
+    String? employeeName,
+  });
   Future<Either<Failure, void>> updateRequestStatus({
     required String requestId,
     required String status,

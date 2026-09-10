@@ -20,12 +20,14 @@ abstract class AttendanceRepository {
     String? deviceId,
   });
 
-  Future<Either<Failure, List<AttendanceRecord>>> getAttendanceHistory({
+  Future<Either<Failure, AttendanceHistoryResult>> getAttendanceHistory({
     String? startDate,
     String? endDate,
     String? filter,
     int page = 0,
-    int size = 20,
+    int size = 10,
+    String? employeeId,
+    String? employeeName,
   });
   Future<Either<Failure, AttendanceRecord?>> getTodayAttendance();
 }

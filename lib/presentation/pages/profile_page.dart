@@ -76,14 +76,18 @@ class _ProfilePageState extends State<ProfilePage> {
               );
               try {
                 final prefs = await SharedPreferences.getInstance();
+                final rememberMe = prefs.getBool('remember_me') ?? false;
                 final lastUser = prefs.getString('last_logged_in_username');
                 final lastPass = prefs.getString('last_logged_in_password');
                 await prefs.clear();
-                if (lastUser != null) {
-                  await prefs.setString('last_logged_in_username', lastUser);
-                }
-                if (lastPass != null) {
-                  await prefs.setString('last_logged_in_password', lastPass);
+                if (rememberMe) {
+                  await prefs.setBool('remember_me', true);
+                  if (lastUser != null) {
+                    await prefs.setString('last_logged_in_username', lastUser);
+                  }
+                  if (lastPass != null) {
+                    await prefs.setString('last_logged_in_password', lastPass);
+                  }
                 }
               } catch (_) {}
               try {

@@ -9,11 +9,23 @@ abstract class LeaveEvent extends Equatable {
 
 class LoadLeaveRequestsEvent extends LeaveEvent {
   final String? status;
+  final int page;
+  final int pageSize;
+  final String? employeeId;
+  final String? employeeName;
+  final bool isLoadMore;
 
-  const LoadLeaveRequestsEvent({this.status});
+  const LoadLeaveRequestsEvent({
+    this.status,
+    this.page = 0,
+    this.pageSize = 10,
+    this.employeeId,
+    this.employeeName,
+    this.isLoadMore = false,
+  });
 
   @override
-  List<Object?> get props => [status];
+  List<Object?> get props => [status, page, pageSize, employeeId, employeeName, isLoadMore];
 }
 
 
