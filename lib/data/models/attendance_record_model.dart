@@ -12,6 +12,12 @@ class AttendanceRecordModel extends AttendanceRecord {
     required super.description,
     required super.totalHours,
     required super.status,
+    super.employeeId,
+    super.employeeName,
+    super.timeInDescription,
+    super.timeOutDescription,
+    super.requestStatus,
+    super.requestId,
   });
 
   static double parseTotalHours(dynamic value) {
@@ -110,15 +116,21 @@ class AttendanceRecordModel extends AttendanceRecord {
     }
 
     return AttendanceRecordModel(
-      id: (json['id'] ?? json['attendanceId'] ?? 'att_${parsedDate.millisecondsSinceEpoch}').toString(),
+      id: (json['attendanceId'] ?? json['id'] ?? 'att_${parsedDate.millisecondsSinceEpoch}').toString(),
       date: parsedDate,
       checkInTime: formatTimeString(inTimeRaw),
       checkOutTime: _formatNullableTimeString(outTimeRaw),
       workType: (json['attendanceType'] ?? json['workType'] ?? 'GPS').toString(),
-      location: (json['location'] ?? json['locationName'] ?? json['clientName'] ?? 'HQ Office').toString(),
-      description: (json['description'] ?? json['reason'] ?? json['notes'] ?? '').toString(),
+      location: (json['location'] ?? json['locationName'] ?? json['clientName'] ?? ((json['attendanceType'] == 'WFH') ? 'Home Office' : 'HQ Office')).toString(),
+      description: (json['description'] ?? json['timeInDescription'] ?? json['reason'] ?? json['notes'] ?? '').toString(),
       totalHours: parsedTotalHours,
       status: (json['attendanceStatus'] ?? json['status'] ?? 'Present').toString(),
+      employeeId: json['employeeId']?.toString(),
+      employeeName: json['employeeName']?.toString(),
+      timeInDescription: json['timeInDescription']?.toString(),
+      timeOutDescription: json['timeOutDescription']?.toString(),
+      requestStatus: json['requestStatus']?.toString(),
+      requestId: json['requestId']?.toString(),
     );
   }
 
@@ -133,6 +145,12 @@ class AttendanceRecordModel extends AttendanceRecord {
       'description': description,
       'totalHours': totalHours,
       'status': status,
+      'employeeId': employeeId,
+      'employeeName': employeeName,
+      'timeInDescription': timeInDescription,
+      'timeOutDescription': timeOutDescription,
+      'requestStatus': requestStatus,
+      'requestId': requestId,
     };
   }
 }

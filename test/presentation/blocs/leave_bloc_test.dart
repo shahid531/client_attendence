@@ -28,11 +28,26 @@ class MockLeaveRepository implements LeaveRepository {
   ];
 
   @override
-  Future<Either<Failure, List<LeaveRequest>>> getLeaveRequests({String? status}) async {
+  Future<Either<Failure, LeaveRequestsResult>> getLeaveRequests({
+    String? status,
+    int page = 0,
+    int pageSize = 10,
+    String? employeeId,
+    String? employeeName,
+  }) async {
+    List<LeaveRequest> list = _requests;
     if (status != null && status.isNotEmpty) {
-      return Right(_requests.where((r) => r.status.toLowerCase() == status.toLowerCase()).toList());
+      list = _requests.where((r) => r.status.toLowerCase() == status.toLowerCase()).toList();
     }
-    return Right(_requests);
+    return Right(LeaveRequestsResult(
+      requests: list,
+      page: page,
+      pageSize: pageSize,
+      totalElements: list.length,
+      totalPages: 1,
+      hasNext: false,
+      hasPrevious: false,
+    ));
   }
 
   @override

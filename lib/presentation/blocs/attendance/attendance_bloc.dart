@@ -56,7 +56,18 @@ class AttendanceBloc extends Bloc<AttendanceEvent, AttendanceState> {
     final existingTodayRecord = currentState is AttendanceLoadedState
         ? currentState.todayRecord
         : null;
-    emit(AttendanceLoadingState());
+    final currentHistory = (currentState is AttendanceLoadedState && event.isLoadMore)
+        ? currentState.history
+        : const <AttendanceRecord>[];
+
+    if (event.isLoadMore) {
+      if (currentState is AttendanceLoadedState) {
+        emit(currentState.copyWith(isLoadingMore: true));
+      }
+    } else {
+      emit(AttendanceLoadingState());
+    }
+
     final historyResult = await getAttendanceHistoryUseCase(
       GetAttendanceHistoryParams(
         startDate: event.startDate,
@@ -64,15 +75,34 @@ class AttendanceBloc extends Bloc<AttendanceEvent, AttendanceState> {
         filter: event.filter,
         page: event.page,
         size: event.size,
+        employeeId: event.employeeId,
+        employeeName: event.employeeName,
       ),
     );
 
     historyResult.fold(
-      (failure) => emit(AttendanceErrorState(failure.message)),
-      (history) {
+      (failure) {
+        if (event.isLoadMore && currentState is AttendanceLoadedState) {
+          emit(currentState.copyWith(isLoadingMore: false));
+        } else {
+          emit(AttendanceErrorState(failure.message));
+        }
+      },
+      (result) {
+        final combinedHistory = event.isLoadMore
+            ? [...currentHistory, ...result.records]
+            : result.records;
+
         emit(AttendanceLoadedState(
           todayRecord: existingTodayRecord,
-          history: history,
+          history: combinedHistory,
+          page: result.page,
+          pageSize: result.pageSize,
+          totalElements: result.totalElements,
+          totalPages: result.totalPages,
+          hasNext: result.hasNext,
+          hasPrevious: result.hasPrevious,
+          isLoadingMore: false,
         ));
       },
     );

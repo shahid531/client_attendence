@@ -23,7 +23,7 @@ void main() {
 
       final model = AttendanceRecordModel.fromJson(json);
 
-      expect(model.id, "8");
+      expect(model.id, "ATT991A51DA");
       expect(model.workType, "WFH");
       expect(model.status, "PRESENT");
       expect(model.totalHours, 0.0);

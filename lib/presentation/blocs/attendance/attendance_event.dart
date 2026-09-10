@@ -15,17 +15,23 @@ class LoadAttendanceHistoryEvent extends AttendanceEvent {
   final String? filter;
   final int page;
   final int size;
+  final String? employeeId;
+  final String? employeeName;
+  final bool isLoadMore;
 
   const LoadAttendanceHistoryEvent({
     this.startDate,
     this.endDate,
     this.filter,
     this.page = 0,
-    this.size = 20,
+    this.size = 10,
+    this.employeeId,
+    this.employeeName,
+    this.isLoadMore = false,
   });
 
   @override
-  List<Object?> get props => [startDate, endDate, filter, page, size];
+  List<Object?> get props => [startDate, endDate, filter, page, size, employeeId, employeeName, isLoadMore];
 }
 
 class CheckInRequestedEvent extends AttendanceEvent {

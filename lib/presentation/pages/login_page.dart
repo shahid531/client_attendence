@@ -35,6 +35,7 @@ class _LoginPageState extends State<LoginPage> {
   late final TextEditingController _usernameController;
   late final TextEditingController _passwordController;
   bool _obscurePassword = true;
+  bool _rememberMe = false;
 
   @override
   void initState() {
@@ -47,15 +48,48 @@ class _LoginPageState extends State<LoginPage> {
   Future<void> _loadSavedCredentials() async {
     try {
       final prefs = await SharedPreferences.getInstance();
-      final savedUser = widget.initialUsername ?? prefs.getString('last_logged_in_username');
-      final savedPass = widget.initialPassword ?? prefs.getString('last_logged_in_password');
+      final rememberMe = prefs.getBool('remember_me') ?? false;
 
       if (mounted) {
-        if (savedUser != null && savedUser.isNotEmpty) {
-          _usernameController.text = savedUser;
+        setState(() {
+          _rememberMe = rememberMe;
+        });
+
+        if (rememberMe) {
+          final savedUser = widget.initialUsername ?? prefs.getString('last_logged_in_username');
+          final savedPass = widget.initialPassword ?? prefs.getString('last_logged_in_password');
+
+          if (savedUser != null && savedUser.isNotEmpty) {
+            _usernameController.text = savedUser;
+          }
+          if (savedPass != null && savedPass.isNotEmpty) {
+            _passwordController.text = savedPass;
+          }
+        } else if (widget.initialUsername != null || widget.initialPassword != null) {
+          if (widget.initialUsername != null) {
+            _usernameController.text = widget.initialUsername!;
+          }
+          if (widget.initialPassword != null) {
+            _passwordController.text = widget.initialPassword!;
+          }
         }
-        if (savedPass != null && savedPass.isNotEmpty) {
-          _passwordController.text = savedPass;
+      }
+    } catch (_) {}
+  }
+
+  Future<void> _onRememberMeChanged(bool value) async {
+    try {
+      final prefs = await SharedPreferences.getInstance();
+      await prefs.setBool('remember_me', value);
+      if (!value) {
+        await prefs.remove('last_logged_in_username');
+        await prefs.remove('last_logged_in_password');
+      } else {
+        if (_usernameController.text.trim().isNotEmpty) {
+          await prefs.setString('last_logged_in_username', _usernameController.text.trim());
+        }
+        if (_passwordController.text.trim().isNotEmpty) {
+          await prefs.setString('last_logged_in_password', _passwordController.text.trim());
         }
       }
     } catch (_) {}
@@ -70,6 +104,18 @@ class _LoginPageState extends State<LoginPage> {
 
   Future<void> _onLoginPressed() async {
     if (_formKey.currentState?.validate() ?? false) {
+      try {
+        final prefs = await SharedPreferences.getInstance();
+        await prefs.setBool('remember_me', _rememberMe);
+        if (_rememberMe) {
+          await prefs.setString('last_logged_in_username', _usernameController.text.trim());
+          await prefs.setString('last_logged_in_password', _passwordController.text.trim());
+        } else {
+          await prefs.remove('last_logged_in_username');
+          await prefs.remove('last_logged_in_password');
+        }
+      } catch (_) {}
+
       final deviceId = await DeviceInfoUtil.getDeviceId();
       final deviceModel = await DeviceInfoUtil.getDeviceModel();
       final operatingSystem = await DeviceInfoUtil.getOperatingSystem();
@@ -256,7 +302,53 @@ class _LoginPageState extends State<LoginPage> {
                         return null;
                       },
                     ),
-                    const SizedBox(height: 32),
+                    const SizedBox(height: 12),
+                    InkWell(
+                      onTap: () {
+                        final newVal = !_rememberMe;
+                        setState(() {
+                          _rememberMe = newVal;
+                        });
+                        _onRememberMeChanged(newVal);
+                      },
+                      borderRadius: BorderRadius.circular(6),
+                      child: Padding(
+                        padding: const EdgeInsets.symmetric(vertical: 4),
+                        child: Row(
+                          mainAxisSize: MainAxisSize.min,
+                          children: [
+                            SizedBox(
+                              width: 22,
+                              height: 22,
+                              child: Checkbox(
+                                value: _rememberMe,
+                                activeColor: AppColors.primaryNavy,
+                                shape: RoundedRectangleBorder(
+                                  borderRadius: BorderRadius.circular(4),
+                                ),
+                                onChanged: (val) {
+                                  final newVal = val ?? false;
+                                  setState(() {
+                                    _rememberMe = newVal;
+                                  });
+                                  _onRememberMeChanged(newVal);
+                                },
+                              ),
+                            ),
+                            const SizedBox(width: 8),
+                            const Text(
+                              'Remember me',
+                              style: TextStyle(
+                                fontSize: 13,
+                                fontWeight: FontWeight.w500,
+                                color: AppColors.textDark,
+                              ),
+                            ),
+                          ],
+                        ),
+                      ),
+                    ),
+                    const SizedBox(height: 24),
                     SizedBox(
                       width: double.infinity,
                       height: 52,

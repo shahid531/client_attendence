@@ -10,6 +10,12 @@ class AttendanceRecord extends Equatable {
   final String description;
   final double totalHours;
   final String status; // 'Present', 'Half Day', 'On Leave'
+  final String? employeeId;
+  final String? employeeName;
+  final String? timeInDescription;
+  final String? timeOutDescription;
+  final String? requestStatus;
+  final String? requestId;
 
   const AttendanceRecord({
     required this.id,
@@ -21,6 +27,12 @@ class AttendanceRecord extends Equatable {
     required this.description,
     required this.totalHours,
     required this.status,
+    this.employeeId,
+    this.employeeName,
+    this.timeInDescription,
+    this.timeOutDescription,
+    this.requestStatus,
+    this.requestId,
   });
 
   @override
@@ -34,5 +46,42 @@ class AttendanceRecord extends Equatable {
         description,
         totalHours,
         status,
+        employeeId,
+        employeeName,
+        timeInDescription,
+        timeOutDescription,
+        requestStatus,
+        requestId,
+      ];
+}
+
+class AttendanceHistoryResult extends Equatable {
+  final List<AttendanceRecord> records;
+  final int page;
+  final int pageSize;
+  final int totalElements;
+  final int totalPages;
+  final bool hasNext;
+  final bool hasPrevious;
+
+  const AttendanceHistoryResult({
+    required this.records,
+    this.page = 0,
+    this.pageSize = 10,
+    this.totalElements = 0,
+    this.totalPages = 1,
+    this.hasNext = false,
+    this.hasPrevious = false,
+  });
+
+  @override
+  List<Object?> get props => [
+        records,
+        page,
+        pageSize,
+        totalElements,
+        totalPages,
+        hasNext,
+        hasPrevious,
       ];
 }

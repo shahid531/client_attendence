@@ -58,3 +58,34 @@ class LeaveRequest extends Equatable {
       ];
 }
 
+class LeaveRequestsResult extends Equatable {
+  final List<LeaveRequest> requests;
+  final int page;
+  final int pageSize;
+  final int totalElements;
+  final int totalPages;
+  final bool hasNext;
+  final bool hasPrevious;
+
+  const LeaveRequestsResult({
+    required this.requests,
+    this.page = 0,
+    this.pageSize = 10,
+    this.totalElements = 0,
+    this.totalPages = 1,
+    this.hasNext = false,
+    this.hasPrevious = false,
+  });
+
+  @override
+  List<Object?> get props => [
+        requests,
+        page,
+        pageSize,
+        totalElements,
+        totalPages,
+        hasNext,
+        hasPrevious,
+      ];
+}
+

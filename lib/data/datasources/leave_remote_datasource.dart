@@ -1,6 +1,7 @@
 import 'package:dio/dio.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 import '../../core/errors/exceptions.dart';
+import '../../domain/entities/leave_request.dart';
 import '../models/dashboard_stats_model.dart';
 import '../models/leave_request_model.dart';
 
@@ -13,7 +14,13 @@ abstract class LeaveRemoteDataSource {
     required String reason,
   });
 
-  Future<List<LeaveRequestModel>> getLeaveRequests({String? status});
+  Future<LeaveRequestsResult> getLeaveRequests({
+    String? status,
+    int page = 0,
+    int pageSize = 10,
+    String? employeeId,
+    String? employeeName,
+  });
   Future<DashboardStatsModel> getDashboardStats();
   Future<void> updateRequestStatus({
     required String requestId,
@@ -36,14 +43,7 @@ class LeaveRemoteDataSourceImpl implements LeaveRemoteDataSource {
   final List<LeaveRequestModel> _mockLeaveRequests = [];
 
   String _getRequestsEndpoint() {
-    final role = sharedPreferences?.getString('cached_user_role')?.trim().toUpperCase() ?? '';
-    if (role == 'ADMIN') {
-      return '$_baseUrl/admin/requests';
-    } else if (role == 'RM' || role.startsWith('RM')) {
-      return '$_baseUrl/rm/requests';
-    } else {
-      return '$_baseUrl/requests';
-    }
+    return '$_baseUrl/requests';
   }
 
   String _getUpdateRequestEndpoint(String requestId, String action) {
@@ -58,30 +58,42 @@ class LeaveRemoteDataSourceImpl implements LeaveRemoteDataSource {
   }
 
   @override
-  Future<List<LeaveRequestModel>> getLeaveRequests({String? status}) async {
+  Future<LeaveRequestsResult> getLeaveRequests({
+    String? status,
+    int page = 0,
+    int pageSize = 10,
+    String? employeeId,
+    String? employeeName,
+  }) async {
     if (dio != null && sharedPreferences != null) {
       try {
         final cachedToken = sharedPreferences!.getString('auth_bearer_token');
         if (cachedToken == null || cachedToken.isEmpty) {
-          return [];
+          return const LeaveRequestsResult(requests: []);
         }
         final headers = <String, String>{
+          'Content-Type': 'application/json',
           'Accept': '*/*',
           'ngrok-skip-browser-warning': 'true',
           'Authorization': 'Bearer $cachedToken',
         };
 
-        final queryParams = <String, dynamic>{};
-        if (status != null && status.isNotEmpty) {
-          queryParams['status'] = status.toUpperCase();
-        }
+        final queryParams = <String, dynamic>{
+          'employeeId': employeeId ?? '',
+          'employeeName': employeeName ?? '',
+          'page': page,
+          'pageSize': pageSize > 0 ? pageSize : 10,
+          'status': (status != null && status.isNotEmpty)
+              ? status.toUpperCase()
+              : 'PENDING,APPROVED,REJECTED',
+        };
 
         final endpoint = _getRequestsEndpoint();
         print('[LeaveRemoteDataSource] GET $endpoint with params: $queryParams');
 
         final response = await dio!.get(
           endpoint,
-          queryParameters: queryParams.isNotEmpty ? queryParams : null,
+          queryParameters: queryParams,
           options: Options(headers: headers),
         );
 
@@ -93,16 +105,42 @@ class LeaveRemoteDataSourceImpl implements LeaveRemoteDataSource {
             throw ServerException(data['message']?.toString() ?? 'Failed to retrieve requests');
           }
 
-          final list = data['data'];
-          if (list is List) {
-            final parsed = list
+          final resData = data['data'];
+          if (resData is Map<String, dynamic>) {
+            final contentList = resData['content'];
+            List<LeaveRequestModel> list = [];
+            if (contentList is List) {
+              list = contentList
+                  .map((item) => LeaveRequestModel.fromJson(item as Map<String, dynamic>))
+                  .toList();
+            }
+            return LeaveRequestsResult(
+              requests: list,
+              page: resData['page'] is int ? resData['page'] as int : page,
+              pageSize: resData['pageSize'] is int ? resData['pageSize'] as int : pageSize,
+              totalElements: resData['totalElements'] is int
+                  ? resData['totalElements'] as int
+                  : list.length,
+              totalPages: resData['totalPages'] is int ? resData['totalPages'] as int : 1,
+              hasNext: resData['hasNext'] is bool ? resData['hasNext'] as bool : false,
+              hasPrevious: resData['hasPrevious'] is bool ? resData['hasPrevious'] as bool : false,
+            );
+          } else if (resData is List) {
+            final parsed = resData
                 .map((item) => LeaveRequestModel.fromJson(item as Map<String, dynamic>))
                 .toList();
-            print('[LeaveRemoteDataSource] Successfully parsed ${parsed.length} requests');
-            return parsed;
+            return LeaveRequestsResult(
+              requests: parsed,
+              page: page,
+              pageSize: pageSize,
+              totalElements: parsed.length,
+              totalPages: 1,
+              hasNext: false,
+              hasPrevious: false,
+            );
           }
         }
-        return [];
+        return const LeaveRequestsResult(requests: []);
       } on DioException catch (e) {
         print('[LeaveRemoteDataSource] DioException on GET requests: ${e.response?.data ?? e.message}');
         if (e.response != null && e.response?.data is Map<String, dynamic>) {
@@ -122,11 +160,28 @@ class LeaveRemoteDataSourceImpl implements LeaveRemoteDataSource {
     if (status != null && status.isNotEmpty) {
       final statuses =
           status.toUpperCase().split(',').map((s) => s.trim()).toList();
-      return _mockLeaveRequests
+      final filtered = _mockLeaveRequests
           .where((r) => statuses.contains(r.status.toUpperCase()))
           .toList();
+      return LeaveRequestsResult(
+        requests: filtered,
+        page: page,
+        pageSize: pageSize,
+        totalElements: filtered.length,
+        totalPages: 1,
+        hasNext: false,
+        hasPrevious: false,
+      );
     }
-    return List<LeaveRequestModel>.from(_mockLeaveRequests);
+    return LeaveRequestsResult(
+      requests: List<LeaveRequestModel>.from(_mockLeaveRequests),
+      page: page,
+      pageSize: pageSize,
+      totalElements: _mockLeaveRequests.length,
+      totalPages: 1,
+      hasNext: false,
+      hasPrevious: false,
+    );
   }
 
   @override

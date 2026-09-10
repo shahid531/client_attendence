@@ -20,6 +20,14 @@ class RequestPage extends StatefulWidget {
 class RequestPageState extends State<RequestPage> {
   int _selectedTabIndex = 0; // 0 for Pending (or Rejected for Admin), 1 for Completed
 
+  // Pagination State
+  static const int _pageSize = 10;
+  final ScrollController _scrollController = ScrollController();
+
+  // Search State
+  final TextEditingController _searchController = TextEditingController();
+  String _searchQuery = '';
+
   bool get _isAdmin {
     final authState = context.read<AuthBloc>().state;
     if (authState is AuthenticatedState) {
@@ -28,29 +36,64 @@ class RequestPageState extends State<RequestPage> {
     return false;
   }
 
-  void refreshCurrentTab() {
-    if (_selectedTabIndex == 0) {
-      context.read<LeaveBloc>().add(
-            LoadLeaveRequestsEvent(
-              status: _isAdmin ? 'REJECTED' : 'PENDING',
-            ),
-          );
-    } else {
-      context.read<LeaveBloc>().add(
-            const LoadLeaveRequestsEvent(
-              status: 'APPROVED,REJECTED',
-            ),
-          );
+  void _onScroll() {
+    if (_scrollController.hasClients &&
+        _scrollController.position.pixels >=
+            _scrollController.position.maxScrollExtent - 200) {
+      _loadMore();
     }
+  }
+
+  void _loadMore() {
+    final state = context.read<LeaveBloc>().state;
+    if (state is LeaveLoadedState && !state.isLoadingMore && state.hasNext) {
+      refreshCurrentTab(page: state.page + 1, isLoadMore: true);
+    }
+  }
+
+  void refreshCurrentTab({int page = 0, bool isLoadMore = false}) {
+    String? employeeId;
+    String? employeeName;
+    final query = _searchController.text.trim();
+    if (query.isNotEmpty) {
+      if (RegExp(r'^[0-9]+$').hasMatch(query)) {
+        employeeId = query;
+      } else {
+        employeeName = query;
+      }
+    }
+
+    final statusParam = _selectedTabIndex == 0
+        ? (_isAdmin ? 'REJECTED' : 'PENDING')
+        : 'APPROVED,REJECTED';
+
+    context.read<LeaveBloc>().add(
+          LoadLeaveRequestsEvent(
+            status: statusParam,
+            page: page,
+            pageSize: _pageSize,
+            employeeId: employeeId,
+            employeeName: employeeName,
+            isLoadMore: isLoadMore,
+          ),
+        );
   }
 
   @override
   void initState() {
     super.initState();
+    _scrollController.addListener(_onScroll);
     // Fetch requests on initState
     WidgetsBinding.instance.addPostFrameCallback((_) {
       refreshCurrentTab();
     });
+  }
+
+  @override
+  void dispose() {
+    _scrollController.dispose();
+    _searchController.dispose();
+    super.dispose();
   }
 
   void _onTabSelected(int index) {
@@ -58,7 +101,7 @@ class RequestPageState extends State<RequestPage> {
     setState(() {
       _selectedTabIndex = index;
     });
-    refreshCurrentTab();
+    refreshCurrentTab(page: 0, isLoadMore: false);
   }
 
   IconData _getTypeIcon(String type) {
@@ -86,10 +129,11 @@ class RequestPageState extends State<RequestPage> {
 
     return RefreshIndicator(
       onRefresh: () async {
-        refreshCurrentTab();
+        refreshCurrentTab(page: 0, isLoadMore: false);
       },
       color: primaryNavy,
       child: SingleChildScrollView(
+        controller: _scrollController,
         physics: const AlwaysScrollableScrollPhysics(),
         padding: const EdgeInsets.all(16.0),
         child: Column(
@@ -223,6 +267,10 @@ class RequestPageState extends State<RequestPage> {
             ),
             const SizedBox(height: 16),
 
+            // Search Bar
+            _buildSearchBar(),
+            const SizedBox(height: 16),
+
             // Tab View Content with Bloc
             BlocConsumer<LeaveBloc, LeaveState>(
               listener: (context, state) {
@@ -286,7 +334,7 @@ class RequestPageState extends State<RequestPage> {
                           alignment: Alignment.centerRight,
                           child: TextButton(
                             onPressed: () {
-                              refreshCurrentTab();
+                              refreshCurrentTab(page: 0, isLoadMore: false);
                             },
                             child: const Text(
                               'Retry',
@@ -321,7 +369,28 @@ class RequestPageState extends State<RequestPage> {
                             .where((r) => r.status.toLowerCase() != 'pending')
                             .toList());
 
-                if (activeRequests.isEmpty) {
+                List<LeaveRequest> displayedRequests = activeRequests;
+                if (_searchQuery.trim().isNotEmpty) {
+                  final q = _searchQuery.trim().toLowerCase();
+                  displayedRequests = activeRequests.where((r) {
+                    final reqId = r.requestId.toLowerCase();
+                    final empName = r.employeeName.toLowerCase();
+                    final empId = r.employeeId.toLowerCase();
+                    final title = r.title.toLowerCase();
+                    final type = r.requestType.toLowerCase();
+                    final reason = r.reason.toLowerCase();
+                    final status = r.status.toLowerCase();
+                    return reqId.contains(q) ||
+                        empName.contains(q) ||
+                        empId.contains(q) ||
+                        title.contains(q) ||
+                        type.contains(q) ||
+                        reason.contains(q) ||
+                        status.contains(q);
+                  }).toList();
+                }
+
+                if (displayedRequests.isEmpty) {
                   return Container(
                     width: double.infinity,
                     padding: const EdgeInsets.symmetric(
@@ -343,42 +412,33 @@ class RequestPageState extends State<RequestPage> {
                         ),
                         const SizedBox(height: 12),
                         Text(
-                          _selectedTabIndex == 0
-                              ? (_isAdmin ? 'No rejected requests' : 'No pending requests')
-                              : 'No completed requests',
+                          _searchQuery.isNotEmpty
+                              ? 'No matching requests found'
+                              : (_selectedTabIndex == 0
+                                  ? (_isAdmin ? 'No rejected requests' : 'No pending requests')
+                                  : 'No completed requests'),
                           style: const TextStyle(
                             fontSize: 16,
                             fontWeight: FontWeight.bold,
                             color: Color(0xFF1E293B),
                           ),
                         ),
-                        // const SizedBox(height: 6),
-                        // Text(
-                        //   _selectedTabIndex == 0
-                        //       ? (_isAdmin
-                        //           ? 'There are no rejected requests found.'
-                        //           : 'You have no attendance or leave requests awaiting approval.')
-                        //       : 'No completed request history available.',
-                        //   textAlign: TextAlign.center,
-                        //   style: const TextStyle(
-                        //     fontSize: 13,
-                        //     color: Color(0xFF64748B),
-                        //   ),
-                        // ),
                       ],
                     ),
                   );
                 }
 
-                return ListView.separated(
-                  shrinkWrap: true,
-                  physics: const NeverScrollableScrollPhysics(),
-                  itemCount: activeRequests.length,
-                  separatorBuilder: (_, __) => const SizedBox(height: 12),
-                  itemBuilder: (context, index) {
-                    final item = activeRequests[index];
-                    return _buildRequestCard(item);
-                  },
+                return Column(
+                  children: [
+                    ...displayedRequests.map(
+                      (item) => Padding(
+                        padding: const EdgeInsets.only(bottom: 12.0),
+                        child: _buildRequestCard(item),
+                      ),
+                    ),
+                    if (state is LeaveLoadedState)
+                      _buildScrollPaginationFooter(state),
+                  ],
                 );
               },
             ),
@@ -387,6 +447,126 @@ class RequestPageState extends State<RequestPage> {
         ),
       ),
     );
+  }
+
+  Widget _buildSearchBar() {
+    return Column(
+      crossAxisAlignment: CrossAxisAlignment.stretch,
+      children: [
+        Container(
+          decoration: BoxDecoration(
+            color: Colors.white,
+            borderRadius: BorderRadius.circular(12),
+            border: Border.all(color: AppColors.borderGrey),
+          ),
+          child: TextField(
+            controller: _searchController,
+            onChanged: (val) => setState(() => _searchQuery = val),
+            onSubmitted: (_) => refreshCurrentTab(page: 0, isLoadMore: false),
+            decoration: InputDecoration(
+              hintText: 'Search requests or employees...',
+              hintStyle: const TextStyle(
+                color: AppColors.textLight,
+                fontSize: 13,
+              ),
+              prefixIcon: const Icon(
+                Icons.search_rounded,
+                color: AppColors.textMuted,
+                size: 20,
+              ),
+              suffixIcon: _searchQuery.isNotEmpty
+                  ? IconButton(
+                      icon: const Icon(Icons.clear_rounded, size: 18),
+                      onPressed: () {
+                        _searchController.clear();
+                        setState(() => _searchQuery = '');
+                        refreshCurrentTab(page: 0, isLoadMore: false);
+                      },
+                    )
+                  : null,
+              border: InputBorder.none,
+              contentPadding: const EdgeInsets.symmetric(
+                vertical: 12,
+                horizontal: 14,
+              ),
+            ),
+          ),
+        ),
+        const SizedBox(height: 8),
+        SizedBox(
+          width: double.infinity,
+          height: 42,
+          child: ElevatedButton.icon(
+            onPressed: () => refreshCurrentTab(page: 0, isLoadMore: false),
+            icon: const Icon(Icons.search_rounded, size: 18, color: Colors.white),
+            label: const Text(
+              'Search',
+              style: TextStyle(
+                color: Colors.white,
+                fontWeight: FontWeight.bold,
+                fontSize: 14,
+              ),
+            ),
+            style: ElevatedButton.styleFrom(
+              backgroundColor: AppColors.primaryNavy,
+              elevation: 0,
+              shape: RoundedRectangleBorder(
+                borderRadius: BorderRadius.circular(8),
+              ),
+            ),
+          ),
+        ),
+      ],
+    );
+  }
+
+  Widget _buildScrollPaginationFooter(LeaveLoadedState state) {
+    if (state.isLoadingMore) {
+      return Container(
+        padding: const EdgeInsets.symmetric(vertical: 20),
+        alignment: Alignment.center,
+        child: const Row(
+          mainAxisAlignment: MainAxisAlignment.center,
+          children: [
+            SizedBox(
+              width: 18,
+              height: 18,
+              child: CircularProgressIndicator(
+                strokeWidth: 2,
+                valueColor: AlwaysStoppedAnimation<Color>(AppColors.primaryNavy),
+              ),
+            ),
+            SizedBox(width: 10),
+            Text(
+              'Loading more requests...',
+              style: TextStyle(
+                fontSize: 13,
+                color: Color(0xFF64748B),
+                fontWeight: FontWeight.w500,
+              ),
+            ),
+          ],
+        ),
+      );
+    }
+
+    if (!state.hasNext && state.requests.isNotEmpty) {
+      final total = state.totalElements > 0 ? state.totalElements : state.requests.length;
+      return Container(
+        padding: const EdgeInsets.symmetric(vertical: 20),
+        alignment: Alignment.center,
+        child: Text(
+          'Showing all $total requests',
+          style: const TextStyle(
+            fontSize: 12,
+            color: Color(0xFF94A3B8),
+            fontWeight: FontWeight.w500,
+          ),
+        ),
+      );
+    }
+
+    return const SizedBox(height: 12);
   }
 
   // Request Item Card Builder

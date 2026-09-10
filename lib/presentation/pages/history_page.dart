@@ -31,6 +31,14 @@ class _HistoryPageState extends State<HistoryPage> {
   String _displayRangeStr = '';
   bool _isExporting = false;
 
+  // Pagination State
+  static const int _pageSize = 10;
+  final ScrollController _scrollController = ScrollController();
+
+  // Search State (Admin only)
+  final TextEditingController _searchController = TextEditingController();
+  String _searchQuery = '';
+
   bool get _isAdmin {
     final authState = context.read<AuthBloc>().state;
     if (authState is AuthenticatedState) {
@@ -42,6 +50,7 @@ class _HistoryPageState extends State<HistoryPage> {
   @override
   void initState() {
     super.initState();
+    _scrollController.addListener(_onScroll);
     final now = DateTime.now();
     _fromDate = DateTime(now.year, now.month, 1);
     // For non-admin, default to yesterday if today is 1st or past yesterday
@@ -58,7 +67,29 @@ class _HistoryPageState extends State<HistoryPage> {
     });
   }
 
-  void _applyPeriod(String period) {
+  @override
+  void dispose() {
+    _scrollController.dispose();
+    _searchController.dispose();
+    super.dispose();
+  }
+
+  void _onScroll() {
+    if (_scrollController.hasClients &&
+        _scrollController.position.pixels >=
+            _scrollController.position.maxScrollExtent - 200) {
+      _loadMore();
+    }
+  }
+
+  void _loadMore() {
+    final state = context.read<AttendanceBloc>().state;
+    if (state is AttendanceLoadedState && !state.isLoadingMore && state.hasNext) {
+      _applyPeriod(_selectedPeriod, page: state.page + 1, isLoadMore: true);
+    }
+  }
+
+  void _applyPeriod(String period, {int page = 0, bool isLoadMore = false}) {
     final now = DateTime.now();
     String startParam;
     String endParam;
@@ -68,33 +99,57 @@ class _HistoryPageState extends State<HistoryPage> {
       final end = DateTime(now.year, now.month + 1, 0);
       startParam = DateFormat('yyyy-MM-dd').format(start);
       endParam = DateFormat('yyyy-MM-dd').format(end);
-      setState(() {
-        _displayRangeStr =
-            "${DateFormat('dd/MM/yyyy').format(start)} - ${DateFormat('dd/MM/yyyy').format(end)}";
-      });
+      if (!isLoadMore) {
+        setState(() {
+          _displayRangeStr =
+              "${DateFormat('dd/MM/yyyy').format(start)} - ${DateFormat('dd/MM/yyyy').format(end)}";
+        });
+      }
     } else if (period == 'Last Month') {
       final start = DateTime(now.year, now.month - 1, 1);
       final end = DateTime(now.year, now.month, 0);
       startParam = DateFormat('yyyy-MM-dd').format(start);
       endParam = DateFormat('yyyy-MM-dd').format(end);
-      setState(() {
-        _displayRangeStr =
-            "${DateFormat('dd/MM/yyyy').format(start)} - ${DateFormat('dd/MM/yyyy').format(end)}";
-      });
+      if (!isLoadMore) {
+        setState(() {
+          _displayRangeStr =
+              "${DateFormat('dd/MM/yyyy').format(start)} - ${DateFormat('dd/MM/yyyy').format(end)}";
+        });
+      }
     } else {
       // Custom Range
       startParam = DateFormat('yyyy-MM-dd').format(_fromDate);
       endParam = DateFormat('yyyy-MM-dd').format(_toDate);
-      setState(() {
-        _displayRangeStr =
-            "${DateFormat('dd/MM/yyyy').format(_fromDate)} - ${DateFormat('dd/MM/yyyy').format(_toDate)}";
-      });
+      if (!isLoadMore) {
+        setState(() {
+          _displayRangeStr =
+              "${DateFormat('dd/MM/yyyy').format(_fromDate)} - ${DateFormat('dd/MM/yyyy').format(_toDate)}";
+        });
+      }
+    }
+
+    String? employeeId;
+    String? employeeName;
+    if (_isAdmin) {
+      final query = _searchController.text.trim();
+      if (query.isNotEmpty) {
+        if (RegExp(r'^[0-9]+$').hasMatch(query)) {
+          employeeId = query;
+        } else {
+          employeeName = query;
+        }
+      }
     }
 
     context.read<AttendanceBloc>().add(
           LoadAttendanceHistoryEvent(
             startDate: startParam,
             endDate: endParam,
+            page: page,
+            size: _pageSize,
+            employeeId: employeeId,
+            employeeName: employeeName,
+            isLoadMore: isLoadMore,
           ),
         );
   }
@@ -411,6 +466,7 @@ class _HistoryPageState extends State<HistoryPage> {
         _applyPeriod(_selectedPeriod);
       },
       child: SingleChildScrollView(
+        controller: _scrollController,
         physics: const AlwaysScrollableScrollPhysics(),
         padding: const EdgeInsets.all(16.0),
         child: Column(
@@ -719,6 +775,12 @@ class _HistoryPageState extends State<HistoryPage> {
               const SizedBox(height: 16),
             ],
 
+            // Search Bar (Only visible to admin)
+            if (_isAdmin) ...[
+              _buildSearchBar(),
+              const SizedBox(height: 16),
+            ],
+
             // Bloc Consumer for Stats and Attendance List
             BlocBuilder<AttendanceBloc, AttendanceState>(
               builder: (context, state) {
@@ -727,16 +789,43 @@ class _HistoryPageState extends State<HistoryPage> {
                   records = state.history;
                 }
 
-                int presentCount = records.where((r) {
+                List<AttendanceRecord> displayedRecords = records;
+                if (_isAdmin && _searchQuery.trim().isNotEmpty) {
+                  final q = _searchQuery.trim().toLowerCase();
+                  displayedRecords = records.where((r) {
+                    final empName = (r.employeeName ?? '').toLowerCase();
+                    final empId = (r.employeeId ?? '').toLowerCase();
+                    final id = r.id.toLowerCase();
+                    final status = r.status.toLowerCase();
+                    final workType = r.workType.toLowerCase();
+                    final location = r.location.toLowerCase();
+                    final desc = r.description.toLowerCase();
+                    final reqId = (r.requestId ?? '').toLowerCase();
+                    final dateStr = DateFormat('dd/MM/yyyy').format(r.date).toLowerCase();
+                    final dateStr2 = DateFormat('MMM dd, yyyy').format(r.date).toLowerCase();
+                    return empName.contains(q) ||
+                        empId.contains(q) ||
+                        id.contains(q) ||
+                        status.contains(q) ||
+                        workType.contains(q) ||
+                        location.contains(q) ||
+                        desc.contains(q) ||
+                        reqId.contains(q) ||
+                        dateStr.contains(q) ||
+                        dateStr2.contains(q);
+                  }).toList();
+                }
+
+                int presentCount = displayedRecords.where((r) {
                   final s = r.status.toLowerCase();
-                  return s == 'present' || s == 'half day' || (!s.contains('absent') && !s.contains('leave'));
+                  return s == 'present' || s == 'half day' || (!s.contains('absent') && !s.contains('leave') && !s.contains('incomplete'));
                 }).length;
 
-                int wfhCount = records.where((r) {
+                int wfhCount = displayedRecords.where((r) {
                   return r.workType.toUpperCase() == 'WFH';
                 }).length;
 
-                int absentCount = records.where((r) {
+                int absentCount = displayedRecords.where((r) {
                   final s = r.status.toLowerCase();
                   return s.contains('absent') || s.contains('leave');
                 }).length;
@@ -829,7 +918,7 @@ class _HistoryPageState extends State<HistoryPage> {
                           ],
                         ),
                       ),
-                    ] else if (records.isEmpty) ...[
+                    ] else if (displayedRecords.isEmpty) ...[
                       Container(
                         width: double.infinity,
                         padding: const EdgeInsets.symmetric(
@@ -839,35 +928,32 @@ class _HistoryPageState extends State<HistoryPage> {
                           borderRadius: BorderRadius.circular(16),
                           border: Border.all(color: const Color(0xFFE2E8F0)),
                         ),
-                        child: const Column(
+                        child: Column(
                           mainAxisAlignment: MainAxisAlignment.center,
                           children: [
-                            Icon(Icons.event_busy_outlined,
+                            const Icon(Icons.event_busy_outlined,
                                 size: 48, color: Color(0xFF94A3B8)),
-                            SizedBox(height: 12),
+                            const SizedBox(height: 12),
                             Text(
-                              'No attendance records found',
-                              style: TextStyle(
+                              _searchQuery.isNotEmpty
+                                  ? 'No matching records found'
+                                  : 'No attendance records found',
+                              style: const TextStyle(
                                 fontSize: 16,
                                 fontWeight: FontWeight.bold,
                                 color: Color(0xFF1E293B),
                               ),
                             ),
-                            // SizedBox(height: 6),
-                            // Text(
-                            //   'No attendance data found for the selected date range.',
-                            //   textAlign: TextAlign.center,
-                            //   style: TextStyle(
-                            //     fontSize: 13,
-                            //     color: Color(0xFF64748B),
-                            //   ),
-                            // ),
                           ],
                         ),
                       ),
                     ] else ...[
                       // Attendance Logs List
-                      ...records.map((record) => _buildRecordCard(record, primaryNavy)),
+                      ...displayedRecords.map((record) => _buildRecordCard(record, primaryNavy)),
+
+                      // Scroll Pagination Footer
+                      if (state is AttendanceLoadedState)
+                        _buildScrollPaginationFooter(state),
                     ],
                   ],
                 );
@@ -878,6 +964,126 @@ class _HistoryPageState extends State<HistoryPage> {
         ),
       ),
     );
+  }
+
+  Widget _buildSearchBar() {
+    return Column(
+      crossAxisAlignment: CrossAxisAlignment.stretch,
+      children: [
+        Container(
+          decoration: BoxDecoration(
+            color: Colors.white,
+            borderRadius: BorderRadius.circular(12),
+            border: Border.all(color: AppColors.borderGrey),
+          ),
+          child: TextField(
+            controller: _searchController,
+            onChanged: (val) => setState(() => _searchQuery = val),
+            onSubmitted: (_) => _applyPeriod(_selectedPeriod, page: 0),
+            decoration: InputDecoration(
+              hintText: 'Search requests or employees...',
+              hintStyle: const TextStyle(
+                color: AppColors.textLight,
+                fontSize: 13,
+              ),
+              prefixIcon: const Icon(
+                Icons.search_rounded,
+                color: AppColors.textMuted,
+                size: 20,
+              ),
+              suffixIcon: _searchQuery.isNotEmpty
+                  ? IconButton(
+                      icon: const Icon(Icons.clear_rounded, size: 18),
+                      onPressed: () {
+                        _searchController.clear();
+                        setState(() => _searchQuery = '');
+                        _applyPeriod(_selectedPeriod, page: 0);
+                      },
+                    )
+                  : null,
+              border: InputBorder.none,
+              contentPadding: const EdgeInsets.symmetric(
+                vertical: 12,
+                horizontal: 14,
+              ),
+            ),
+          ),
+        ),
+        const SizedBox(height: 8),
+        SizedBox(
+          width: double.infinity,
+          height: 42,
+          child: ElevatedButton.icon(
+            onPressed: () => _applyPeriod(_selectedPeriod, page: 0),
+            icon: const Icon(Icons.search_rounded, size: 18, color: Colors.white),
+            label: const Text(
+              'Search',
+              style: TextStyle(
+                color: Colors.white,
+                fontWeight: FontWeight.bold,
+                fontSize: 14,
+              ),
+            ),
+            style: ElevatedButton.styleFrom(
+              backgroundColor: AppColors.primaryNavy,
+              elevation: 0,
+              shape: RoundedRectangleBorder(
+                borderRadius: BorderRadius.circular(8),
+              ),
+            ),
+          ),
+        ),
+      ],
+    );
+  }
+
+  Widget _buildScrollPaginationFooter(AttendanceLoadedState state) {
+    if (state.isLoadingMore) {
+      return Container(
+        padding: const EdgeInsets.symmetric(vertical: 20),
+        alignment: Alignment.center,
+        child: const Row(
+          mainAxisAlignment: MainAxisAlignment.center,
+          children: [
+            SizedBox(
+              width: 18,
+              height: 18,
+              child: CircularProgressIndicator(
+                strokeWidth: 2,
+                valueColor: AlwaysStoppedAnimation<Color>(AppColors.primaryNavy),
+              ),
+            ),
+            SizedBox(width: 10),
+            Text(
+              'Loading more records...',
+              style: TextStyle(
+                fontSize: 13,
+                color: Color(0xFF64748B),
+                fontWeight: FontWeight.w500,
+              ),
+            ),
+          ],
+        ),
+      );
+    }
+
+    if (!state.hasNext && state.history.isNotEmpty) {
+      final total = state.totalElements > 0 ? state.totalElements : state.history.length;
+      return Container(
+        padding: const EdgeInsets.symmetric(vertical: 20),
+        alignment: Alignment.center,
+        child: Text(
+          'Showing all $total records',
+          style: const TextStyle(
+            fontSize: 12,
+            color: Color(0xFF94A3B8),
+            fontWeight: FontWeight.w500,
+          ),
+        ),
+      );
+    }
+
+    return const SizedBox(height: 12);
   }
 
   Widget _buildRecordCard(AttendanceRecord record, Color primaryNavy) {
@@ -1019,6 +1225,8 @@ class _HistoryPageState extends State<HistoryPage> {
       dayLabel: dayLabel,
       dateStr: dateStr,
       clientStr: locationStr,
+      employeeName: record.employeeName,
+      employeeId: record.employeeId,
       statusBadge: statusBadge,
       inTime: record.checkInTime,
       outTime: record.checkOutTime,
@@ -1101,6 +1309,8 @@ class _HistoryPageState extends State<HistoryPage> {
     required String dateStr,
     required String clientStr,
     required Widget statusBadge,
+    String? employeeName,
+    String? employeeId,
     String? inTime,
     String? outTime,
     Widget? customOutWidget,
@@ -1170,7 +1380,28 @@ class _HistoryPageState extends State<HistoryPage> {
                             statusBadge,
                           ],
                         ),
-                        const SizedBox(height: 8),
+                        if (employeeName != null && employeeName.trim().isNotEmpty) ...[
+                          const SizedBox(height: 6),
+                          Row(
+                            children: [
+                              const Icon(Icons.person_outline_rounded,
+                                  size: 14, color: Color(0xFF475569)),
+                              const SizedBox(width: 4),
+                              Expanded(
+                                child: Text(
+                                  '$employeeName${employeeId != null && employeeId.trim().isNotEmpty ? " ($employeeId)" : ""}',
+                                  style: const TextStyle(
+                                    fontSize: 13,
+                                    fontWeight: FontWeight.w600,
+                                    color: Color(0xFF1E293B),
+                                  ),
+                                  overflow: TextOverflow.ellipsis,
+                                ),
+                              ),
+                            ],
+                          ),
+                        ],
+                        const SizedBox(height: 6),
                         Text(
                           clientStr,
                           style: const TextStyle(

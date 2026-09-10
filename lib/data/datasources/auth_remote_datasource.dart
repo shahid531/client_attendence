@@ -105,8 +105,14 @@ class AuthRemoteDataSourceImpl implements AuthRemoteDataSource {
         if (user.timeIn != null) await sharedPreferences.setString('cached_user_time_in', user.timeIn!);
         if (user.timeOut != null) await sharedPreferences.setString('cached_user_time_out', user.timeOut!);
         if (user.totalHours != null) await sharedPreferences.setString('cached_user_total_hours', user.totalHours.toString());
-        await sharedPreferences.setString('last_logged_in_username', username);
-        await sharedPreferences.setString('last_logged_in_password', password);
+        final rememberMe = sharedPreferences.getBool('remember_me') ?? false;
+        if (rememberMe) {
+          await sharedPreferences.setString('last_logged_in_username', username);
+          await sharedPreferences.setString('last_logged_in_password', password);
+        } else {
+          await sharedPreferences.remove('last_logged_in_username');
+          await sharedPreferences.remove('last_logged_in_password');
+        }
 
         return user;
       }
@@ -129,14 +135,18 @@ class AuthRemoteDataSourceImpl implements AuthRemoteDataSource {
 
   @override
   Future<void> logout() async {
+    final rememberMe = sharedPreferences.getBool('remember_me') ?? false;
     final lastUser = sharedPreferences.getString('last_logged_in_username');
     final lastPass = sharedPreferences.getString('last_logged_in_password');
     await sharedPreferences.clear();
-    if (lastUser != null) {
-      await sharedPreferences.setString('last_logged_in_username', lastUser);
-    }
-    if (lastPass != null) {
-      await sharedPreferences.setString('last_logged_in_password', lastPass);
+    if (rememberMe) {
+      await sharedPreferences.setBool('remember_me', true);
+      if (lastUser != null) {
+        await sharedPreferences.setString('last_logged_in_username', lastUser);
+      }
+      if (lastPass != null) {
+        await sharedPreferences.setString('last_logged_in_password', lastPass);
+      }
     }
   }
 
