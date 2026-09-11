@@ -69,6 +69,8 @@ class LeaveBloc extends Bloc<LeaveEvent, LeaveState> {
           totalPages: res.totalPages,
           hasNext: res.hasNext,
           hasPrevious: res.hasPrevious,
+          pendingCount: res.pendingCount,
+          completedCount: res.completedCount,
           isLoadingMore: false,
         ));
       },
@@ -105,6 +107,8 @@ class LeaveBloc extends Bloc<LeaveEvent, LeaveState> {
           totalPages: res.totalPages,
           hasNext: res.hasNext,
           hasPrevious: res.hasPrevious,
+          pendingCount: res.pendingCount,
+          completedCount: res.completedCount,
           successMessage: 'Request submitted successfully!',
         ));
       },
@@ -128,7 +132,7 @@ class LeaveBloc extends Bloc<LeaveEvent, LeaveState> {
       (failure) async => emit(LeaveErrorState(failure.message)),
       (_) async {
         final listResult = await getLeaveRequestsUseCase(
-          const GetLeaveRequestsParams(status: 'PENDING'),
+          const GetLeaveRequestsParams(status: 'PENDING,APPROVED,REJECTED'),
         );
         final res = listResult.getOrElse(() => const LeaveRequestsResult(requests: []));
         emit(LeaveLoadedState(
@@ -139,6 +143,8 @@ class LeaveBloc extends Bloc<LeaveEvent, LeaveState> {
           totalPages: res.totalPages,
           hasNext: res.hasNext,
           hasPrevious: res.hasPrevious,
+          pendingCount: res.pendingCount,
+          completedCount: res.completedCount,
           successMessage: 'Request marked as ${event.status}!',
         ));
       },

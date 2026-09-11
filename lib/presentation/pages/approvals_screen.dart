@@ -4,8 +4,6 @@ import 'package:intl/intl.dart';
 import '../../core/constants/app_colors.dart';
 import '../../core/utils/snackbar_helper.dart';
 import '../../domain/entities/leave_request.dart';
-import '../blocs/auth/auth_bloc.dart';
-import '../blocs/auth/auth_state.dart';
 import '../blocs/leave/leave_bloc.dart';
 import '../blocs/leave/leave_event.dart';
 import '../blocs/leave/leave_state.dart';
@@ -24,12 +22,47 @@ class ApprovalsScreenState extends State<ApprovalsScreen> {
   String _searchQuery = '';
   final TextEditingController _searchController = TextEditingController();
 
-  void refreshCurrentTab() {
+  // Pagination State
+  static const int _pageSize = 10;
+  final ScrollController _scrollController = ScrollController();
+
+  void _onScroll() {
+    if (_scrollController.hasClients &&
+        _scrollController.position.pixels >=
+            _scrollController.position.maxScrollExtent - 200) {
+      _loadMore();
+    }
+  }
+
+  void _loadMore() {
+    final state = context.read<LeaveBloc>().state;
+    if (state is LeaveLoadedState && !state.isLoadingMore && state.hasNext) {
+      refreshCurrentTab(page: state.page + 1, isLoadMore: true);
+    }
+  }
+
+  void refreshCurrentTab({int page = 0, bool isLoadMore = false}) {
+    String? employeeId;
+    String? employeeName;
+    final query = _searchController.text.trim();
+    if (query.isNotEmpty) {
+      if (RegExp(r'^[0-9]+$').hasMatch(query)) {
+        employeeId = query;
+      } else {
+        employeeName = query;
+      }
+    }
+
     context.read<LeaveBloc>().add(
           LoadLeaveRequestsEvent(
             status: _selectedTabIndex == 0
                 ? 'PENDING'
                 : 'APPROVED,REJECTED',
+            page: page,
+            pageSize: _pageSize,
+            employeeId: employeeId,
+            employeeName: employeeName,
+            isLoadMore: isLoadMore,
           ),
         );
   }
@@ -37,6 +70,7 @@ class ApprovalsScreenState extends State<ApprovalsScreen> {
   @override
   void initState() {
     super.initState();
+    _scrollController.addListener(_onScroll);
     WidgetsBinding.instance.addPostFrameCallback((_) {
       if (mounted) {
         refreshCurrentTab();
@@ -44,9 +78,9 @@ class ApprovalsScreenState extends State<ApprovalsScreen> {
     });
   }
 
-
   @override
   void dispose() {
+    _scrollController.dispose();
     _searchController.dispose();
     super.dispose();
   }
@@ -139,7 +173,13 @@ class ApprovalsScreenState extends State<ApprovalsScreen> {
           }
 
           // Dynamic Metrics
-          final totalPending = pendingList.length;
+          // Dynamic Metrics
+          final int totalPending = (state is LeaveLoadedState && state.pendingCount != null)
+              ? state.pendingCount!
+              : pendingList.length;
+          final int totalCompleted = (state is LeaveLoadedState && state.completedCount != null)
+              ? state.completedCount!
+              : completedList.length;
           final wfhPending = pendingList
               .where((r) => r.requestType.toUpperCase().contains('WFH'))
               .length;
@@ -155,6 +195,7 @@ class ApprovalsScreenState extends State<ApprovalsScreen> {
             },
             color: AppColors.primaryNavy,
             child: SingleChildScrollView(
+              controller: _scrollController,
               physics: const AlwaysScrollableScrollPhysics(),
               padding: const EdgeInsets.all(16.0),
               child: Column(
@@ -188,8 +229,8 @@ class ApprovalsScreenState extends State<ApprovalsScreen> {
 
                   // Tab Toggle (Pending / Completed)
                   _buildTabToggle(
-                    pendingCount: pendingList.length,
-                    completedCount: completedList.length,
+                    pendingCount: totalPending,
+                    completedCount: totalCompleted,
                   ),
                   const SizedBox(height: 14),
 
@@ -245,21 +286,10 @@ class ApprovalsScreenState extends State<ApprovalsScreen> {
                               color: AppColors.textDark,
                             ),
                           ),
-                          // const SizedBox(height: 4),
-                          // Text(
-                          //   _selectedTabIndex == 0
-                          //       ? 'All employee requests have been processed.'
-                          //       : 'No history matches your search filter.',
-                          //   style: const TextStyle(
-                          //     fontSize: 13,
-                          //     color: AppColors.textMuted,
-                          //   ),
-                          //   textAlign: TextAlign.center,
-                          // ),
                         ],
                       ),
                     )
-                  else
+                  else ...[
                     ListView.separated(
                       shrinkWrap: true,
                       physics: const NeverScrollableScrollPhysics(),
@@ -268,13 +298,17 @@ class ApprovalsScreenState extends State<ApprovalsScreen> {
                       itemBuilder: (context, index) {
                         final item = activeList[index];
                         if (_selectedTabIndex == 0) {
-                          print("nvhdfvhb ${item}");
                           return _buildPendingCard(item);
                         } else {
                           return _buildCompletedCard(item);
                         }
                       },
                     ),
+
+                    // Scroll Pagination Footer
+                    if (state is LeaveLoadedState)
+                      _buildScrollPaginationFooter(state, activeList.length),
+                  ],
                   const SizedBox(height: 20),
                 ],
               ),
@@ -521,6 +555,7 @@ class ApprovalsScreenState extends State<ApprovalsScreen> {
       child: TextField(
         controller: _searchController,
         onChanged: (val) => setState(() => _searchQuery = val),
+        onSubmitted: (_) => refreshCurrentTab(page: 0),
         decoration: InputDecoration(
           hintText: 'Type Employee name or ID',
           hintStyle: const TextStyle(
@@ -538,6 +573,7 @@ class ApprovalsScreenState extends State<ApprovalsScreen> {
                   onPressed: () {
                     _searchController.clear();
                     setState(() => _searchQuery = '');
+                    refreshCurrentTab(page: 0);
                   },
                 )
               : null,
@@ -549,6 +585,56 @@ class ApprovalsScreenState extends State<ApprovalsScreen> {
         ),
       ),
     );
+  }
+
+  Widget _buildScrollPaginationFooter(LeaveLoadedState state, int displayedCount) {
+    if (state.isLoadingMore) {
+      return Container(
+        padding: const EdgeInsets.symmetric(vertical: 20),
+        alignment: Alignment.center,
+        child: const Row(
+          mainAxisAlignment: MainAxisAlignment.center,
+          children: [
+            SizedBox(
+              width: 18,
+              height: 18,
+              child: CircularProgressIndicator(
+                strokeWidth: 2,
+                valueColor:
+                    AlwaysStoppedAnimation<Color>(AppColors.primaryNavy),
+              ),
+            ),
+            SizedBox(width: 10),
+            Text(
+              'Loading more requests...',
+              style: TextStyle(
+                fontSize: 13,
+                color: Color(0xFF64748B),
+                fontWeight: FontWeight.w500,
+              ),
+            ),
+          ],
+        ),
+      );
+    }
+
+    if (!state.hasNext && state.requests.isNotEmpty) {
+      final total = state.totalElements > 0 ? state.totalElements : displayedCount;
+      return Container(
+        padding: const EdgeInsets.symmetric(vertical: 20),
+        alignment: Alignment.center,
+        child: Text(
+          'Showing all $total requests',
+          style: const TextStyle(
+            fontSize: 12,
+            color: Color(0xFF94A3B8),
+            fontWeight: FontWeight.w500,
+          ),
+        ),
+      );
+    }
+
+    return const SizedBox(height: 12);
   }
 
   String _formatDate(dynamic date) {
@@ -742,9 +828,6 @@ class ApprovalsScreenState extends State<ApprovalsScreen> {
         isApproved ? AppColors.successEmerald : AppColors.dangerRose;
     final IconData badgeIcon =
         isApproved ? Icons.check_circle_outline_rounded : Icons.cancel_outlined;
-
-    final dateRangeStr =
-        '${_formatDate(item.startDate)} - ${_formatDate(item.endDate)}';
     final initials = _getInitials(item.title);
 
     return Container(

@@ -43,7 +43,7 @@ class LeaveRemoteDataSourceImpl implements LeaveRemoteDataSource {
   final List<LeaveRequestModel> _mockLeaveRequests = [];
 
   String _getRequestsEndpoint() {
-    return '$_baseUrl/requests';
+    return '$_baseUrl/requests/approvals';
   }
 
   String _getUpdateRequestEndpoint(String requestId, String action) {
@@ -107,23 +107,35 @@ class LeaveRemoteDataSourceImpl implements LeaveRemoteDataSource {
 
           final resData = data['data'];
           if (resData is Map<String, dynamic>) {
-            final contentList = resData['content'];
+            final requestsObj = resData['requests'];
+            final targetObj = requestsObj is Map<String, dynamic> ? requestsObj : resData;
+            final contentList = targetObj['content'];
+            final pendingCount = resData['pendingCount'] is int ? resData['pendingCount'] as int : null;
+            final completedCount = resData['completedCount'] is int ? resData['completedCount'] as int : null;
+
             List<LeaveRequestModel> list = [];
             if (contentList is List) {
               list = contentList
                   .map((item) => LeaveRequestModel.fromJson(item as Map<String, dynamic>))
                   .toList();
+            } else if (requestsObj is List) {
+              list = requestsObj
+                  .map((item) => LeaveRequestModel.fromJson(item as Map<String, dynamic>))
+                  .toList();
             }
+
             return LeaveRequestsResult(
               requests: list,
-              page: resData['page'] is int ? resData['page'] as int : page,
-              pageSize: resData['pageSize'] is int ? resData['pageSize'] as int : pageSize,
-              totalElements: resData['totalElements'] is int
-                  ? resData['totalElements'] as int
+              page: targetObj['page'] is int ? targetObj['page'] as int : page,
+              pageSize: targetObj['pageSize'] is int ? targetObj['pageSize'] as int : pageSize,
+              totalElements: targetObj['totalElements'] is int
+                  ? targetObj['totalElements'] as int
                   : list.length,
-              totalPages: resData['totalPages'] is int ? resData['totalPages'] as int : 1,
-              hasNext: resData['hasNext'] is bool ? resData['hasNext'] as bool : false,
-              hasPrevious: resData['hasPrevious'] is bool ? resData['hasPrevious'] as bool : false,
+              totalPages: targetObj['totalPages'] is int ? targetObj['totalPages'] as int : 1,
+              hasNext: targetObj['hasNext'] is bool ? targetObj['hasNext'] as bool : false,
+              hasPrevious: targetObj['hasPrevious'] is bool ? targetObj['hasPrevious'] as bool : false,
+              pendingCount: pendingCount,
+              completedCount: completedCount,
             );
           } else if (resData is List) {
             final parsed = resData

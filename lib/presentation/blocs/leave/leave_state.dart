@@ -22,6 +22,8 @@ class LeaveLoadedState extends LeaveState {
   final bool hasNext;
   final bool hasPrevious;
   final bool isLoadingMore;
+  final int? pendingCount;
+  final int? completedCount;
 
   const LeaveLoadedState({
     required this.requests,
@@ -33,6 +35,8 @@ class LeaveLoadedState extends LeaveState {
     this.hasNext = false,
     this.hasPrevious = false,
     this.isLoadingMore = false,
+    this.pendingCount,
+    this.completedCount,
   });
 
   LeaveLoadedState copyWith({
@@ -45,6 +49,8 @@ class LeaveLoadedState extends LeaveState {
     bool? hasNext,
     bool? hasPrevious,
     bool? isLoadingMore,
+    int? pendingCount,
+    int? completedCount,
   }) {
     return LeaveLoadedState(
       requests: requests ?? this.requests,
@@ -56,6 +62,8 @@ class LeaveLoadedState extends LeaveState {
       hasNext: hasNext ?? this.hasNext,
       hasPrevious: hasPrevious ?? this.hasPrevious,
       isLoadingMore: isLoadingMore ?? this.isLoadingMore,
+      pendingCount: pendingCount ?? this.pendingCount,
+      completedCount: completedCount ?? this.completedCount,
     );
   }
 
@@ -70,6 +78,8 @@ class LeaveLoadedState extends LeaveState {
         hasNext,
         hasPrevious,
         isLoadingMore,
+        pendingCount,
+        completedCount,
       ];
 }
 

@@ -28,7 +28,7 @@ class _ProfilePageState extends State<ProfilePage> {
   }
 
   String _getInitials(String name) {
-    if (name.trim().isEmpty) return 'SA';
+    if (name.trim().isEmpty) return '';
     final parts = name.trim().split(' ');
     if (parts.length >= 2) {
       return '${parts[0][0]}${parts[1][0]}'.toUpperCase();
@@ -264,7 +264,7 @@ class _ProfilePageState extends State<ProfilePage> {
                           title: 'Employee ID',
                           value: user?.id.isNotEmpty == true
                               ? user!.id
-                              : 'ADMIN001',
+                              : 'NA',
                         ),
                         const Divider(height: 1,indent: 8,endIndent: 8,),
                         _buildProfileTile(
@@ -272,13 +272,13 @@ class _ProfilePageState extends State<ProfilePage> {
                           title: 'Email Address',
                           value: user?.email.isNotEmpty == true
                               ? user!.email
-                              : 'admin@attendance.com',
+                              : 'NA',
                         ),
                           const Divider(height: 1,indent: 8,endIndent: 8,),
                         _buildProfileTile(
                           icon: Icons.phone_outlined,
                           title: 'Contact Number',
-                          value: user?.contactNumber ?? 'Not Provided',
+                          value: user?.contactNumber ?? 'NA',
                         ),
                           const Divider(height: 1,indent: 8,endIndent: 8,),
                         _buildProfileTile(
@@ -286,7 +286,7 @@ class _ProfilePageState extends State<ProfilePage> {
                           title: 'Company / Client',
                           value: user?.company.isNotEmpty == true
                               ? user!.company
-                              : 'ClientSite HQ',
+                              : 'NA',
                         ),
                         if (user?.reportingManagerName != null) ...[
                           const Divider(height: 1,indent: 8,endIndent: 8,),
