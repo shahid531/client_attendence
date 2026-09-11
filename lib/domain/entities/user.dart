@@ -21,6 +21,8 @@ class User extends Equatable {
   final dynamic totalHours;
   final String? attendanceType;
   final String? description;
+  final String? timeInDescription;
+  final String? timeOutDescription;
 
   double? get allowedRadius => radius;
 
@@ -45,6 +47,8 @@ class User extends Equatable {
     this.totalHours,
     this.attendanceType,
     this.description,
+    this.timeInDescription,
+    this.timeOutDescription,
   });
 
   @override
@@ -69,5 +73,7 @@ class User extends Equatable {
         totalHours,
         attendanceType,
         description,
+        timeInDescription,
+        timeOutDescription,
       ];
 }

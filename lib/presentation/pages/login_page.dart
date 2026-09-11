@@ -165,9 +165,13 @@ class _LoginPageState extends State<LoginPage> {
               location: type.toUpperCase() == 'WFH'
                   ? 'Home Office'
                   : (state.user.locationName ?? 'HQ Building, 5th Floor'),
-              description: state.user.description ?? '',
+              description: state.user.timeInDescription ?? state.user.description ?? '',
               totalHours: parsedHours,
               status: 'Present',
+              employeeId: state.user.id,
+              employeeName: state.user.name,
+              timeInDescription: state.user.timeInDescription,
+              timeOutDescription: state.user.timeOutDescription,
             );
             try {
               sl<AttendanceRemoteDataSource>().saveTodayRecord(record);

@@ -776,7 +776,13 @@ class _HomePageState extends State<HomePage> with WidgetsBindingObserver {
                 initOutTime.isEmpty ||
                 initOutTime == '--:--');
 
-        final desc = loginUser.description?.trim() ?? '';
+        final desc = (loginUser.timeOutDescription != null &&
+                loginUser.timeOutDescription!.trim().isNotEmpty)
+            ? loginUser.timeOutDescription!.trim()
+            : ((loginUser.timeInDescription != null &&
+                    loginUser.timeInDescription!.trim().isNotEmpty)
+                ? loginUser.timeInDescription!.trim()
+                : (loginUser.description?.trim() ?? ''));
 
         if (mounted) {
           setState(() {
@@ -810,6 +816,14 @@ class _HomePageState extends State<HomePage> with WidgetsBindingObserver {
               _localOutTime = model.checkOutTime;
               _localTotalHours = model.totalHours;
               _localRecordId = model.id;
+              final recDesc = (model.timeOutDescription != null && model.timeOutDescription!.trim().isNotEmpty)
+                  ? model.timeOutDescription!.trim()
+                  : ((model.timeInDescription != null && model.timeInDescription!.trim().isNotEmpty)
+                      ? model.timeInDescription!.trim()
+                      : model.description.trim());
+              if (recDesc.isNotEmpty && _descriptionController.text.isEmpty) {
+                _descriptionController.text = recDesc;
+              }
             }
           } catch (_) {}
         }
@@ -1181,6 +1195,8 @@ class _HomePageState extends State<HomePage> with WidgetsBindingObserver {
                   'workType': state.todayRecord!.workType,
                   'location': state.todayRecord!.location,
                   'description': state.todayRecord!.description,
+                  'timeInDescription': state.todayRecord!.timeInDescription,
+                  'timeOutDescription': state.todayRecord!.timeOutDescription,
                 }),
               );
             } catch (_) {}
@@ -1205,6 +1221,14 @@ class _HomePageState extends State<HomePage> with WidgetsBindingObserver {
                   _localRecordId = model.id;
                   final isRecordClockedIn = _localInTime != null &&
                       (_localOutTime == null || _localOutTime!.isEmpty || _localOutTime == '--:--');
+                  final recDesc = (model.timeOutDescription != null && model.timeOutDescription!.trim().isNotEmpty)
+                      ? model.timeOutDescription!.trim()
+                      : ((model.timeInDescription != null && model.timeInDescription!.trim().isNotEmpty)
+                          ? model.timeInDescription!.trim()
+                          : model.description.trim());
+                  if (recDesc.isNotEmpty && _descriptionController.text.isEmpty) {
+                    _descriptionController.text = recDesc;
+                  }
                   if (isRecordClockedIn) {
                     _startLiveTimer();
                   } else {
@@ -1216,6 +1240,14 @@ class _HomePageState extends State<HomePage> with WidgetsBindingObserver {
               _localInTime = loginUser!.timeIn;
               _localOutTime = loginUser.timeOut;
               _localTotalHours = AttendanceRecordModel.parseTotalHours(loginUser.totalHours);
+              final desc = (loginUser.timeOutDescription != null && loginUser.timeOutDescription!.trim().isNotEmpty)
+                  ? loginUser.timeOutDescription!.trim()
+                  : ((loginUser.timeInDescription != null && loginUser.timeInDescription!.trim().isNotEmpty)
+                      ? loginUser.timeInDescription!.trim()
+                      : (loginUser.description?.trim() ?? ''));
+              if (desc.isNotEmpty && _descriptionController.text.isEmpty) {
+                _descriptionController.text = desc;
+              }
               final isRecordClockedIn = _localInTime != null &&
                   (_localOutTime == null || _localOutTime!.isEmpty || _localOutTime == '--:--');
               if (isRecordClockedIn) {
@@ -1256,6 +1288,14 @@ class _HomePageState extends State<HomePage> with WidgetsBindingObserver {
                 _localRecordId = model.id;
                 final isRecordClockedIn = _localInTime != null &&
                     (_localOutTime == null || _localOutTime!.isEmpty || _localOutTime == '--:--');
+                final recDesc = (model.timeOutDescription != null && model.timeOutDescription!.trim().isNotEmpty)
+                    ? model.timeOutDescription!.trim()
+                    : ((model.timeInDescription != null && model.timeInDescription!.trim().isNotEmpty)
+                        ? model.timeInDescription!.trim()
+                        : model.description.trim());
+                if (recDesc.isNotEmpty && _descriptionController.text.isEmpty) {
+                  _descriptionController.text = recDesc;
+                }
                 if (isRecordClockedIn) {
                   _startLiveTimer();
                 } else {
@@ -1269,6 +1309,14 @@ class _HomePageState extends State<HomePage> with WidgetsBindingObserver {
             _localOutTime = loginUser.timeOut;
             _localTotalHours = AttendanceRecordModel.parseTotalHours(loginUser.totalHours);
             _selectedWorkTypeIndex = isWfh ? 1 : 0;
+            final desc = (loginUser.timeOutDescription != null && loginUser.timeOutDescription!.trim().isNotEmpty)
+                ? loginUser.timeOutDescription!.trim()
+                : ((loginUser.timeInDescription != null && loginUser.timeInDescription!.trim().isNotEmpty)
+                    ? loginUser.timeInDescription!.trim()
+                    : (loginUser.description?.trim() ?? ''));
+            if (desc.isNotEmpty && _descriptionController.text.isEmpty) {
+              _descriptionController.text = desc;
+            }
             final isClockedIn = _localInTime != null &&
                 (_localOutTime == null || _localOutTime!.isEmpty || _localOutTime == '--:--');
             if (isClockedIn) {

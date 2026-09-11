@@ -61,6 +61,9 @@ class LeaveBloc extends Bloc<LeaveEvent, LeaveState> {
             ? [...currentRequests, ...res.requests]
             : res.requests;
 
+        final prevPending = currentState is LeaveLoadedState ? currentState.pendingCount : null;
+        final prevCompleted = currentState is LeaveLoadedState ? currentState.completedCount : null;
+
         emit(LeaveLoadedState(
           requests: combined,
           page: res.page,
@@ -70,6 +73,8 @@ class LeaveBloc extends Bloc<LeaveEvent, LeaveState> {
           hasNext: res.hasNext,
           hasPrevious: res.hasPrevious,
           isLoadingMore: false,
+          pendingCount: res.pendingCount ?? prevPending,
+          completedCount: res.completedCount ?? prevCompleted,
         ));
       },
     );
@@ -105,6 +110,8 @@ class LeaveBloc extends Bloc<LeaveEvent, LeaveState> {
           totalPages: res.totalPages,
           hasNext: res.hasNext,
           hasPrevious: res.hasPrevious,
+          pendingCount: res.pendingCount,
+          completedCount: res.completedCount,
           successMessage: 'Request submitted successfully!',
         ));
       },
@@ -139,6 +146,8 @@ class LeaveBloc extends Bloc<LeaveEvent, LeaveState> {
           totalPages: res.totalPages,
           hasNext: res.hasNext,
           hasPrevious: res.hasPrevious,
+          pendingCount: res.pendingCount,
+          completedCount: res.completedCount,
           successMessage: 'Request marked as ${event.status}!',
         ));
       },

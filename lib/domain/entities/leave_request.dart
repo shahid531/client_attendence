@@ -66,6 +66,8 @@ class LeaveRequestsResult extends Equatable {
   final int totalPages;
   final bool hasNext;
   final bool hasPrevious;
+  final int? pendingCount;
+  final int? completedCount;
 
   const LeaveRequestsResult({
     required this.requests,
@@ -75,6 +77,8 @@ class LeaveRequestsResult extends Equatable {
     this.totalPages = 1,
     this.hasNext = false,
     this.hasPrevious = false,
+    this.pendingCount,
+    this.completedCount,
   });
 
   @override
@@ -86,6 +90,8 @@ class LeaveRequestsResult extends Equatable {
         totalPages,
         hasNext,
         hasPrevious,
+        pendingCount,
+        completedCount,
       ];
 }
 

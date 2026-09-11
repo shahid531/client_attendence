@@ -26,7 +26,10 @@ class RequestPageState extends State<RequestPage> {
 
   // Search State
   final TextEditingController _searchController = TextEditingController();
-  String _searchQuery = '';
+
+  // Tab Count Cache
+  int _cachedPendingCount = 0;
+  int _cachedCompletedCount = 0;
 
   bool get _isAdmin {
     final authState = context.read<AuthBloc>().state;
@@ -161,26 +164,26 @@ class RequestPageState extends State<RequestPage> {
             // Segmented Tab Toggle (Pending / Completed)
             BlocBuilder<LeaveBloc, LeaveState>(
               builder: (context, state) {
-                int firstTabCount = 0;
-                int completedCount = 0;
-
                 if (state is LeaveLoadedState) {
-                  if (_isAdmin) {
-                    firstTabCount = state.requests
-                        .where((r) => r.status.toLowerCase() == 'rejected')
-                        .length;
-                    completedCount = state.requests
-                        .where((r) => r.status.toLowerCase() != 'rejected')
-                        .length;
+                  if (state.pendingCount != null) {
+                    _cachedPendingCount = state.pendingCount!;
                   } else {
-                    firstTabCount = state.requests
-                        .where((r) => r.status.toLowerCase() == 'pending')
+                    _cachedPendingCount = state.requests
+                        .where((r) => r.status.toLowerCase() == (_isAdmin ? 'rejected' : 'pending'))
                         .length;
-                    completedCount = state.requests
-                        .where((r) => r.status.toLowerCase() != 'pending')
+                  }
+
+                  if (state.completedCount != null) {
+                    _cachedCompletedCount = state.completedCount!;
+                  } else {
+                    _cachedCompletedCount = state.requests
+                        .where((r) => r.status.toLowerCase() != (_isAdmin ? 'rejected' : 'pending'))
                         .length;
                   }
                 }
+
+                final firstTabCount = _cachedPendingCount;
+                final completedCount = _cachedCompletedCount;
 
                 return Container(
                   height: 44,
@@ -369,26 +372,7 @@ class RequestPageState extends State<RequestPage> {
                             .where((r) => r.status.toLowerCase() != 'pending')
                             .toList());
 
-                List<LeaveRequest> displayedRequests = activeRequests;
-                if (_searchQuery.trim().isNotEmpty) {
-                  final q = _searchQuery.trim().toLowerCase();
-                  displayedRequests = activeRequests.where((r) {
-                    final reqId = r.requestId.toLowerCase();
-                    final empName = r.employeeName.toLowerCase();
-                    final empId = r.employeeId.toLowerCase();
-                    final title = r.title.toLowerCase();
-                    final type = r.requestType.toLowerCase();
-                    final reason = r.reason.toLowerCase();
-                    final status = r.status.toLowerCase();
-                    return reqId.contains(q) ||
-                        empName.contains(q) ||
-                        empId.contains(q) ||
-                        title.contains(q) ||
-                        type.contains(q) ||
-                        reason.contains(q) ||
-                        status.contains(q);
-                  }).toList();
-                }
+                final displayedRequests = activeRequests;
 
                 if (displayedRequests.isEmpty) {
                   return Container(
@@ -412,7 +396,7 @@ class RequestPageState extends State<RequestPage> {
                         ),
                         const SizedBox(height: 12),
                         Text(
-                          _searchQuery.isNotEmpty
+                          _searchController.text.trim().isNotEmpty
                               ? 'No matching requests found'
                               : (_selectedTabIndex == 0
                                   ? (_isAdmin ? 'No rejected requests' : 'No pending requests')
@@ -461,10 +445,13 @@ class RequestPageState extends State<RequestPage> {
           ),
           child: TextField(
             controller: _searchController,
-            onChanged: (val) => setState(() => _searchQuery = val),
-            onSubmitted: (_) => refreshCurrentTab(page: 0, isLoadMore: false),
+            onChanged: (val) => setState(() {}),
+            onSubmitted: (_) {
+              FocusScope.of(context).unfocus();
+              refreshCurrentTab(page: 0, isLoadMore: false);
+            },
             decoration: InputDecoration(
-              hintText: 'Search requests or employees...',
+              hintText: 'Type Employee name or ID',
               hintStyle: const TextStyle(
                 color: AppColors.textLight,
                 fontSize: 13,
@@ -474,12 +461,13 @@ class RequestPageState extends State<RequestPage> {
                 color: AppColors.textMuted,
                 size: 20,
               ),
-              suffixIcon: _searchQuery.isNotEmpty
+              suffixIcon: _searchController.text.isNotEmpty
                   ? IconButton(
                       icon: const Icon(Icons.clear_rounded, size: 18),
                       onPressed: () {
                         _searchController.clear();
-                        setState(() => _searchQuery = '');
+                        FocusScope.of(context).unfocus();
+                        setState(() {});
                         refreshCurrentTab(page: 0, isLoadMore: false);
                       },
                     )
@@ -497,7 +485,10 @@ class RequestPageState extends State<RequestPage> {
           width: double.infinity,
           height: 42,
           child: ElevatedButton.icon(
-            onPressed: () => refreshCurrentTab(page: 0, isLoadMore: false),
+            onPressed: () {
+              FocusScope.of(context).unfocus();
+              refreshCurrentTab(page: 0, isLoadMore: false);
+            },
             icon: const Icon(Icons.search_rounded, size: 18, color: Colors.white),
             label: const Text(
               'Search',

@@ -37,7 +37,6 @@ class _HistoryPageState extends State<HistoryPage> {
 
   // Search State (Admin only)
   final TextEditingController _searchController = TextEditingController();
-  String _searchQuery = '';
 
   bool get _isAdmin {
     final authState = context.read<AuthBloc>().state;
@@ -809,34 +808,7 @@ class _HistoryPageState extends State<HistoryPage> {
                   records = state.history;
                 }
 
-                List<AttendanceRecord> displayedRecords = records;
-                if (_isAdmin && _searchQuery.trim().isNotEmpty) {
-                  final q = _searchQuery.trim().toLowerCase();
-                  displayedRecords = records.where((r) {
-                    final empName = (r.employeeName ?? '').toLowerCase();
-                    final empId = (r.employeeId ?? '').toLowerCase();
-                    final id = r.id.toLowerCase();
-                    final status = r.status.toLowerCase();
-                    final workType = r.workType.toLowerCase();
-                    final location = r.location.toLowerCase();
-                    final desc = r.description.toLowerCase();
-                    final reqId = (r.requestId ?? '').toLowerCase();
-                    final dateStr =
-                        DateFormat('dd/MM/yyyy').format(r.date).toLowerCase();
-                    final dateStr2 =
-                        DateFormat('MMM dd, yyyy').format(r.date).toLowerCase();
-                    return empName.contains(q) ||
-                        empId.contains(q) ||
-                        id.contains(q) ||
-                        status.contains(q) ||
-                        workType.contains(q) ||
-                        location.contains(q) ||
-                        desc.contains(q) ||
-                        reqId.contains(q) ||
-                        dateStr.contains(q) ||
-                        dateStr2.contains(q);
-                  }).toList();
-                }
+                final displayedRecords = records;
 
                 int presentCount = displayedRecords.where((r) {
                   final s = r.status.toLowerCase();
@@ -961,7 +933,7 @@ class _HistoryPageState extends State<HistoryPage> {
                                 size: 48, color: Color(0xFF94A3B8)),
                             const SizedBox(height: 12),
                             Text(
-                              _searchQuery.isNotEmpty
+                              _searchController.text.trim().isNotEmpty
                                   ? 'No matching records found'
                                   : 'No attendance records found',
                               style: const TextStyle(
@@ -1005,8 +977,11 @@ class _HistoryPageState extends State<HistoryPage> {
           ),
           child: TextField(
             controller: _searchController,
-            onChanged: (val) => setState(() => _searchQuery = val),
-            onSubmitted: (_) => _applyPeriod(_selectedPeriod, page: 0),
+            onChanged: (val) => setState(() {}),
+            onSubmitted: (_) {
+              FocusScope.of(context).unfocus();
+              _applyPeriod(_selectedPeriod, page: 0);
+            },
             decoration: InputDecoration(
               hintText: 'Search requests or employees...',
               hintStyle: const TextStyle(
@@ -1018,12 +993,13 @@ class _HistoryPageState extends State<HistoryPage> {
                 color: AppColors.textMuted,
                 size: 20,
               ),
-              suffixIcon: _searchQuery.isNotEmpty
+              suffixIcon: _searchController.text.isNotEmpty
                   ? IconButton(
                       icon: const Icon(Icons.clear_rounded, size: 18),
                       onPressed: () {
                         _searchController.clear();
-                        setState(() => _searchQuery = '');
+                        FocusScope.of(context).unfocus();
+                        setState(() {});
                         _applyPeriod(_selectedPeriod, page: 0);
                       },
                     )
@@ -1041,7 +1017,10 @@ class _HistoryPageState extends State<HistoryPage> {
           width: double.infinity,
           height: 42,
           child: ElevatedButton.icon(
-            onPressed: () => _applyPeriod(_selectedPeriod, page: 0),
+            onPressed: () {
+              FocusScope.of(context).unfocus();
+              _applyPeriod(_selectedPeriod, page: 0);
+            },
             icon:
                 const Icon(Icons.search_rounded, size: 18, color: Colors.white),
             label: const Text(

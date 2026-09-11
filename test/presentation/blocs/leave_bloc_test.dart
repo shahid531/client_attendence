@@ -47,6 +47,8 @@ class MockLeaveRepository implements LeaveRepository {
       totalPages: 1,
       hasNext: false,
       hasPrevious: false,
+      pendingCount: 2,
+      completedCount: 1,
     ));
   }
 
@@ -117,6 +119,21 @@ void main() {
     );
 
     bloc.add(const LoadLeaveRequestsEvent(status: 'PENDING'));
+    await expectation;
+  });
+
+  test('should propagate pendingCount and completedCount in LeaveLoadedState', () async {
+    final expectation = expectLater(
+      bloc.stream,
+      emitsInOrder([
+        LeaveLoadingState(),
+        isA<LeaveLoadedState>()
+            .having((s) => s.pendingCount, 'pendingCount', 2)
+            .having((s) => s.completedCount, 'completedCount', 1),
+      ]),
+    );
+
+    bloc.add(const LoadLeaveRequestsEvent());
     await expectation;
   });
 }

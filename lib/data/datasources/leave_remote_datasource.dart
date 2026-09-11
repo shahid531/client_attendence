@@ -107,23 +107,39 @@ class LeaveRemoteDataSourceImpl implements LeaveRemoteDataSource {
 
           final resData = data['data'];
           if (resData is Map<String, dynamic>) {
-            final contentList = resData['content'];
+            final paginationMap = (resData['requests'] is Map<String, dynamic>)
+                ? resData['requests'] as Map<String, dynamic>
+                : resData;
+
+            final contentList = paginationMap['content'] ?? resData['content'];
             List<LeaveRequestModel> list = [];
             if (contentList is List) {
               list = contentList
                   .map((item) => LeaveRequestModel.fromJson(item as Map<String, dynamic>))
                   .toList();
             }
+            int? parseCount(dynamic value) {
+              if (value == null) return null;
+              if (value is int) return value;
+              if (value is num) return value.toInt();
+              return int.tryParse(value.toString());
+            }
+
+            final pendingCount = parseCount(resData['pendingCount'] ?? data['pendingCount']);
+            final completedCount = parseCount(resData['completedCount'] ?? data['completedCount']);
+
             return LeaveRequestsResult(
               requests: list,
-              page: resData['page'] is int ? resData['page'] as int : page,
-              pageSize: resData['pageSize'] is int ? resData['pageSize'] as int : pageSize,
-              totalElements: resData['totalElements'] is int
-                  ? resData['totalElements'] as int
+              page: paginationMap['page'] is int ? paginationMap['page'] as int : page,
+              pageSize: paginationMap['pageSize'] is int ? paginationMap['pageSize'] as int : pageSize,
+              totalElements: paginationMap['totalElements'] is int
+                  ? paginationMap['totalElements'] as int
                   : list.length,
-              totalPages: resData['totalPages'] is int ? resData['totalPages'] as int : 1,
-              hasNext: resData['hasNext'] is bool ? resData['hasNext'] as bool : false,
-              hasPrevious: resData['hasPrevious'] is bool ? resData['hasPrevious'] as bool : false,
+              totalPages: paginationMap['totalPages'] is int ? paginationMap['totalPages'] as int : 1,
+              hasNext: paginationMap['hasNext'] is bool ? paginationMap['hasNext'] as bool : false,
+              hasPrevious: paginationMap['hasPrevious'] is bool ? paginationMap['hasPrevious'] as bool : false,
+              pendingCount: pendingCount,
+              completedCount: completedCount,
             );
           } else if (resData is List) {
             final parsed = resData
