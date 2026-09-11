@@ -20,11 +20,11 @@ class _CreateEmployeeScreenState extends State<CreateEmployeeScreen> {
   final _formKey = GlobalKey<FormState>();
 
   // Form Controllers
-  final _fullNameController = TextEditingController(text: 'Ashish Singh');
-  final _employeeIdController = TextEditingController(text: '20179');
-  final _emailController = TextEditingController(text: 'ashish3@idealake.com');
-  final _contactController = TextEditingController(text: '1111111221');
-  final _locationIdController = TextEditingController(text: '001');
+  final _fullNameController = TextEditingController();
+  final _employeeIdController = TextEditingController();
+  final _emailController = TextEditingController();
+  final _contactController = TextEditingController();
+  final _locationIdController = TextEditingController();
   final _locationNameController = TextEditingController();
   final _latitudeController = TextEditingController();
   final _longitudeController = TextEditingController();
@@ -37,7 +37,7 @@ class _CreateEmployeeScreenState extends State<CreateEmployeeScreen> {
   final List<Map<String, String>> _roleOptions = [
     {'label': 'RM (Relationship Manager)', 'code': 'RM'},
     {'label': 'EMPLOYEE', 'code': 'EMPLOYEE'},
-    {'label': 'Admin', 'code': 'ADMIN'},
+    {'label': 'ADMIN', 'code': 'ADMIN'},
   ];
 
   late String _selectedRoleCode;
