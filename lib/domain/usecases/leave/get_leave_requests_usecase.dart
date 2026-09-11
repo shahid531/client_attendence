@@ -11,6 +11,7 @@ class GetLeaveRequestsParams extends Equatable {
   final int pageSize;
   final String? employeeId;
   final String? employeeName;
+  final bool isApprovals;
 
   const GetLeaveRequestsParams({
     this.status,
@@ -18,10 +19,11 @@ class GetLeaveRequestsParams extends Equatable {
     this.pageSize = 10,
     this.employeeId,
     this.employeeName,
+    this.isApprovals = false,
   });
 
   @override
-  List<Object?> get props => [status, page, pageSize, employeeId, employeeName];
+  List<Object?> get props => [status, page, pageSize, employeeId, employeeName, isApprovals];
 }
 
 class GetLeaveRequestsUseCase implements UseCase<LeaveRequestsResult, GetLeaveRequestsParams> {
@@ -37,6 +39,7 @@ class GetLeaveRequestsUseCase implements UseCase<LeaveRequestsResult, GetLeaveRe
       pageSize: params.pageSize,
       employeeId: params.employeeId,
       employeeName: params.employeeName,
+      isApprovals: params.isApprovals,
     );
   }
 }

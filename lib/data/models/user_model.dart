@@ -22,6 +22,8 @@ class UserModel extends User {
     super.totalHours,
     super.attendanceType,
     super.description,
+    super.timeInDescription,
+    super.timeOutDescription,
   });
 
   factory UserModel.fromJson(Map<String, dynamic> json) {
@@ -88,6 +90,9 @@ class UserModel extends User {
         json['workDescription']?.toString() ??
         json['remarks']?.toString();
 
+    final timeInDesc = json['timeInDescription']?.toString();
+    final timeOutDesc = json['timeOutDescription']?.toString();
+
     return UserModel(
       id: empId,
       name: fullName,
@@ -109,6 +114,8 @@ class UserModel extends User {
       totalHours: json['totalHours'],
       attendanceType: json['attendanceType']?.toString(),
       description: desc,
+      timeInDescription: timeInDesc,
+      timeOutDescription: timeOutDesc,
     );
   }
 
@@ -134,6 +141,8 @@ class UserModel extends User {
       'totalHours': totalHours,
       'attendanceType': attendanceType,
       'description': description,
+      'timeInDescription': timeInDescription,
+      'timeOutDescription': timeOutDescription,
     };
   }
 }

@@ -14,6 +14,7 @@ class LoadLeaveRequestsEvent extends LeaveEvent {
   final String? employeeId;
   final String? employeeName;
   final bool isLoadMore;
+  final bool isApprovals;
 
   const LoadLeaveRequestsEvent({
     this.status,
@@ -22,10 +23,11 @@ class LoadLeaveRequestsEvent extends LeaveEvent {
     this.employeeId,
     this.employeeName,
     this.isLoadMore = false,
+    this.isApprovals = false,
   });
 
   @override
-  List<Object?> get props => [status, page, pageSize, employeeId, employeeName, isLoadMore];
+  List<Object?> get props => [status, page, pageSize, employeeId, employeeName, isLoadMore, isApprovals];
 }
 
 
@@ -52,13 +54,15 @@ class UpdateRequestStatusEvent extends LeaveEvent {
   final String requestId;
   final String status;
   final String? remarks;
+  final bool isApprovals;
 
   const UpdateRequestStatusEvent({
     required this.requestId,
     required this.status,
     this.remarks,
+    this.isApprovals = true,
   });
 
   @override
-  List<Object?> get props => [requestId, status, remarks];
+  List<Object?> get props => [requestId, status, remarks, isApprovals];
 }

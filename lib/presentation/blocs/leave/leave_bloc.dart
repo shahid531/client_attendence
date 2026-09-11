@@ -45,6 +45,7 @@ class LeaveBloc extends Bloc<LeaveEvent, LeaveState> {
         pageSize: event.pageSize,
         employeeId: event.employeeId,
         employeeName: event.employeeName,
+        isApprovals: event.isApprovals,
       ),
     );
 
@@ -60,6 +61,7 @@ class LeaveBloc extends Bloc<LeaveEvent, LeaveState> {
         final combined = event.isLoadMore
             ? [...currentRequests, ...res.requests]
             : res.requests;
+
 
         emit(LeaveLoadedState(
           requests: combined,
@@ -130,9 +132,12 @@ class LeaveBloc extends Bloc<LeaveEvent, LeaveState> {
 
     await result.fold(
       (failure) async => emit(LeaveErrorState(failure.message)),
-      (_) async {
+      (apiMessage) async {
         final listResult = await getLeaveRequestsUseCase(
-          const GetLeaveRequestsParams(status: 'PENDING,APPROVED,REJECTED'),
+          GetLeaveRequestsParams(
+            status: event.isApprovals ? 'PENDING' : 'PENDING,APPROVED,REJECTED',
+            isApprovals: event.isApprovals,
+          ),
         );
         final res = listResult.getOrElse(() => const LeaveRequestsResult(requests: []));
         emit(LeaveLoadedState(
@@ -145,8 +150,11 @@ class LeaveBloc extends Bloc<LeaveEvent, LeaveState> {
           hasPrevious: res.hasPrevious,
           pendingCount: res.pendingCount,
           completedCount: res.completedCount,
-          successMessage: 'Request marked as ${event.status}!',
-        ));
+          successMessage: apiMessage.isNotEmpty
+              ? apiMessage
+              : 'Request marked as ${event.status}!',
+        )
+        );
       },
     );
   }

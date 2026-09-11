@@ -34,6 +34,7 @@ class MockLeaveRepository implements LeaveRepository {
     int pageSize = 10,
     String? employeeId,
     String? employeeName,
+    bool isApprovals = false,
   }) async {
     List<LeaveRequest> list = _requests;
     if (status != null && status.isNotEmpty) {
@@ -47,6 +48,8 @@ class MockLeaveRepository implements LeaveRepository {
       totalPages: 1,
       hasNext: false,
       hasPrevious: false,
+      pendingCount: 2,
+      completedCount: 1,
     ));
   }
 
@@ -73,12 +76,12 @@ class MockLeaveRepository implements LeaveRepository {
   }
 
   @override
-  Future<Either<Failure, void>> updateRequestStatus({
+  Future<Either<Failure, String>> updateRequestStatus({
     required String requestId,
     required String status,
     String? remarks,
   }) async {
-    return const Right(null);
+    return Right('Request marked as $status!');
   }
 }
 
@@ -117,6 +120,21 @@ void main() {
     );
 
     bloc.add(const LoadLeaveRequestsEvent(status: 'PENDING'));
+    await expectation;
+  });
+
+  test('should propagate pendingCount and completedCount in LeaveLoadedState', () async {
+    final expectation = expectLater(
+      bloc.stream,
+      emitsInOrder([
+        LeaveLoadingState(),
+        isA<LeaveLoadedState>()
+            .having((s) => s.pendingCount, 'pendingCount', 2)
+            .having((s) => s.completedCount, 'completedCount', 1),
+      ]),
+    );
+
+    bloc.add(const LoadLeaveRequestsEvent());
     await expectation;
   });
 }

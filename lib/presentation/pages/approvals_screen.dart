@@ -19,7 +19,6 @@ class ApprovalsScreen extends StatefulWidget {
 class ApprovalsScreenState extends State<ApprovalsScreen> {
   int _selectedTabIndex = 0; // 0 for Pending, 1 for Completed
   int _completedFilterIndex = 0; // 0 for All, 1 for Reject, 2 for Approve
-  String _searchQuery = '';
   final TextEditingController _searchController = TextEditingController();
 
   // Pagination State
@@ -63,6 +62,7 @@ class ApprovalsScreenState extends State<ApprovalsScreen> {
             employeeId: employeeId,
             employeeName: employeeName,
             isLoadMore: isLoadMore,
+            isApprovals: true,
           ),
         );
   }
@@ -155,22 +155,9 @@ class ApprovalsScreenState extends State<ApprovalsScreen> {
                 .toList();
           }
 
-          // Apply Search Query
-          List<LeaveRequest> activeList = _selectedTabIndex == 0
+          final List<LeaveRequest> activeList = _selectedTabIndex == 0
               ? pendingList
               : filteredCompleted;
-
-          if (_searchQuery.trim().isNotEmpty) {
-            final q = _searchQuery.trim().toLowerCase();
-            activeList = activeList.where((r) {
-              return r.title.toLowerCase().contains(q) ||
-                  r.reason.toLowerCase().contains(q) ||
-                  r.requestType.toLowerCase().contains(q) ||
-                  r.employeeName.toLowerCase().contains(q) ||
-                  r.employeeId.toLowerCase().contains(q) ||
-                  r.requestId.toLowerCase().contains(q);
-            }).toList();
-          }
 
           // Dynamic Metrics
           // Dynamic Metrics
@@ -429,6 +416,7 @@ class ApprovalsScreenState extends State<ApprovalsScreen> {
                   context.read<LeaveBloc>().add(
                         const LoadLeaveRequestsEvent(
                           status: 'PENDING',
+                          isApprovals: true,
                         ),
                       );
                 }
@@ -471,6 +459,7 @@ class ApprovalsScreenState extends State<ApprovalsScreen> {
                   context.read<LeaveBloc>().add(
                         const LoadLeaveRequestsEvent(
                           status: 'APPROVED,REJECTED',
+                          isApprovals: true,
                         ),
                       );
                 }
@@ -546,44 +535,80 @@ class ApprovalsScreenState extends State<ApprovalsScreen> {
   }
 
   Widget _buildSearchBar() {
-    return Container(
-      decoration: BoxDecoration(
-        color: Colors.white,
-        borderRadius: BorderRadius.circular(12),
-        border: Border.all(color: AppColors.borderGrey),
-      ),
-      child: TextField(
-        controller: _searchController,
-        onChanged: (val) => setState(() => _searchQuery = val),
-        onSubmitted: (_) => refreshCurrentTab(page: 0),
-        decoration: InputDecoration(
-          hintText: 'Type Employee name or ID',
-          hintStyle: const TextStyle(
-            color: AppColors.textLight,
-            fontSize: 13,
+    return Column(
+      crossAxisAlignment: CrossAxisAlignment.stretch,
+      children: [
+        Container(
+          decoration: BoxDecoration(
+            color: Colors.white,
+            borderRadius: BorderRadius.circular(12),
+            border: Border.all(color: AppColors.borderGrey),
           ),
-          prefixIcon: const Icon(
-            Icons.search_rounded,
-            color: AppColors.textMuted,
-            size: 20,
-          ),
-          suffixIcon: _searchQuery.isNotEmpty
-              ? IconButton(
-                  icon: const Icon(Icons.clear_rounded, size: 18),
-                  onPressed: () {
-                    _searchController.clear();
-                    setState(() => _searchQuery = '');
-                    refreshCurrentTab(page: 0);
-                  },
-                )
-              : null,
-          border: InputBorder.none,
-          contentPadding: const EdgeInsets.symmetric(
-            vertical: 12,
-            horizontal: 14,
+          child: TextField(
+            controller: _searchController,
+            onChanged: (val) => setState(() {}),
+            onSubmitted: (_) {
+              FocusScope.of(context).unfocus();
+              refreshCurrentTab(page: 0, isLoadMore: false);
+            },
+            decoration: InputDecoration(
+              hintText: 'Type Employee name or ID',
+              hintStyle: const TextStyle(
+                color: AppColors.textLight,
+                fontSize: 13,
+              ),
+              prefixIcon: const Icon(
+                Icons.search_rounded,
+                color: AppColors.textMuted,
+                size: 20,
+              ),
+              suffixIcon: _searchController.text.isNotEmpty
+                  ? IconButton(
+                      icon: const Icon(Icons.clear_rounded, size: 18),
+                      onPressed: () {
+                        _searchController.clear();
+                        FocusScope.of(context).unfocus();
+                        setState(() {});
+                        refreshCurrentTab(page: 0, isLoadMore: false);
+                      },
+                    )
+                  : null,
+              border: InputBorder.none,
+              contentPadding: const EdgeInsets.symmetric(
+                vertical: 12,
+                horizontal: 14,
+              ),
+            ),
           ),
         ),
-      ),
+        const SizedBox(height: 8),
+        SizedBox(
+          width: double.infinity,
+          height: 42,
+          child: ElevatedButton.icon(
+            onPressed: () {
+              FocusScope.of(context).unfocus();
+              refreshCurrentTab(page: 0, isLoadMore: false);
+            },
+            icon: const Icon(Icons.search_rounded, size: 18, color: Colors.white),
+            label: const Text(
+              'Search',
+              style: TextStyle(
+                color: Colors.white,
+                fontWeight: FontWeight.bold,
+                fontSize: 14,
+              ),
+            ),
+            style: ElevatedButton.styleFrom(
+              backgroundColor: AppColors.primaryNavy,
+              elevation: 0,
+              shape: RoundedRectangleBorder(
+                borderRadius: BorderRadius.circular(8),
+              ),
+            ),
+          ),
+        ),
+      ],
     );
   }
 

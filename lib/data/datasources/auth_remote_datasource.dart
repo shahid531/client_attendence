@@ -105,6 +105,9 @@ class AuthRemoteDataSourceImpl implements AuthRemoteDataSource {
         if (user.timeIn != null) await sharedPreferences.setString('cached_user_time_in', user.timeIn!);
         if (user.timeOut != null) await sharedPreferences.setString('cached_user_time_out', user.timeOut!);
         if (user.totalHours != null) await sharedPreferences.setString('cached_user_total_hours', user.totalHours.toString());
+        if (user.attendanceType != null) await sharedPreferences.setString('cached_user_attendance_type', user.attendanceType!);
+        if (user.timeInDescription != null) await sharedPreferences.setString('cached_user_time_in_description', user.timeInDescription!);
+        if (user.timeOutDescription != null) await sharedPreferences.setString('cached_user_time_out_description', user.timeOutDescription!);
         final rememberMe = sharedPreferences.getBool('remember_me') ?? false;
         if (rememberMe) {
           await sharedPreferences.setString('last_logged_in_username', username);
@@ -204,6 +207,8 @@ class AuthRemoteDataSourceImpl implements AuthRemoteDataSource {
           if (user.timeOut != null) await sharedPreferences.setString('cached_user_time_out', user.timeOut!);
           if (user.totalHours != null) await sharedPreferences.setString('cached_user_total_hours', user.totalHours.toString());
           if (user.attendanceType != null) await sharedPreferences.setString('cached_user_attendance_type', user.attendanceType!);
+          if (user.timeInDescription != null) await sharedPreferences.setString('cached_user_time_in_description', user.timeInDescription!);
+          if (user.timeOutDescription != null) await sharedPreferences.setString('cached_user_time_out_description', user.timeOutDescription!);
 
           return user;
         }
@@ -227,6 +232,8 @@ class AuthRemoteDataSourceImpl implements AuthRemoteDataSource {
     final userTimeOut = sharedPreferences.getString('cached_user_time_out');
     final userTotalHours = sharedPreferences.getString('cached_user_total_hours');
     final userAttendanceType = sharedPreferences.getString('cached_user_attendance_type');
+    final userTimeInDesc = sharedPreferences.getString('cached_user_time_in_description');
+    final userTimeOutDesc = sharedPreferences.getString('cached_user_time_out_description');
 
     if (userId != null && userId.isNotEmpty) {
       return UserModel(
@@ -245,6 +252,8 @@ class AuthRemoteDataSourceImpl implements AuthRemoteDataSource {
         timeOut: userTimeOut,
         totalHours: userTotalHours,
         attendanceType: userAttendanceType,
+        timeInDescription: userTimeInDesc,
+        timeOutDescription: userTimeOutDesc,
       );
     }
     return null;

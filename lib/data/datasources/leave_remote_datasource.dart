@@ -21,8 +21,16 @@ abstract class LeaveRemoteDataSource {
     String? employeeId,
     String? employeeName,
   });
+
+  Future<LeaveRequestsResult> getApprovalRequests({
+    String? status,
+    int page = 0,
+    int pageSize = 10,
+    String? employeeId,
+    String? employeeName,
+  });
   Future<DashboardStatsModel> getDashboardStats();
-  Future<void> updateRequestStatus({
+  Future<String> updateRequestStatus({
     required String requestId,
     required String status,
     String? remarks,
@@ -42,28 +50,16 @@ class LeaveRemoteDataSourceImpl implements LeaveRemoteDataSource {
 
   final List<LeaveRequestModel> _mockLeaveRequests = [];
 
-  String _getRequestsEndpoint() {
-    return '$_baseUrl/requests/approvals';
-  }
-
   String _getUpdateRequestEndpoint(String requestId, String action) {
-    final role = sharedPreferences?.getString('cached_user_role')?.trim().toUpperCase() ?? '';
-    if (role == 'ADMIN') {
-      return '$_baseUrl/admin/requests/$requestId/$action';
-    } else if (role == 'RM' || role.startsWith('RM')) {
-      return '$_baseUrl/rm/requests/$requestId/$action';
-    } else {
-      return '$_baseUrl/requests/$requestId/$action';
-    }
+    return '$_baseUrl/requests/$requestId/$action';
   }
 
-  @override
-  Future<LeaveRequestsResult> getLeaveRequests({
-    String? status,
+  Future<LeaveRequestsResult> _fetchRequestsFromApi(
+    String endpoint,
+    Map<String, dynamic> queryParams, {
     int page = 0,
     int pageSize = 10,
-    String? employeeId,
-    String? employeeName,
+    String? statusFilter,
   }) async {
     if (dio != null && sharedPreferences != null) {
       try {
@@ -78,17 +74,6 @@ class LeaveRemoteDataSourceImpl implements LeaveRemoteDataSource {
           'Authorization': 'Bearer $cachedToken',
         };
 
-        final queryParams = <String, dynamic>{
-          'employeeId': employeeId ?? '',
-          'employeeName': employeeName ?? '',
-          'page': page,
-          'pageSize': pageSize > 0 ? pageSize : 10,
-          'status': (status != null && status.isNotEmpty)
-              ? status.toUpperCase()
-              : 'PENDING,APPROVED,REJECTED',
-        };
-
-        final endpoint = _getRequestsEndpoint();
         print('[LeaveRemoteDataSource] GET $endpoint with params: $queryParams');
 
         final response = await dio!.get(
@@ -107,33 +92,37 @@ class LeaveRemoteDataSourceImpl implements LeaveRemoteDataSource {
 
           final resData = data['data'];
           if (resData is Map<String, dynamic>) {
-            final requestsObj = resData['requests'];
-            final targetObj = requestsObj is Map<String, dynamic> ? requestsObj : resData;
-            final contentList = targetObj['content'];
-            final pendingCount = resData['pendingCount'] is int ? resData['pendingCount'] as int : null;
-            final completedCount = resData['completedCount'] is int ? resData['completedCount'] as int : null;
+            final paginationMap = (resData['requests'] is Map<String, dynamic>)
+                ? resData['requests'] as Map<String, dynamic>
+                : resData;
 
+            final contentList = paginationMap['content'] ?? resData['content'];
             List<LeaveRequestModel> list = [];
             if (contentList is List) {
               list = contentList
                   .map((item) => LeaveRequestModel.fromJson(item as Map<String, dynamic>))
                   .toList();
-            } else if (requestsObj is List) {
-              list = requestsObj
-                  .map((item) => LeaveRequestModel.fromJson(item as Map<String, dynamic>))
-                  .toList();
             }
+            int? parseCount(dynamic value) {
+              if (value == null) return null;
+              if (value is int) return value;
+              if (value is num) return value.toInt();
+              return int.tryParse(value.toString());
+            }
+
+            final pendingCount = parseCount(resData['pendingCount'] ?? data['pendingCount']);
+            final completedCount = parseCount(resData['completedCount'] ?? data['completedCount']);
 
             return LeaveRequestsResult(
               requests: list,
-              page: targetObj['page'] is int ? targetObj['page'] as int : page,
-              pageSize: targetObj['pageSize'] is int ? targetObj['pageSize'] as int : pageSize,
-              totalElements: targetObj['totalElements'] is int
-                  ? targetObj['totalElements'] as int
+              page: paginationMap['page'] is int ? paginationMap['page'] as int : page,
+              pageSize: paginationMap['pageSize'] is int ? paginationMap['pageSize'] as int : pageSize,
+              totalElements: paginationMap['totalElements'] is int
+                  ? paginationMap['totalElements'] as int
                   : list.length,
-              totalPages: targetObj['totalPages'] is int ? targetObj['totalPages'] as int : 1,
-              hasNext: targetObj['hasNext'] is bool ? targetObj['hasNext'] as bool : false,
-              hasPrevious: targetObj['hasPrevious'] is bool ? targetObj['hasPrevious'] as bool : false,
+              totalPages: paginationMap['totalPages'] is int ? paginationMap['totalPages'] as int : 1,
+              hasNext: paginationMap['hasNext'] is bool ? paginationMap['hasNext'] as bool : false,
+              hasPrevious: paginationMap['hasPrevious'] is bool ? paginationMap['hasPrevious'] as bool : false,
               pendingCount: pendingCount,
               completedCount: completedCount,
             );
@@ -154,7 +143,7 @@ class LeaveRemoteDataSourceImpl implements LeaveRemoteDataSource {
         }
         return const LeaveRequestsResult(requests: []);
       } on DioException catch (e) {
-        print('[LeaveRemoteDataSource] DioException on GET requests: ${e.response?.data ?? e.message}');
+        print('[LeaveRemoteDataSource] DioException on GET $endpoint: ${e.response?.data ?? e.message}');
         if (e.response != null && e.response?.data is Map<String, dynamic>) {
           final errMap = e.response!.data as Map<String, dynamic>;
           final message = errMap['message'] ?? 'Failed to fetch requests (${e.response?.statusCode})';
@@ -162,16 +151,16 @@ class LeaveRemoteDataSourceImpl implements LeaveRemoteDataSource {
         }
         throw ServerException(e.message ?? 'Network error while fetching requests');
       } catch (e) {
-        print('[LeaveRemoteDataSource] Exception on GET requests: $e');
+        print('[LeaveRemoteDataSource] Exception on GET $endpoint: $e');
         if (e is ServerException) rethrow;
         throw ServerException(e.toString());
       }
     }
 
     await Future.delayed(const Duration(milliseconds: 300));
-    if (status != null && status.isNotEmpty) {
+    if (statusFilter != null && statusFilter.isNotEmpty) {
       final statuses =
-          status.toUpperCase().split(',').map((s) => s.trim()).toList();
+          statusFilter.toUpperCase().split(',').map((s) => s.trim()).toList();
       final filtered = _mockLeaveRequests
           .where((r) => statuses.contains(r.status.toUpperCase()))
           .toList();
@@ -193,6 +182,62 @@ class LeaveRemoteDataSourceImpl implements LeaveRemoteDataSource {
       totalPages: 1,
       hasNext: false,
       hasPrevious: false,
+    );
+  }
+
+  @override
+  Future<LeaveRequestsResult> getLeaveRequests({
+    String? status,
+    int page = 0,
+    int pageSize = 10,
+    String? employeeId,
+    String? employeeName,
+  }) async {
+    final queryParams = <String, dynamic>{
+      'page': page,
+      'pageSize': pageSize > 0 ? pageSize : 10,
+    };
+    if (status != null && status.isNotEmpty) {
+      queryParams['status'] = status.toUpperCase();
+    }
+    if (employeeId != null && employeeId.isNotEmpty) {
+      queryParams['employeeId'] = employeeId;
+    }
+    if (employeeName != null && employeeName.isNotEmpty) {
+      queryParams['employeeName'] = employeeName;
+    }
+    return _fetchRequestsFromApi(
+      '$_baseUrl/requests',
+      queryParams,
+      page: page,
+      pageSize: pageSize,
+      statusFilter: status,
+    );
+  }
+
+  @override
+  Future<LeaveRequestsResult> getApprovalRequests({
+    String? status,
+    int page = 0,
+    int pageSize = 10,
+    String? employeeId,
+    String? employeeName,
+  }) async {
+    final queryParams = <String, dynamic>{
+      'employeeId': employeeId ?? '',
+      'employeeName': employeeName ?? '',
+      'page': page,
+      'pageSize': pageSize > 0 ? pageSize : 10,
+      'status': (status != null && status.isNotEmpty)
+          ? status.toUpperCase()
+          : 'PENDING',
+    };
+    return _fetchRequestsFromApi(
+      '$_baseUrl/requests/approvals',
+      queryParams,
+      page: page,
+      pageSize: pageSize,
+      statusFilter: status,
     );
   }
 
@@ -221,7 +266,7 @@ class LeaveRemoteDataSourceImpl implements LeaveRemoteDataSource {
   }
 
   @override
-  Future<void> updateRequestStatus({
+  Future<String> updateRequestStatus({
     required String requestId,
     required String status,
     String? remarks,
@@ -243,13 +288,17 @@ class LeaveRemoteDataSourceImpl implements LeaveRemoteDataSource {
             : 'reject';
 
         final endpoint = _getUpdateRequestEndpoint(requestId, action);
-        print('[LeaveRemoteDataSource] POST $endpoint with comments: $remarks');
+        final Map<String, dynamic> body = {};
+        if (remarks != null && remarks.isNotEmpty) {
+          body['comments'] = remarks;
+        } else if (action == 'reject') {
+          body['comments'] = '';
+        }
+        print('[LeaveRemoteDataSource] POST $endpoint with body: $body');
 
         final response = await dio!.post(
           endpoint,
-          data: {
-            'comments': remarks ?? '',
-          },
+          data: body.isNotEmpty ? body : null,
           options: Options(headers: headers),
         );
 
@@ -260,8 +309,9 @@ class LeaveRemoteDataSourceImpl implements LeaveRemoteDataSource {
           if (data['success'] == false) {
             throw ServerException(data['message']?.toString() ?? 'Failed to update request');
           }
+          return data['message']?.toString() ?? 'Request updated successfully';
         }
-        return;
+        return 'Request updated successfully';
       } on DioException catch (e) {
         print('[LeaveRemoteDataSource] DioException on POST update request $requestId: ${e.response?.data ?? e.message}');
         if (e.response != null && e.response?.data is Map<String, dynamic>) {
@@ -301,6 +351,7 @@ class LeaveRemoteDataSourceImpl implements LeaveRemoteDataSource {
         timeOut: old.timeOut,
       );
     }
+    return status.toUpperCase() == 'APPROVED' ? 'Request approved successfully' : 'Request rejected successfully';
   }
 
 

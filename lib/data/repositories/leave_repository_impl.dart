@@ -41,15 +41,24 @@ class LeaveRepositoryImpl implements LeaveRepository {
     int pageSize = 10,
     String? employeeId,
     String? employeeName,
+    bool isApprovals = false,
   }) async {
     try {
-      final result = await remoteDataSource.getLeaveRequests(
-        status: status,
-        page: page,
-        pageSize: pageSize,
-        employeeId: employeeId,
-        employeeName: employeeName,
-      );
+      final result = isApprovals
+          ? await remoteDataSource.getApprovalRequests(
+              status: status,
+              page: page,
+              pageSize: pageSize,
+              employeeId: employeeId,
+              employeeName: employeeName,
+            )
+          : await remoteDataSource.getLeaveRequests(
+              status: status,
+              page: page,
+              pageSize: pageSize,
+              employeeId: employeeId,
+              employeeName: employeeName,
+            );
       return Right(result);
     } on ServerException catch (e) {
       return Left(ServerFailure(e.message));
@@ -60,18 +69,20 @@ class LeaveRepositoryImpl implements LeaveRepository {
 
 
   @override
-  Future<Either<Failure, void>> updateRequestStatus({
+  Future<Either<Failure, String>> updateRequestStatus({
     required String requestId,
     required String status,
     String? remarks,
   }) async {
     try {
-      await remoteDataSource.updateRequestStatus(
+      final message = await remoteDataSource.updateRequestStatus(
         requestId: requestId,
         status: status,
         remarks: remarks,
       );
-      return const Right(null);
+      return Right(message);
+    } on ServerException catch (e) {
+      return Left(ServerFailure(e.message));
     } catch (e) {
       return Left(ServerFailure(e.toString()));
     }

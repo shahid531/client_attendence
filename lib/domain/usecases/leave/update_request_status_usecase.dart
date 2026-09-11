@@ -4,13 +4,13 @@ import '../../../core/errors/failures.dart';
 import '../../../core/usecases/usecase.dart';
 import '../../repositories/leave_repository.dart';
 
-class UpdateRequestStatusUseCase implements UseCase<void, UpdateRequestStatusParams> {
+class UpdateRequestStatusUseCase implements UseCase<String, UpdateRequestStatusParams> {
   final LeaveRepository repository;
 
   UpdateRequestStatusUseCase(this.repository);
 
   @override
-  Future<Either<Failure, void>> call(UpdateRequestStatusParams params) async {
+  Future<Either<Failure, String>> call(UpdateRequestStatusParams params) async {
     return await repository.updateRequestStatus(
       requestId: params.requestId,
       status: params.status,

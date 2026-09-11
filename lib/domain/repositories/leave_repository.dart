@@ -17,8 +17,9 @@ abstract class LeaveRepository {
     int pageSize = 10,
     String? employeeId,
     String? employeeName,
+    bool isApprovals = false,
   });
-  Future<Either<Failure, void>> updateRequestStatus({
+  Future<Either<Failure, String>> updateRequestStatus({
     required String requestId,
     required String status,
     String? remarks,

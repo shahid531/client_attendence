@@ -38,6 +38,7 @@ class _ReviewRequestDialogState extends State<ReviewRequestDialog> {
             requestId: widget.request.id,
             status: newStatus,
             remarks: remarks.isNotEmpty ? remarks : null,
+            isApprovals: true,
           ),
         );
 
