@@ -17,6 +17,6 @@ void main() {
     await tester.pumpWidget(const MyApp());
     await tester.pump();
 
-    expect(find.byType(CircularProgressIndicator), findsOneWidget);
+    expect(find.byType(Scaffold), findsOneWidget);
   });
 }

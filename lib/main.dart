@@ -3,6 +3,7 @@ import 'package:flutter_bloc/flutter_bloc.dart';
 import 'core/di/injection_container.dart';
 import 'core/theme/app_theme.dart';
 import 'presentation/blocs/admin/admin_bloc.dart';
+import 'presentation/blocs/app_version/app_version_bloc.dart';
 import 'presentation/blocs/attendance/attendance_bloc.dart';
 import 'presentation/blocs/auth/auth_bloc.dart';
 import 'presentation/blocs/change_password/change_password_bloc.dart';
@@ -23,6 +24,9 @@ class MyApp extends StatelessWidget {
   Widget build(BuildContext context) {
     return MultiBlocProvider(
       providers: [
+        BlocProvider<AppVersionBloc>(
+          create: (_) => sl<AppVersionBloc>(),
+        ),
         BlocProvider<AuthBloc>(
           create: (_) => sl<AuthBloc>(),
         ),

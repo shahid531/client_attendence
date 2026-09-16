@@ -1,5 +1,7 @@
 import 'package:dio/dio.dart';
 import 'package:shared_preferences/shared_preferences.dart';
+import '../../core/constants/api_constants.dart';
+import '../../core/errors/error_handler.dart';
 import '../../core/errors/exceptions.dart';
 import '../models/created_employee_model.dart';
 
@@ -21,8 +23,6 @@ abstract class AdminRemoteDataSource {
 class AdminRemoteDataSourceImpl implements AdminRemoteDataSource {
   final Dio dio;
   final SharedPreferences sharedPreferences;
-
-  static const String _baseUrl = 'https://clause-unpinned-wikipedia.ngrok-free.dev/api';
 
   AdminRemoteDataSourceImpl({
     required this.dio,
@@ -75,7 +75,7 @@ class AdminRemoteDataSourceImpl implements AdminRemoteDataSource {
       };
 
       final response = await dio.post(
-        '$_baseUrl/admin/employees',
+        ApiConstants.adminEmployees,
         options: Options(headers: headers),
         data: payload,
       );
@@ -95,14 +95,7 @@ class AdminRemoteDataSourceImpl implements AdminRemoteDataSource {
 
       throw const ServerException('Invalid response format from server');
     } on DioException catch (e) {
-      if (e.response != null && e.response?.data is Map<String, dynamic>) {
-        final errMap = e.response!.data as Map<String, dynamic>;
-        final message = errMap['message'] ??
-            'Employee creation failed with code ${e.response?.statusCode}';
-        throw ServerException(message.toString());
-      }
-      throw ServerException(
-          e.message ?? 'Network error occurred while creating employee.');
+      throw ErrorHandler.handleDioError(e, fallbackMessage: 'Failed to create employee. Please try again.');
     } catch (e) {
       if (e is ServerException) rethrow;
       throw ServerException(e.toString());
