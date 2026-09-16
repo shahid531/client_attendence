@@ -30,5 +30,10 @@ abstract class AttendanceRepository {
     String? employeeName,
   });
   Future<Either<Failure, AttendanceRecord?>> getTodayAttendance();
+  Future<Either<Failure, void>> regularizeAttendance({
+    required String attendanceId,
+    required String requestedTimeOut,
+    required String reason,
+  });
 }
 

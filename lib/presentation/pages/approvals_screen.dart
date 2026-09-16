@@ -4,8 +4,6 @@ import 'package:intl/intl.dart';
 import '../../core/constants/app_colors.dart';
 import '../../core/utils/snackbar_helper.dart';
 import '../../domain/entities/leave_request.dart';
-import '../blocs/auth/auth_bloc.dart';
-import '../blocs/auth/auth_state.dart';
 import '../blocs/leave/leave_bloc.dart';
 import '../blocs/leave/leave_event.dart';
 import '../blocs/leave/leave_state.dart';
@@ -51,13 +49,25 @@ class ApprovalsScreenState extends State<ApprovalsScreen> {
     super.dispose();
   }
 
-  String _getInitials(String title) {
-    if (title.isEmpty) return 'EM';
-    final parts = title.split(' ');
+  String _getDisplayName(LeaveRequest item) {
+    if (item.employeeName.trim().isNotEmpty) return item.employeeName.trim();
+    if (item.title.trim().isNotEmpty) {
+      if (item.title.contains(' - ')) {
+        return item.title.split(' - ').first.trim();
+      }
+      return item.title.trim();
+    }
+    return 'Employee';
+  }
+
+  String _getInitials(String name) {
+    if (name.isEmpty) return 'EM';
+    final clean = name.contains(' - ') ? name.split(' - ').first.trim() : name.trim();
+    final parts = clean.split(' ').where((p) => p.isNotEmpty).toList();
     if (parts.length >= 2) {
       return '${parts[0][0]}${parts[1][0]}'.toUpperCase();
     }
-    return title.substring(0, title.length >= 2 ? 2 : 1).toUpperCase();
+    return clean.substring(0, clean.length >= 2 ? 2 : 1).toUpperCase();
   }
 
   IconData _getTypeIcon(String type) {
@@ -268,7 +278,6 @@ class ApprovalsScreenState extends State<ApprovalsScreen> {
                       itemBuilder: (context, index) {
                         final item = activeList[index];
                         if (_selectedTabIndex == 0) {
-                          print("nvhdfvhb ${item}");
                           return _buildPendingCard(item);
                         } else {
                           return _buildCompletedCard(item);
@@ -579,7 +588,8 @@ class ApprovalsScreenState extends State<ApprovalsScreen> {
   }
 
   Widget _buildPendingCard(LeaveRequest item) {
-    final initials = _getInitials(item.title);
+    final displayName = _getDisplayName(item);
+    final initials = _getInitials(displayName);
     final icon = _getTypeIcon(item.requestType);
 
     return Container(
@@ -616,7 +626,7 @@ class ApprovalsScreenState extends State<ApprovalsScreen> {
               const SizedBox(width: 12),
               Expanded(
                 child: Text(
-                  item.title,
+                  displayName,
                   style: const TextStyle(
                     fontSize: 15,
                     fontWeight: FontWeight.bold,
@@ -743,9 +753,8 @@ class ApprovalsScreenState extends State<ApprovalsScreen> {
     final IconData badgeIcon =
         isApproved ? Icons.check_circle_outline_rounded : Icons.cancel_outlined;
 
-    final dateRangeStr =
-        '${_formatDate(item.startDate)} - ${_formatDate(item.endDate)}';
-    final initials = _getInitials(item.title);
+    final displayName = _getDisplayName(item);
+    final initials = _getInitials(displayName);
 
     return Container(
       padding: const EdgeInsets.all(16),
@@ -781,7 +790,7 @@ class ApprovalsScreenState extends State<ApprovalsScreen> {
               const SizedBox(width: 12),
               Expanded(
                 child: Text(
-                  item.title,
+                  displayName,
                   style: const TextStyle(
                     fontSize: 15,
                     fontWeight: FontWeight.bold,

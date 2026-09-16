@@ -9,6 +9,8 @@ class ApiConstants {
 
   // Attendance Endpoints
   static const String attendance = '$baseUrl/attendance';
+  static String attendanceRegularization(String attendanceId) =>
+      '$baseUrl/attendance/$attendanceId/regularization';
 
   // Leave & WFH Request Endpoints
   static const String requests = '$baseUrl/requests';

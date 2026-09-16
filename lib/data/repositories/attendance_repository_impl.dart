@@ -97,4 +97,24 @@ class AttendanceRepositoryImpl implements AttendanceRepository {
       return Left(ServerFailure(e.toString()));
     }
   }
+
+  @override
+  Future<Either<Failure, void>> regularizeAttendance({
+    required String attendanceId,
+    required String requestedTimeOut,
+    required String reason,
+  }) async {
+    try {
+      await remoteDataSource.regularizeAttendance(
+        attendanceId: attendanceId,
+        requestedTimeOut: requestedTimeOut,
+        reason: reason,
+      );
+      return const Right(null);
+    } on ServerException catch (e) {
+      return Left(ServerFailure(e.message));
+    } catch (e) {
+      return Left(ServerFailure(e.toString()));
+    }
+  }
 }

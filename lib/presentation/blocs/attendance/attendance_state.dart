@@ -16,6 +16,7 @@ class AttendanceLoadedState extends AttendanceState {
   final AttendanceRecord? todayRecord;
   final List<AttendanceRecord> history;
   final String? successMessage;
+  final String? errorMessage;
   final int page;
   final int pageSize;
   final int totalElements;
@@ -28,6 +29,7 @@ class AttendanceLoadedState extends AttendanceState {
     this.todayRecord,
     this.history = const [],
     this.successMessage,
+    this.errorMessage,
     this.page = 0,
     this.pageSize = 10,
     this.totalElements = 0,
@@ -41,6 +43,7 @@ class AttendanceLoadedState extends AttendanceState {
     AttendanceRecord? todayRecord,
     List<AttendanceRecord>? history,
     String? successMessage,
+    String? errorMessage,
     int? page,
     int? pageSize,
     int? totalElements,
@@ -53,6 +56,7 @@ class AttendanceLoadedState extends AttendanceState {
       todayRecord: todayRecord ?? this.todayRecord,
       history: history ?? this.history,
       successMessage: successMessage,
+      errorMessage: errorMessage,
       page: page ?? this.page,
       pageSize: pageSize ?? this.pageSize,
       totalElements: totalElements ?? this.totalElements,
@@ -68,6 +72,7 @@ class AttendanceLoadedState extends AttendanceState {
         todayRecord,
         history,
         successMessage,
+        errorMessage,
         page,
         pageSize,
         totalElements,

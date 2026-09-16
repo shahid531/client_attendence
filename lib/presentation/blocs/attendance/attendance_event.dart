@@ -75,3 +75,18 @@ class CheckOutRequestedEvent extends AttendanceEvent {
 }
 
 class ResetAttendanceEvent extends AttendanceEvent {}
+
+class RegularizeAttendanceRequestedEvent extends AttendanceEvent {
+  final String attendanceId;
+  final String requestedTimeOut;
+  final String reason;
+
+  const RegularizeAttendanceRequestedEvent({
+    required this.attendanceId,
+    required this.requestedTimeOut,
+    required this.reason,
+  });
+
+  @override
+  List<Object?> get props => [attendanceId, requestedTimeOut, reason];
+}

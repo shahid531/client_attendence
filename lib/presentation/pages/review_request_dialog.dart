@@ -93,9 +93,14 @@ class _ReviewRequestDialogState extends State<ReviewRequestDialog> {
             child: Column(
               crossAxisAlignment: CrossAxisAlignment.start,
               children: [
-                if (widget.request.title.isNotEmpty) ...[
+                if (widget.request.employeeName.isNotEmpty ||
+                    widget.request.title.isNotEmpty) ...[
                   Text(
-                    widget.request.title,
+                    widget.request.employeeName.isNotEmpty
+                        ? widget.request.employeeName
+                        : (widget.request.title.contains(' - ')
+                            ? widget.request.title.split(' - ').first.trim()
+                            : widget.request.title),
                     style: const TextStyle(
                       fontSize: 15,
                       fontWeight: FontWeight.bold,

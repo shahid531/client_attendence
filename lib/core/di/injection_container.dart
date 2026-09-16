@@ -25,6 +25,7 @@ import '../../domain/usecases/attendance/check_in_usecase.dart';
 import '../../domain/usecases/attendance/check_out_usecase.dart';
 import '../../domain/usecases/attendance/get_attendance_history_usecase.dart';
 import '../../domain/usecases/attendance/get_today_attendance_usecase.dart';
+import '../../domain/usecases/attendance/regularize_attendance_usecase.dart';
 import '../../domain/usecases/auth/change_password_usecase.dart';
 import '../../domain/usecases/auth/get_current_user_usecase.dart';
 import '../../domain/usecases/auth/login_usecase.dart';
@@ -150,6 +151,7 @@ Future<void> initServiceLocator() async {
   sl.registerLazySingleton(() => CheckOutUseCase(sl()));
   sl.registerLazySingleton(() => GetAttendanceHistoryUseCase(sl()));
   sl.registerLazySingleton(() => GetTodayAttendanceUseCase(sl()));
+  sl.registerLazySingleton(() => RegularizeAttendanceUseCase(sl()));
   sl.registerLazySingleton(() => SubmitLeaveRequestUseCase(sl()));
   sl.registerLazySingleton(() => GetLeaveRequestsUseCase(sl()));
   sl.registerLazySingleton(() => UpdateRequestStatusUseCase(sl()));
@@ -177,6 +179,7 @@ Future<void> initServiceLocator() async {
       checkOutUseCase: sl(),
       getAttendanceHistoryUseCase: sl(),
       getTodayAttendanceUseCase: sl(),
+      regularizeAttendanceUseCase: sl(),
     ),
   );
   sl.registerFactory(
