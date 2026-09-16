@@ -1,5 +1,7 @@
 import 'package:dio/dio.dart';
 import 'package:shared_preferences/shared_preferences.dart';
+import '../../core/constants/api_constants.dart';
+import '../../core/errors/error_handler.dart';
 import '../../core/errors/exceptions.dart';
 import '../../domain/entities/leave_request.dart';
 import '../models/dashboard_stats_model.dart';
@@ -33,8 +35,6 @@ class LeaveRemoteDataSourceImpl implements LeaveRemoteDataSource {
   final Dio? dio;
   final SharedPreferences? sharedPreferences;
 
-  static const String _baseUrl = 'https://clause-unpinned-wikipedia.ngrok-free.dev/api';
-
   LeaveRemoteDataSourceImpl({
     this.dio,
     this.sharedPreferences,
@@ -43,18 +43,16 @@ class LeaveRemoteDataSourceImpl implements LeaveRemoteDataSource {
   final List<LeaveRequestModel> _mockLeaveRequests = [];
 
   String _getRequestsEndpoint() {
-    return '$_baseUrl/requests';
+    return ApiConstants.requests;
   }
 
   String _getUpdateRequestEndpoint(String requestId, String action) {
     final role = sharedPreferences?.getString('cached_user_role')?.trim().toUpperCase() ?? '';
-    if (role == 'ADMIN') {
-      return '$_baseUrl/admin/requests/$requestId/$action';
-    } else if (role == 'RM' || role.startsWith('RM')) {
-      return '$_baseUrl/rm/requests/$requestId/$action';
-    } else {
-      return '$_baseUrl/requests/$requestId/$action';
-    }
+    return ApiConstants.updateRequest(
+      role: role,
+      requestId: requestId,
+      action: action,
+    );
   }
 
   @override
@@ -159,12 +157,7 @@ class LeaveRemoteDataSourceImpl implements LeaveRemoteDataSource {
         return const LeaveRequestsResult(requests: []);
       } on DioException catch (e) {
         print('[LeaveRemoteDataSource] DioException on GET requests: ${e.response?.data ?? e.message}');
-        if (e.response != null && e.response?.data is Map<String, dynamic>) {
-          final errMap = e.response!.data as Map<String, dynamic>;
-          final message = errMap['message'] ?? 'Failed to fetch requests (${e.response?.statusCode})';
-          throw ServerException(message.toString());
-        }
-        throw ServerException(e.message ?? 'Network error while fetching requests');
+        throw ErrorHandler.handleDioError(e, fallbackMessage: 'Failed to fetch requests. Please try again.');
       } catch (e) {
         print('[LeaveRemoteDataSource] Exception on GET requests: $e');
         if (e is ServerException) rethrow;
@@ -268,12 +261,7 @@ class LeaveRemoteDataSourceImpl implements LeaveRemoteDataSource {
         return;
       } on DioException catch (e) {
         print('[LeaveRemoteDataSource] DioException on POST update request $requestId: ${e.response?.data ?? e.message}');
-        if (e.response != null && e.response?.data is Map<String, dynamic>) {
-          final errMap = e.response!.data as Map<String, dynamic>;
-          final message = errMap['message'] ?? 'Failed to update request (${e.response?.statusCode})';
-          throw ServerException(message.toString());
-        }
-        throw ServerException(e.message ?? 'Network connection error while updating request status');
+        throw ErrorHandler.handleDioError(e, fallbackMessage: 'Failed to update request status. Please try again.');
       } catch (e) {
         print('[LeaveRemoteDataSource] Exception on POST update request $requestId: $e');
         if (e is ServerException) rethrow;

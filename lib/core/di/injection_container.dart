@@ -3,20 +3,24 @@ import 'package:flutter/cupertino.dart';
 import 'package:get_it/get_it.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 import '../../data/datasources/admin_remote_datasource.dart';
+import '../../data/datasources/app_config_remote_datasource.dart';
 import '../../data/datasources/attendance_remote_datasource.dart';
 import '../../data/datasources/auth_remote_datasource.dart';
 import '../../data/datasources/leave_remote_datasource.dart';
 import '../../data/repositories/admin_repository_impl.dart';
+import '../../data/repositories/app_config_repository_impl.dart';
 import '../../data/repositories/attendance_repository_impl.dart';
 import '../../data/repositories/auth_repository_impl.dart';
 import '../../data/repositories/dashboard_repository_impl.dart';
 import '../../data/repositories/leave_repository_impl.dart';
 import '../../domain/repositories/admin_repository.dart';
+import '../../domain/repositories/app_config_repository.dart';
 import '../../domain/repositories/attendance_repository.dart';
 import '../../domain/repositories/auth_repository.dart';
 import '../../domain/repositories/dashboard_repository.dart';
 import '../../domain/repositories/leave_repository.dart';
 import '../../domain/usecases/admin/create_employee_usecase.dart';
+import '../../domain/usecases/app_config/check_app_version_usecase.dart';
 import '../../domain/usecases/attendance/check_in_usecase.dart';
 import '../../domain/usecases/attendance/check_out_usecase.dart';
 import '../../domain/usecases/attendance/get_attendance_history_usecase.dart';
@@ -30,6 +34,7 @@ import '../../domain/usecases/leave/get_leave_requests_usecase.dart';
 import '../../domain/usecases/leave/submit_leave_request_usecase.dart';
 import '../../domain/usecases/leave/update_request_status_usecase.dart';
 import '../../presentation/blocs/admin/admin_bloc.dart';
+import '../../presentation/blocs/app_version/app_version_bloc.dart';
 import '../../presentation/blocs/attendance/attendance_bloc.dart';
 import '../../presentation/blocs/auth/auth_bloc.dart';
 import '../../presentation/blocs/change_password/change_password_bloc.dart';
@@ -110,6 +115,11 @@ Future<void> initServiceLocator() async {
       sharedPreferences: sl(),
     ),
   );
+  sl.registerLazySingleton<AppConfigRemoteDataSource>(
+    () => AppConfigRemoteDataSourceImpl(
+      dio: sl(),
+    ),
+  );
 
 
   //! Repositories
@@ -128,6 +138,9 @@ Future<void> initServiceLocator() async {
   sl.registerLazySingleton<AdminRepository>(
     () => AdminRepositoryImpl(remoteDataSource: sl()),
   );
+  sl.registerLazySingleton<AppConfigRepository>(
+    () => AppConfigRepositoryImpl(remoteDataSource: sl()),
+  );
 
   //! Use Cases
   sl.registerLazySingleton(() => LoginUseCase(sl()));
@@ -143,6 +156,7 @@ Future<void> initServiceLocator() async {
   sl.registerLazySingleton(() => GetDashboardStatsUseCase(sl()));
   sl.registerLazySingleton(() => ChangePasswordUseCase(sl()));
   sl.registerLazySingleton(() => CreateEmployeeUseCase(sl()));
+  sl.registerLazySingleton(() => CheckAppVersionUseCase(sl()));
 
   //! Blocs
   sl.registerFactory(
@@ -180,6 +194,11 @@ Future<void> initServiceLocator() async {
   sl.registerFactory(
     () => AdminBloc(
       createEmployeeUseCase: sl(),
+    ),
+  );
+  sl.registerFactory(
+    () => AppVersionBloc(
+      checkAppVersionUseCase: sl(),
     ),
   );
 }

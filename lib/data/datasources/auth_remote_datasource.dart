@@ -1,5 +1,7 @@
 import 'package:dio/dio.dart';
 import 'package:shared_preferences/shared_preferences.dart';
+import '../../core/constants/api_constants.dart';
+import '../../core/errors/error_handler.dart';
 import '../../core/errors/exceptions.dart';
 import '../../core/utils/device_info_util.dart';
 import '../models/user_model.dart';
@@ -23,8 +25,6 @@ abstract class AuthRemoteDataSource {
 class AuthRemoteDataSourceImpl implements AuthRemoteDataSource {
   final Dio dio;
   final SharedPreferences sharedPreferences;
-
-  static const String _baseUrl = 'https://clause-unpinned-wikipedia.ngrok-free.dev/api';
 
   AuthRemoteDataSourceImpl({
     required this.dio,
@@ -62,7 +62,7 @@ class AuthRemoteDataSourceImpl implements AuthRemoteDataSource {
           : await DeviceInfoUtil.getOperatingSystem();
 
       final response = await dio.post(
-        '$_baseUrl/auth/login',
+        ApiConstants.login,
         options: Options(headers: headers),
         data: {
           'username': username,
@@ -123,12 +123,7 @@ class AuthRemoteDataSourceImpl implements AuthRemoteDataSource {
       throw const ServerException('Invalid server response format');
     } on DioException catch (e) {
       print('[AuthRemoteDataSource] Login DioException: ${e.response?.data ?? e.message}');
-      if (e.response != null && e.response?.data is Map<String, dynamic>) {
-        final errMap = e.response!.data as Map<String, dynamic>;
-        final message = errMap['message'] ?? 'Authentication failed (${e.response?.statusCode})';
-        throw ServerException(message.toString());
-      }
-      throw ServerException(e.message ?? 'Network connection error. Please check backend connection.');
+      throw ErrorHandler.handleDioError(e, fallbackMessage: 'Authentication failed. Please try again.');
     } catch (e) {
       print('[AuthRemoteDataSource] Login Exception: $e');
       if (e is ServerException) rethrow;
@@ -166,7 +161,7 @@ class AuthRemoteDataSourceImpl implements AuthRemoteDataSource {
         };
 
         final response = await dio.get(
-          '$_baseUrl/employee/profile',
+          ApiConstants.userProfile,
           options: Options(headers: headers),
         );
 
@@ -277,7 +272,7 @@ class AuthRemoteDataSourceImpl implements AuthRemoteDataSource {
       }
 
       final response = await dio.post(
-        '$_baseUrl/auth/change-password',
+        ApiConstants.changePassword,
         options: Options(headers: headers),
         data: {
           'oldPassword': oldPassword,
@@ -296,12 +291,7 @@ class AuthRemoteDataSourceImpl implements AuthRemoteDataSource {
       await sharedPreferences.setBool('cached_first_login', false);
     } on DioException catch (e) {
       print('[AuthRemoteDataSource] Change-Password DioException: ${e.response?.data ?? e.message}');
-      if (e.response != null && e.response?.data is Map<String, dynamic>) {
-        final errMap = e.response!.data as Map<String, dynamic>;
-        final message = errMap['message'] ?? 'Password update failed (${e.response?.statusCode})';
-        throw ServerException(message.toString());
-      }
-      throw ServerException(e.message ?? 'Network connection error while changing password.');
+      throw ErrorHandler.handleDioError(e, fallbackMessage: 'Password update failed. Please try again.');
     } catch (e) {
       print('[AuthRemoteDataSource] Change-Password Exception: $e');
 

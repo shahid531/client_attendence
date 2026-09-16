@@ -2,6 +2,8 @@ import 'dart:convert';
 import 'package:dio/dio.dart';
 import 'package:intl/intl.dart';
 import 'package:shared_preferences/shared_preferences.dart';
+import '../../core/constants/api_constants.dart';
+import '../../core/errors/error_handler.dart';
 import '../../core/errors/exceptions.dart';
 import '../../core/utils/device_info_util.dart';
 import '../../domain/entities/attendance_record.dart';
@@ -43,7 +45,6 @@ class AttendanceRemoteDataSourceImpl implements AttendanceRemoteDataSource {
   final Dio? dio;
   final SharedPreferences? sharedPreferences;
 
-  static const String _baseUrl = 'https://clause-unpinned-wikipedia.ngrok-free.dev/api';
   static const String _todayRecordPrefKey = 'today_attendance_record_data';
   static const String _todayWorkTypePrefKey = 'today_attendance_work_type';
   static const String _todayIsClockedInPrefKey = 'today_attendance_is_clocked_in';
@@ -205,7 +206,7 @@ class AttendanceRemoteDataSourceImpl implements AttendanceRemoteDataSource {
         }
 
         final isWfh = workType.toUpperCase() == 'WFH';
-        const endpoint = '$_baseUrl/attendance';
+        const endpoint = ApiConstants.attendance;
 
         final effectiveDeviceId = (deviceId != null && deviceId.isNotEmpty && deviceId != 'string')
             ? deviceId
@@ -254,12 +255,7 @@ class AttendanceRemoteDataSourceImpl implements AttendanceRemoteDataSource {
           }
         }
       } on DioException catch (e) {
-        if (e.response != null && e.response?.data is Map<String, dynamic>) {
-          final errMap = e.response!.data as Map<String, dynamic>;
-          final message = errMap['message'] ?? 'Attendance time-in failed (${e.response?.statusCode})';
-          throw ServerException(message.toString());
-        }
-        throw ServerException(e.message ?? 'Network connection error during time-in');
+        throw ErrorHandler.handleDioError(e, fallbackMessage: 'Attendance time-in failed. Please try again.');
       } catch (e) {
         if (e is ServerException) rethrow;
         throw ServerException(e.toString());
@@ -314,7 +310,7 @@ class AttendanceRemoteDataSourceImpl implements AttendanceRemoteDataSource {
         }
 
         final isWfh = workType.toUpperCase() == 'WFH';
-        const endpoint = '$_baseUrl/attendance';
+        const endpoint = ApiConstants.attendance;
 
         final effectiveDeviceId = (deviceId != null && deviceId.isNotEmpty && deviceId != 'string')
             ? deviceId
@@ -365,12 +361,7 @@ class AttendanceRemoteDataSourceImpl implements AttendanceRemoteDataSource {
           }
         }
       } on DioException catch (e) {
-        if (e.response != null && e.response?.data is Map<String, dynamic>) {
-          final errMap = e.response!.data as Map<String, dynamic>;
-          final message = errMap['message'] ?? 'Attendance time-out failed (${e.response?.statusCode})';
-          throw ServerException(message.toString());
-        }
-        throw ServerException(e.message ?? 'Network connection error during time-out');
+        throw ErrorHandler.handleDioError(e, fallbackMessage: 'Attendance time-out failed. Please try again.');
       } catch (e) {
         if (e is ServerException) rethrow;
         throw ServerException(e.toString());
@@ -478,7 +469,7 @@ class AttendanceRemoteDataSourceImpl implements AttendanceRemoteDataSource {
           queryParams['toDate'] = endDate;
         }
 
-        const endpoint = '$_baseUrl/attendance';
+        const endpoint = ApiConstants.attendance;
 
         final response = await dio!.get(
           endpoint,
@@ -532,12 +523,7 @@ class AttendanceRemoteDataSourceImpl implements AttendanceRemoteDataSource {
           );
         }
       } on DioException catch (e) {
-        if (e.response != null && e.response?.data is Map<String, dynamic>) {
-          final errMap = e.response!.data as Map<String, dynamic>;
-          final message = errMap['message'] ?? 'Failed to load history (${e.response?.statusCode})';
-          throw ServerException(message.toString());
-        }
-        throw ServerException(e.message ?? 'Network connection error while fetching history');
+        throw ErrorHandler.handleDioError(e, fallbackMessage: 'Failed to load attendance history. Please try again.');
       } catch (e) {
         if (e is ServerException) rethrow;
         throw ServerException(e.toString());
