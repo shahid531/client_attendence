@@ -30,7 +30,7 @@ class LeaveRequestModel extends LeaveRequest {
     String titleStr = json['title']?.toString() ?? '';
     if (titleStr.isEmpty) {
       if (empName.isNotEmpty) {
-        titleStr = '$empName - $type';
+        titleStr = empName;
       } else {
         titleStr = 'Request #$idStr';
       }

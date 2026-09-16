@@ -10,8 +10,6 @@ import '../blocs/attendance/attendance_event.dart';
 import '../blocs/attendance/attendance_state.dart';
 import '../blocs/auth/auth_bloc.dart';
 import '../blocs/auth/auth_state.dart';
-import '../blocs/leave/leave_bloc.dart';
-import '../blocs/leave/leave_event.dart';
 
 class HistoryPage extends StatefulWidget {
   const HistoryPage({super.key});
@@ -801,7 +799,21 @@ class _HistoryPageState extends State<HistoryPage> {
             ],
 
             // Bloc Consumer for Stats and Attendance List
-            BlocBuilder<AttendanceBloc, AttendanceState>(
+            BlocConsumer<AttendanceBloc, AttendanceState>(
+              listener: (context, state) {
+                if (state is AttendanceLoadedState) {
+                  if (state.successMessage != null &&
+                      state.successMessage!.isNotEmpty) {
+                    SnackbarHelper.showSuccess(context, state.successMessage!);
+                    _applyPeriod(_selectedPeriod);
+                  } else if (state.errorMessage != null &&
+                      state.errorMessage!.isNotEmpty) {
+                    SnackbarHelper.showError(context, state.errorMessage!);
+                  }
+                } else if (state is AttendanceErrorState) {
+                  SnackbarHelper.showError(context, state.message);
+                }
+              },
               builder: (context, state) {
                 List<AttendanceRecord> records = [];
                 if (state is AttendanceLoadedState) {
@@ -1555,6 +1567,13 @@ class _HistoryPageState extends State<HistoryPage> {
     return workingHours <= 48;
   }
 
+  String _formatTimeOfDay12Hour(TimeOfDay time) {
+    final hour = time.hourOfPeriod == 0 ? 12 : time.hourOfPeriod;
+    final minute = time.minute.toString().padLeft(2, '0');
+    final period = time.period == DayPeriod.am ? 'AM' : 'PM';
+    return '${hour.toString().padLeft(2, '0')}:$minute $period';
+  }
+
   void _showRegularizationModal(
       BuildContext parentContext, AttendanceRecord record) {
     final dateStr = DateFormat('MMM dd, yyyy').format(record.date);
@@ -1577,7 +1596,7 @@ class _HistoryPageState extends State<HistoryPage> {
         return StatefulBuilder(
           builder: (context, setModalState) {
             final formattedTime = selectedOutTime != null
-                ? selectedOutTime!.format(context)
+                ? _formatTimeOfDay12Hour(selectedOutTime!)
                 : null;
 
             return Container(
@@ -1612,7 +1631,7 @@ class _HistoryPageState extends State<HistoryPage> {
                         Container(
                           padding: const EdgeInsets.all(8),
                           decoration: BoxDecoration(
-                            color: AppColors.primaryNavy.withOpacity(0.08),
+                            color: AppColors.primaryNavy.withValues(alpha: 0.08),
                             borderRadius: BorderRadius.circular(10),
                           ),
                           child: const Icon(
@@ -1721,6 +1740,13 @@ class _HistoryPageState extends State<HistoryPage> {
                           context: context,
                           initialTime: selectedOutTime ??
                               const TimeOfDay(hour: 18, minute: 0),
+                          builder: (BuildContext context, Widget? child) {
+                            return MediaQuery(
+                              data: MediaQuery.of(context)
+                                  .copyWith(alwaysUse24HourFormat: false),
+                              child: child ?? const SizedBox(),
+                            );
+                          },
                         );
                         if (picked != null) {
                           setModalState(() {
@@ -1898,17 +1924,59 @@ class _HistoryPageState extends State<HistoryPage> {
                                 finalReason = 'Others: $customReason';
                               }
 
+                              // Validate that Time Out is strictly after Time In
+                              DateTime? checkInDateTime;
+                              if (record.checkInTime.isNotEmpty &&
+                                  record.checkInTime != '--:--') {
+                                try {
+                                  if (record.checkInTime.contains('T') ||
+                                      (record.checkInTime.contains('-') &&
+                                          record.checkInTime.contains(':'))) {
+                                    checkInDateTime =
+                                        DateTime.tryParse(record.checkInTime);
+                                  }
+                                  if (checkInDateTime == null) {
+                                    final parsed = DateFormat('hh:mm a')
+                                        .parse(record.checkInTime);
+                                    checkInDateTime = DateTime(
+                                      record.date.year,
+                                      record.date.month,
+                                      record.date.day,
+                                      parsed.hour,
+                                      parsed.minute,
+                                    );
+                                  }
+                                } catch (_) {}
+                              }
+
+                              final selectedDateTime = DateTime(
+                                record.date.year,
+                                record.date.month,
+                                record.date.day,
+                                selectedOutTime!.hour,
+                                selectedOutTime!.minute,
+                              );
+
+                              if (checkInDateTime != null &&
+                                  !selectedDateTime.isAfter(checkInDateTime)) {
+                                SnackbarHelper.showWarning(
+                                  parentContext,
+                                  'Requested Time-Out cannot be earlier than or equal to Time-In (${record.checkInTime})',
+                                );
+                                return;
+                              }
+
+                              final requestedTimeOut =
+                                  "${DateFormat('yyyy-MM-dd').format(record.date)}T${selectedOutTime!.hour.toString().padLeft(2, '0')}:${selectedOutTime!.minute.toString().padLeft(2, '0')}:00";
+
                               Navigator.of(modalCtx).pop();
 
-                              // Submit Regularization Leave Request
-                              parentContext.read<LeaveBloc>().add(
-                                    SubmitLeaveRequestEvent(
-                                      title: 'Regularization - $dateStr',
-                                      requestType: 'ADJUSTMENT',
-                                      startDate: record.date,
-                                      endDate: record.date,
-                                      reason:
-                                          'Time Out: $formattedTime | $finalReason',
+                              // Submit Attendance Regularization API Request
+                              parentContext.read<AttendanceBloc>().add(
+                                    RegularizeAttendanceRequestedEvent(
+                                      attendanceId: record.id,
+                                      requestedTimeOut: requestedTimeOut,
+                                      reason: finalReason,
                                     ),
                                   );
                             },

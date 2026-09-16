@@ -37,6 +37,11 @@ abstract class AttendanceRemoteDataSource {
     String? employeeName,
   });
   Future<AttendanceRecordModel?> getTodayAttendance();
+  Future<void> regularizeAttendance({
+    required String attendanceId,
+    required String requestedTimeOut,
+    required String reason,
+  });
   Future<void> saveTodayRecord(AttendanceRecordModel? record);
   void clearCache();
 }
@@ -569,6 +574,59 @@ class AttendanceRemoteDataSourceImpl implements AttendanceRemoteDataSource {
     }
     await Future.delayed(const Duration(milliseconds: 100));
     return _todayRecord;
+  }
+
+  @override
+  Future<void> regularizeAttendance({
+    required String attendanceId,
+    required String requestedTimeOut,
+    required String reason,
+  }) async {
+    if (dio != null && sharedPreferences != null) {
+      try {
+        final token = sharedPreferences!.getString('auth_bearer_token');
+        final headers = <String, String>{
+          'Content-Type': 'application/json',
+          'Accept': '*/*',
+          'ngrok-skip-browser-warning': 'true',
+        };
+        if (token != null && token.isNotEmpty) {
+          headers['Authorization'] = 'Bearer $token';
+        }
+
+        final endpoint = ApiConstants.attendanceRegularization(attendanceId);
+
+        final response = await dio!.post(
+          endpoint,
+          options: Options(headers: headers),
+          data: {
+            'requestedTimeOut': requestedTimeOut,
+            'reason': reason,
+          },
+        );
+
+        final data = response.data;
+        print('[AttendanceRemoteDataSource] Regularization response: $data');
+        if (data is Map<String, dynamic>) {
+          if (data['success'] == false) {
+            throw ServerException(
+              data['message']?.toString() ?? 'Regularization request failed',
+            );
+          }
+        }
+        return;
+      } on DioException catch (e) {
+        print('[AttendanceRemoteDataSource] Regularization DioException: ${e.response?.data ?? e.message}');
+        throw ErrorHandler.handleDioError(
+          e,
+          fallbackMessage: 'Failed to submit regularization request. Please try again.',
+        );
+      } catch (e) {
+        print('[AttendanceRemoteDataSource] Regularization Exception: $e');
+        if (e is ServerException) rethrow;
+        throw ServerException(e.toString());
+      }
+    }
   }
 }
 

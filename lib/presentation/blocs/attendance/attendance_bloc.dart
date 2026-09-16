@@ -5,6 +5,7 @@ import '../../../domain/usecases/attendance/check_in_usecase.dart';
 import '../../../domain/usecases/attendance/check_out_usecase.dart';
 import '../../../domain/usecases/attendance/get_attendance_history_usecase.dart';
 import '../../../domain/usecases/attendance/get_today_attendance_usecase.dart';
+import '../../../domain/usecases/attendance/regularize_attendance_usecase.dart';
 import 'attendance_event.dart';
 import 'attendance_state.dart';
 
@@ -13,18 +14,21 @@ class AttendanceBloc extends Bloc<AttendanceEvent, AttendanceState> {
   final CheckOutUseCase checkOutUseCase;
   final GetAttendanceHistoryUseCase getAttendanceHistoryUseCase;
   final GetTodayAttendanceUseCase getTodayAttendanceUseCase;
+  final RegularizeAttendanceUseCase regularizeAttendanceUseCase;
 
   AttendanceBloc({
     required this.checkInUseCase,
     required this.checkOutUseCase,
     required this.getAttendanceHistoryUseCase,
     required this.getTodayAttendanceUseCase,
+    required this.regularizeAttendanceUseCase,
   }) : super(AttendanceInitialState()) {
     on<LoadTodayAttendanceEvent>(_onLoadTodayAttendance);
     on<LoadAttendanceHistoryEvent>(_onLoadAttendanceHistory);
     on<CheckInRequestedEvent>(_onCheckInRequested);
     on<CheckOutRequestedEvent>(_onCheckOutRequested);
     on<ResetAttendanceEvent>(_onResetAttendance);
+    on<RegularizeAttendanceRequestedEvent>(_onRegularizeAttendanceRequested);
   }
 
   void _onResetAttendance(
@@ -165,6 +169,46 @@ class AttendanceBloc extends Bloc<AttendanceEvent, AttendanceState> {
           history: currentHistory,
           successMessage: 'Successfully clocked out!',
         ));
+      },
+    );
+  }
+
+  Future<void> _onRegularizeAttendanceRequested(
+    RegularizeAttendanceRequestedEvent event,
+    Emitter<AttendanceState> emit,
+  ) async {
+    final currentState = state;
+
+    final result = await regularizeAttendanceUseCase(
+      RegularizeAttendanceParams(
+        attendanceId: event.attendanceId,
+        requestedTimeOut: event.requestedTimeOut,
+        reason: event.reason,
+      ),
+    );
+
+    result.fold(
+      (failure) {
+        if (currentState is AttendanceLoadedState) {
+          emit(currentState.copyWith(
+            errorMessage: failure.message,
+            successMessage: null,
+          ));
+        } else {
+          emit(AttendanceErrorState(failure.message));
+        }
+      },
+      (_) {
+        if (currentState is AttendanceLoadedState) {
+          emit(currentState.copyWith(
+            successMessage: 'Regularization request submitted successfully!',
+            errorMessage: null,
+          ));
+        } else {
+          emit(const AttendanceLoadedState(
+            successMessage: 'Regularization request submitted successfully!',
+          ));
+        }
       },
     );
   }
