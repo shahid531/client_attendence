@@ -1270,7 +1270,7 @@ class _HistoryPageState extends State<HistoryPage> {
                   size: 16, color: Color(0xFFDC2626)),
               SizedBox(width: 4),
               Text(
-                'Missing Out',
+                'LWP',
                 style: TextStyle(
                   color: Color(0xFFDC2626),
                   fontWeight: FontWeight.w500,
