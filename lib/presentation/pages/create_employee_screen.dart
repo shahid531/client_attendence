@@ -405,7 +405,7 @@ class _CreateEmployeeScreenState extends State<CreateEmployeeScreen> {
                       _buildFieldLabel('Full Name'),
                       _buildInputField(
                         controller: _fullNameController,
-                        hintText: 'e.g. Ashish Singh',
+                        hintText: 'Enter name',
                         icon: Icons.person_outline,
                         enabled: !isLoading,
                         validator: (val) {
@@ -420,7 +420,7 @@ class _CreateEmployeeScreenState extends State<CreateEmployeeScreen> {
                       _buildFieldLabel('Employee ID'),
                       _buildInputField(
                         controller: _employeeIdController,
-                        hintText: 'e.g. 20179',
+                        hintText: 'Enter Employee ID',
                         iconText: '#',
                         enabled: !isLoading,
                         validator: (val) {
@@ -435,7 +435,7 @@ class _CreateEmployeeScreenState extends State<CreateEmployeeScreen> {
                       _buildFieldLabel('Official Email'),
                       _buildInputField(
                         controller: _emailController,
-                        hintText: 'e.g. ashish3@idealake.com',
+                        hintText: 'Enter Email ID',
                         icon: Icons.email_outlined,
                         keyboardType: TextInputType.emailAddress,
                         enabled: !isLoading,
@@ -454,7 +454,7 @@ class _CreateEmployeeScreenState extends State<CreateEmployeeScreen> {
                       _buildFieldLabel('Contact Number'),
                       _buildInputField(
                         controller: _contactController,
-                        hintText: 'e.g. 1111111221',
+                        hintText: 'Enter Contact Number',
                         icon: Icons.phone_outlined,
                         keyboardType: TextInputType.phone,
                         enabled: !isLoading,
@@ -536,13 +536,13 @@ class _CreateEmployeeScreenState extends State<CreateEmployeeScreen> {
                             'Reporting Manager',
                             bottomPadding: 0,
                           ),
-                          const Text(
-                            'Optional',
-                            style: TextStyle(
-                              fontSize: 12,
-                              color: Color(0xFF94A3B8),
-                            ),
-                          ),
+                          // const Text(
+                          //   'Optional',
+                          //   style: TextStyle(
+                          //     fontSize: 12,
+                          //     color: Color(0xFF94A3B8),
+                          //   ),
+                          // ),
                         ],
                       ),
                       const SizedBox(height: 8),

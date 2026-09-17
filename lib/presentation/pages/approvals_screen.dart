@@ -297,7 +297,6 @@ class ApprovalsScreenState extends State<ApprovalsScreen> {
                       itemBuilder: (context, index) {
                         final item = activeList[index];
                         if (_selectedTabIndex == 0) {
-                          print("nvhdfvhb ${item}");
                           return _buildPendingCard(item);
                         } else {
                           return _buildCompletedCard(item);
@@ -332,7 +331,7 @@ class ApprovalsScreenState extends State<ApprovalsScreen> {
         borderRadius: BorderRadius.circular(16),
         boxShadow: [
           BoxShadow(
-            color: AppColors.primaryNavy.withOpacity(0.2),
+            color: AppColors.primaryNavy.withValues(alpha: 0.2),
             blurRadius: 10,
             offset: const Offset(0, 4),
           ),
@@ -378,9 +377,9 @@ class ApprovalsScreenState extends State<ApprovalsScreen> {
       width: 72,
       height: 60,
       decoration: BoxDecoration(
-        color: Colors.white.withOpacity(0.12),
+        color: Colors.white.withValues(alpha: 0.12),
         borderRadius: BorderRadius.circular(10),
-        border: Border.all(color: Colors.white.withOpacity(0.15)),
+        border: Border.all(color: Colors.white.withValues(alpha: 0.15)),
       ),
       child: Column(
         mainAxisAlignment: MainAxisAlignment.center,
@@ -441,7 +440,7 @@ class ApprovalsScreenState extends State<ApprovalsScreen> {
                   boxShadow: _selectedTabIndex == 0
                       ? [
                           BoxShadow(
-                            color: Colors.black.withOpacity(0.04),
+                            color: Colors.black.withValues(alpha: 0.04),
                             blurRadius: 4,
                             offset: const Offset(0, 2),
                           ),
@@ -484,7 +483,7 @@ class ApprovalsScreenState extends State<ApprovalsScreen> {
                   boxShadow: _selectedTabIndex == 1
                       ? [
                           BoxShadow(
-                            color: Colors.black.withOpacity(0.04),
+                            color: Colors.black.withValues(alpha: 0.04),
                             blurRadius: 4,
                             offset: const Offset(0, 2),
                           ),
@@ -715,7 +714,7 @@ class ApprovalsScreenState extends State<ApprovalsScreen> {
         border: Border.all(color: AppColors.borderGrey),
         boxShadow: [
           BoxShadow(
-            color: Colors.black.withOpacity(0.02),
+            color: Colors.black.withValues(alpha: 0.02),
             blurRadius: 6,
             offset: const Offset(0, 2),
           ),
@@ -728,7 +727,7 @@ class ApprovalsScreenState extends State<ApprovalsScreen> {
             children: [
               CircleAvatar(
                 radius: 20,
-                backgroundColor: AppColors.primaryNavy.withOpacity(0.08),
+                backgroundColor: AppColors.primaryNavy.withValues(alpha: 0.08),
                 child: Text(
                   initials,
                   style: const TextStyle(
@@ -808,28 +807,48 @@ class ApprovalsScreenState extends State<ApprovalsScreen> {
 
             ],
           ),
-            const SizedBox(height: 10),
-         Row(
-           crossAxisAlignment: CrossAxisAlignment.start ,
-           children: [
-           const Icon(
-             Icons.access_time_rounded,
-             size: 14,
-             color: AppColors.textLight,
-           ),
-           const SizedBox(width: 6),
-           Expanded(
-             child: Text(
-               'In: ${_formatTime(item.timeIn)}  •  Out: ${_formatTime(item.timeOut)}',
-               style: const TextStyle(
-                 fontSize: 12,
-                 fontWeight: FontWeight.w500,
-                 color: AppColors.textDark,
-               ),
-               overflow: TextOverflow.ellipsis,
-             ),
-           ),
-         ],),
+          const SizedBox(height: 10),
+          Row(
+            crossAxisAlignment: CrossAxisAlignment.start,
+            children: [
+              const Icon(
+                Icons.access_time_rounded,
+                size: 14,
+                color: AppColors.textLight,
+              ),
+              const SizedBox(width: 6),
+              Expanded(
+                child: Text(
+                  'In: ${_formatTime(item.timeIn)}  •  Out: ${_formatTime(item.timeOut)}',
+                  style: const TextStyle(
+                    fontSize: 12,
+                    fontWeight: FontWeight.w500,
+                    color: AppColors.textDark,
+                  ),
+                  overflow: TextOverflow.ellipsis,
+                ),
+              ),
+            ],
+          ),
+          if (item.reason.isNotEmpty) ...[
+            const SizedBox(height: 8),
+            Container(
+              width: double.infinity,
+              padding: const EdgeInsets.all(10),
+              decoration: BoxDecoration(
+                color: const Color(0xFFF8FAFC),
+                borderRadius: BorderRadius.circular(8),
+              ),
+              child: Text(
+                item.reason,
+                style: const TextStyle(
+                  fontSize: 13,
+                  color: Color(0xFF475569),
+                  height: 1.4,
+                ),
+              ),
+            ),
+          ],
           const SizedBox(height: 14),
           SizedBox(
             width: double.infinity,
@@ -879,7 +898,7 @@ class ApprovalsScreenState extends State<ApprovalsScreen> {
         border: Border.all(color: AppColors.borderGrey),
         boxShadow: [
           BoxShadow(
-            color: Colors.black.withOpacity(0.02),
+            color: Colors.black.withValues(alpha: 0.02),
             blurRadius: 6,
             offset: const Offset(0, 2),
           ),
@@ -892,7 +911,7 @@ class ApprovalsScreenState extends State<ApprovalsScreen> {
             children: [
               CircleAvatar(
                 radius: 20,
-                backgroundColor: AppColors.primaryNavy.withOpacity(0.08),
+                backgroundColor: AppColors.primaryNavy.withValues(alpha: 0.08),
                 child: Text(
                   initials,
                   style: const TextStyle(
@@ -968,7 +987,6 @@ class ApprovalsScreenState extends State<ApprovalsScreen> {
                   color: AppColors.textDark,
                 ),
               ),
-
             ],
           ),
           const SizedBox(height: 10),
@@ -996,6 +1014,25 @@ class ApprovalsScreenState extends State<ApprovalsScreen> {
               ],
             ],
           ),
+          if (item.reason.isNotEmpty) ...[
+            const SizedBox(height: 8),
+            Container(
+              width: double.infinity,
+              padding: const EdgeInsets.all(10),
+              decoration: BoxDecoration(
+                color: const Color(0xFFF8FAFC),
+                borderRadius: BorderRadius.circular(8),
+              ),
+              child: Text(
+                item.reason,
+                style: const TextStyle(
+                  fontSize: 13,
+                  color: Color(0xFF475569),
+                  height: 1.4,
+                ),
+              ),
+            ),
+          ],
         ],
       ),
     );

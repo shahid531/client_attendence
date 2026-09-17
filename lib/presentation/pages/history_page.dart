@@ -1029,7 +1029,7 @@ class _HistoryPageState extends State<HistoryPage> {
           _applyPeriod(_selectedPeriod, page: 0);
         },
         decoration: InputDecoration(
-          hintText: 'Search requests or employees...',
+          hintText: 'Type Employee name or ID',
           hintStyle: const TextStyle(
             color: AppColors.textLight,
             fontSize: 13,
