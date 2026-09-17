@@ -1,5 +1,6 @@
 import 'package:dartz/dartz.dart';
 import '../../core/errors/failures.dart';
+import '../entities/client_location.dart';
 import '../entities/created_employee.dart';
 
 abstract class AdminRepository {
@@ -14,6 +15,19 @@ abstract class AdminRepository {
     required String role,
     required String contactNumber,
     String? reportingManagerEmployeeId,
+  });
+
+  Future<Either<Failure, List<CreatedEmployee>>> getEmployees();
+
+  Future<Either<Failure, List<ClientLocation>>> getLocations();
+
+  Future<Either<Failure, ClientLocation>> createLocation({
+    required String clientName,
+    required String locationName,
+    required String address,
+    required double latitude,
+    required double longitude,
+    required double allowedRadius,
   });
 }
 

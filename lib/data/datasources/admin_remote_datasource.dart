@@ -3,6 +3,7 @@ import 'package:shared_preferences/shared_preferences.dart';
 import '../../core/constants/api_constants.dart';
 import '../../core/errors/error_handler.dart';
 import '../../core/errors/exceptions.dart';
+import '../models/client_location_model.dart';
 import '../models/created_employee_model.dart';
 
 abstract class AdminRemoteDataSource {
@@ -18,6 +19,19 @@ abstract class AdminRemoteDataSource {
     required String contactNumber,
     String? reportingManagerEmployeeId,
   });
+
+  Future<List<CreatedEmployeeModel>> getEmployees();
+
+  Future<List<ClientLocationModel>> getLocations();
+
+  Future<ClientLocationModel> createLocation({
+    required String clientName,
+    required String locationName,
+    required String address,
+    required double latitude,
+    required double longitude,
+    required double allowedRadius,
+  });
 }
 
 class AdminRemoteDataSourceImpl implements AdminRemoteDataSource {
@@ -28,6 +42,94 @@ class AdminRemoteDataSourceImpl implements AdminRemoteDataSource {
     required this.dio,
     required this.sharedPreferences,
   });
+
+  @override
+  Future<List<ClientLocationModel>> getLocations() async {
+    try {
+      final cachedToken = sharedPreferences.getString('auth_bearer_token');
+
+      final headers = <String, String>{
+        'Content-Type': 'application/json',
+        'Accept': '*/*',
+        'ngrok-skip-browser-warning': 'true',
+      };
+      if (cachedToken != null && cachedToken.isNotEmpty) {
+        headers['Authorization'] = 'Bearer $cachedToken';
+      }
+
+      final response = await dio.get(
+        ApiConstants.adminLocations,
+        options: Options(headers: headers),
+      );
+
+      final data = response.data;
+      if (data is Map<String, dynamic>) {
+        if (data['success'] == false) {
+          throw ServerException(data['message'] ?? 'Failed to fetch locations');
+        }
+
+        final rawList = data['data'];
+        if (rawList is List) {
+          return rawList
+              .whereType<Map<String, dynamic>>()
+              .map((e) => ClientLocationModel.fromJson(e))
+              .toList();
+        }
+        return <ClientLocationModel>[];
+      }
+
+      throw const ServerException('Invalid response format from server');
+    } on DioException catch (e) {
+      throw ErrorHandler.handleDioError(e, fallbackMessage: 'Failed to fetch locations. Please try again.');
+    } catch (e) {
+      if (e is ServerException) rethrow;
+      throw ServerException(e.toString());
+    }
+  }
+
+  @override
+  Future<List<CreatedEmployeeModel>> getEmployees() async {
+    try {
+      final cachedToken = sharedPreferences.getString('auth_bearer_token');
+
+      final headers = <String, String>{
+        'Content-Type': 'application/json',
+        'Accept': '*/*',
+        'ngrok-skip-browser-warning': 'true',
+      };
+      if (cachedToken != null && cachedToken.isNotEmpty) {
+        headers['Authorization'] = 'Bearer $cachedToken';
+      }
+
+      final response = await dio.get(
+        ApiConstants.adminEmployees,
+        options: Options(headers: headers),
+      );
+
+      final data = response.data;
+      if (data is Map<String, dynamic>) {
+        if (data['success'] == false) {
+          throw ServerException(data['message'] ?? 'Failed to fetch employees');
+        }
+
+        final rawList = data['data'];
+        if (rawList is List) {
+          return rawList
+              .whereType<Map<String, dynamic>>()
+              .map((e) => CreatedEmployeeModel.fromJson(e))
+              .toList();
+        }
+        return <CreatedEmployeeModel>[];
+      }
+
+      throw const ServerException('Invalid response format from server');
+    } on DioException catch (e) {
+      throw ErrorHandler.handleDioError(e, fallbackMessage: 'Failed to fetch employees. Please try again.');
+    } catch (e) {
+      if (e is ServerException) rethrow;
+      throw ServerException(e.toString());
+    }
+  }
 
   @override
   Future<CreatedEmployeeModel> createEmployee({
@@ -96,6 +198,64 @@ class AdminRemoteDataSourceImpl implements AdminRemoteDataSource {
       throw const ServerException('Invalid response format from server');
     } on DioException catch (e) {
       throw ErrorHandler.handleDioError(e, fallbackMessage: 'Failed to create employee. Please try again.');
+    } catch (e) {
+      if (e is ServerException) rethrow;
+      throw ServerException(e.toString());
+    }
+  }
+
+  @override
+  Future<ClientLocationModel> createLocation({
+    required String clientName,
+    required String locationName,
+    required String address,
+    required double latitude,
+    required double longitude,
+    required double allowedRadius,
+  }) async {
+    try {
+      final cachedToken = sharedPreferences.getString('auth_bearer_token');
+
+      final headers = <String, String>{
+        'Content-Type': 'application/json',
+        'Accept': '*/*',
+        'ngrok-skip-browser-warning': 'true',
+      };
+      if (cachedToken != null && cachedToken.isNotEmpty) {
+        headers['Authorization'] = 'Bearer $cachedToken';
+      }
+
+      final payload = <String, dynamic>{
+        'clientName': clientName,
+        'locationName': locationName,
+        'address': address,
+        'latitude': latitude,
+        'longitude': longitude,
+        'allowedRadius': allowedRadius,
+      };
+
+      final response = await dio.post(
+        ApiConstants.adminLocations,
+        options: Options(headers: headers),
+        data: payload,
+      );
+
+      final data = response.data;
+      if (data is Map<String, dynamic>) {
+        if (data['success'] == false) {
+          throw ServerException(data['message'] ?? 'Failed to create location');
+        }
+
+        final locationData = data['data'] is Map<String, dynamic>
+            ? data['data'] as Map<String, dynamic>
+            : data;
+
+        return ClientLocationModel.fromJson(locationData);
+      }
+
+      throw const ServerException('Invalid response format from server');
+    } on DioException catch (e) {
+      throw ErrorHandler.handleDioError(e, fallbackMessage: 'Failed to create location. Please try again.');
     } catch (e) {
       if (e is ServerException) rethrow;
       throw ServerException(e.toString());

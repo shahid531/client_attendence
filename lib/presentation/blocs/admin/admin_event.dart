@@ -48,3 +48,50 @@ class CreateEmployeeSubmittedEvent extends AdminEvent {
 }
 
 class ResetAdminStateEvent extends AdminEvent {}
+
+class LoadEmployeesEvent extends AdminEvent {
+  final bool isRefresh;
+
+  const LoadEmployeesEvent({this.isRefresh = false});
+
+  @override
+  List<Object?> get props => [isRefresh];
+}
+
+class LoadLocationsEvent extends AdminEvent {
+  final bool isRefresh;
+
+  const LoadLocationsEvent({this.isRefresh = false});
+
+  @override
+  List<Object?> get props => [isRefresh];
+}
+
+class CreateLocationSubmittedEvent extends AdminEvent {
+  final String clientName;
+  final String locationName;
+  final String address;
+  final double latitude;
+  final double longitude;
+  final double allowedRadius;
+
+  const CreateLocationSubmittedEvent({
+    required this.clientName,
+    required this.locationName,
+    required this.address,
+    required this.latitude,
+    required this.longitude,
+    required this.allowedRadius,
+  });
+
+  @override
+  List<Object?> get props => [
+        clientName,
+        locationName,
+        address,
+        latitude,
+        longitude,
+        allowedRadius,
+      ];
+}
+

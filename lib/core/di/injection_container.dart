@@ -20,6 +20,9 @@ import '../../domain/repositories/auth_repository.dart';
 import '../../domain/repositories/dashboard_repository.dart';
 import '../../domain/repositories/leave_repository.dart';
 import '../../domain/usecases/admin/create_employee_usecase.dart';
+import '../../domain/usecases/admin/create_location_usecase.dart';
+import '../../domain/usecases/admin/get_employees_usecase.dart';
+import '../../domain/usecases/admin/get_locations_usecase.dart';
 import '../../domain/usecases/app_config/check_app_version_usecase.dart';
 import '../../domain/usecases/attendance/check_in_usecase.dart';
 import '../../domain/usecases/attendance/check_out_usecase.dart';
@@ -158,6 +161,9 @@ Future<void> initServiceLocator() async {
   sl.registerLazySingleton(() => GetDashboardStatsUseCase(sl()));
   sl.registerLazySingleton(() => ChangePasswordUseCase(sl()));
   sl.registerLazySingleton(() => CreateEmployeeUseCase(sl()));
+  sl.registerLazySingleton(() => CreateLocationUseCase(sl()));
+  sl.registerLazySingleton(() => GetEmployeesUseCase(sl()));
+  sl.registerLazySingleton(() => GetLocationsUseCase(sl()));
   sl.registerLazySingleton(() => CheckAppVersionUseCase(sl()));
 
   //! Blocs
@@ -197,6 +203,9 @@ Future<void> initServiceLocator() async {
   sl.registerFactory(
     () => AdminBloc(
       createEmployeeUseCase: sl(),
+      createLocationUseCase: sl(),
+      getEmployeesUseCase: sl(),
+      getLocationsUseCase: sl(),
     ),
   );
   sl.registerFactory(

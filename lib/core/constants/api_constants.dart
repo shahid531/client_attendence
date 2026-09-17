@@ -32,6 +32,7 @@ class ApiConstants {
 
   // Admin Endpoints
   static const String adminEmployees = '$baseUrl/admin/employees';
+  static const String adminLocations = '$baseUrl/admin/locations';
 
   // App Version / Force Update Endpoints
   static String appVersion(String platform) => '$baseUrl/version/${platform.toUpperCase()}';
