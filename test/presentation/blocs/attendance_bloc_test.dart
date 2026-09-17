@@ -5,6 +5,7 @@ import 'package:client_attendence/domain/usecases/attendance/check_in_usecase.da
 import 'package:client_attendence/domain/usecases/attendance/check_out_usecase.dart';
 import 'package:client_attendence/domain/usecases/attendance/get_attendance_history_usecase.dart';
 import 'package:client_attendence/domain/usecases/attendance/get_today_attendance_usecase.dart';
+import 'package:client_attendence/domain/usecases/attendance/regularize_attendance_usecase.dart';
 import 'package:client_attendence/presentation/blocs/attendance/attendance_bloc.dart';
 import 'package:client_attendence/presentation/blocs/attendance/attendance_event.dart';
 import 'package:client_attendence/presentation/blocs/attendance/attendance_state.dart';
@@ -84,6 +85,15 @@ class MockAttendanceRepository implements AttendanceRepository {
   Future<Either<Failure, AttendanceRecord?>> getTodayAttendance() async {
     return Right(_today);
   }
+
+  @override
+  Future<Either<Failure, void>> regularizeAttendance({
+    required String attendanceId,
+    required String requestedTimeOut,
+    required String reason,
+  }) async {
+    return const Right(null);
+  }
 }
 
 void main() {
@@ -97,6 +107,7 @@ void main() {
       checkOutUseCase: CheckOutUseCase(repository),
       getAttendanceHistoryUseCase: GetAttendanceHistoryUseCase(repository),
       getTodayAttendanceUseCase: GetTodayAttendanceUseCase(repository),
+      regularizeAttendanceUseCase: RegularizeAttendanceUseCase(repository),
     );
   });
 
@@ -148,6 +159,7 @@ void main() {
       checkOutUseCase: CheckOutUseCase(failingRepo),
       getAttendanceHistoryUseCase: GetAttendanceHistoryUseCase(failingRepo),
       getTodayAttendanceUseCase: GetTodayAttendanceUseCase(failingRepo),
+      regularizeAttendanceUseCase: RegularizeAttendanceUseCase(failingRepo),
     );
 
     final expectation = expectLater(
@@ -210,6 +222,24 @@ void main() {
     ));
     await expectation;
   });
+
+  test('should emit [AttendanceLoadedState] with successMessage when RegularizeAttendanceRequestedEvent succeeds', () async {
+    final expectation = expectLater(
+      bloc.stream,
+      emitsInOrder([
+        const AttendanceLoadedState(
+          successMessage: 'Regularization request submitted successfully!',
+        ),
+      ]),
+    );
+
+    bloc.add(const RegularizeAttendanceRequestedEvent(
+      attendanceId: '123',
+      requestedTimeOut: '06:00 PM',
+      reason: 'Forgot to clock out',
+    ));
+    await expectation;
+  });
 }
 
 class FailingAttendanceRepository implements AttendanceRepository {
@@ -262,5 +292,16 @@ class FailingAttendanceRepository implements AttendanceRepository {
   @override
   Future<Either<Failure, AttendanceRecord?>> getTodayAttendance() async {
     return const Right(null);
+  }
+
+  @override
+  Future<Either<Failure, void>> regularizeAttendance({
+    required String attendanceId,
+    required String requestedTimeOut,
+    required String reason,
+  }) async {
+    return const Left(
+      ServerFailure('Regularization failed'),
+    );
   }
 }

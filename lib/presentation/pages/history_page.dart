@@ -24,8 +24,8 @@ class _HistoryPageState extends State<HistoryPage> {
   final List<String> _periodOptions = ['This Month', 'Last Month', 'Custom'];
 
   // Date Pickers State
-  late DateTime _fromDate;
-  late DateTime _toDate;
+  DateTime? _customFromDate;
+  DateTime? _customToDate;
   String _displayRangeStr = '';
   bool _isExporting = false;
 
@@ -48,21 +48,7 @@ class _HistoryPageState extends State<HistoryPage> {
   void initState() {
     super.initState();
     _scrollController.addListener(_onScroll);
-    final now = DateTime.now();
-    _fromDate = DateTime(now.year, now.month, 1);
-    // For non-admin, default to yesterday if today is 1st or past yesterday
-    final yesterday = now.subtract(const Duration(days: 1));
-    _toDate = now;
     WidgetsBinding.instance.addPostFrameCallback((_) {
-      if (!_isAdmin &&
-          _toDate.year == now.year &&
-          _toDate.month == now.month &&
-          _toDate.day == now.day) {
-        if (yesterday.isBefore(_fromDate)) {
-          _fromDate = yesterday;
-        }
-        _toDate = yesterday;
-      }
       _applyPeriod('This Month');
     });
   }
@@ -93,8 +79,8 @@ class _HistoryPageState extends State<HistoryPage> {
 
   void _applyPeriod(String period, {int page = 0, bool isLoadMore = false}) {
     final now = DateTime.now();
-    String startParam;
-    String endParam;
+    String? startParam;
+    String? endParam;
 
     if (period == 'This Month') {
       final start = DateTime(now.year, now.month, 1);
@@ -119,13 +105,27 @@ class _HistoryPageState extends State<HistoryPage> {
         });
       }
     } else {
-      // Custom Range
-      startParam = DateFormat('yyyy-MM-dd').format(_fromDate);
-      endParam = DateFormat('yyyy-MM-dd').format(_toDate);
+      // Custom Range - only pass dates if explicitly selected by user
+      if (_customFromDate != null) {
+        startParam = DateFormat('yyyy-MM-dd').format(_customFromDate!);
+      }
+      if (_customToDate != null) {
+        endParam = DateFormat('yyyy-MM-dd').format(_customToDate!);
+      }
       if (!isLoadMore) {
         setState(() {
-          _displayRangeStr =
-              "${DateFormat('dd/MM/yyyy').format(_fromDate)} - ${DateFormat('dd/MM/yyyy').format(_toDate)}";
+          if (_customFromDate != null && _customToDate != null) {
+            _displayRangeStr =
+                "${DateFormat('dd/MM/yyyy').format(_customFromDate!)} - ${DateFormat('dd/MM/yyyy').format(_customToDate!)}";
+          } else if (_customFromDate != null) {
+            _displayRangeStr =
+                "From ${DateFormat('dd/MM/yyyy').format(_customFromDate!)}";
+          } else if (_customToDate != null) {
+            _displayRangeStr =
+                "To ${DateFormat('dd/MM/yyyy').format(_customToDate!)}";
+          } else {
+            _displayRangeStr = '';
+          }
         });
       }
     }
@@ -164,7 +164,9 @@ class _HistoryPageState extends State<HistoryPage> {
     // Admin has no restriction; RM and Employee cannot select current date (last selectable date is yesterday)
     final DateTime maxSelectableDate = _isAdmin ? DateTime(2035) : yesterday;
 
-    DateTime initialDate = isFromDate ? _fromDate : _toDate;
+    DateTime initialDate = isFromDate
+        ? (_customFromDate ?? (_customToDate ?? (_isAdmin ? now : yesterday)))
+        : (_customToDate ?? (_customFromDate ?? (_isAdmin ? now : yesterday)));
     if (initialDate.isAfter(maxSelectableDate)) {
       initialDate = maxSelectableDate;
     }
@@ -178,14 +180,14 @@ class _HistoryPageState extends State<HistoryPage> {
     if (picked != null) {
       setState(() {
         if (isFromDate) {
-          _fromDate = picked;
-          if (_toDate.isBefore(_fromDate)) {
-            _toDate = _fromDate;
+          _customFromDate = picked;
+          if (_customToDate != null && _customToDate!.isBefore(_customFromDate!)) {
+            _customToDate = _customFromDate;
           }
         } else {
-          _toDate = picked;
-          if (_fromDate.isAfter(_toDate)) {
-            _fromDate = _toDate;
+          _customToDate = picked;
+          if (_customFromDate != null && _customFromDate!.isAfter(_customToDate!)) {
+            _customFromDate = _customToDate;
           }
         }
       });
@@ -552,16 +554,9 @@ class _HistoryPageState extends State<HistoryPage> {
                         if (newValue != null) {
                           setState(() {
                             _selectedPeriod = newValue;
-                            if (newValue == 'Custom' && !_isAdmin) {
-                              final now = DateTime.now();
-                              final yesterday =
-                                  now.subtract(const Duration(days: 1));
-                              if (!_toDate.isBefore(now)) {
-                                _toDate = yesterday;
-                              }
-                              if (_fromDate.isAfter(_toDate)) {
-                                _fromDate = _toDate;
-                              }
+                            if (newValue == 'Custom') {
+                              _customFromDate = null;
+                              _customToDate = null;
                             }
                           });
                           _applyPeriod(newValue);
@@ -644,6 +639,8 @@ class _HistoryPageState extends State<HistoryPage> {
                           onTap: () {
                             setState(() {
                               _selectedPeriod = 'This Month';
+                              _customFromDate = null;
+                              _customToDate = null;
                             });
                             _applyPeriod('This Month');
                           },
@@ -687,16 +684,37 @@ class _HistoryPageState extends State<HistoryPage> {
                                     children: [
                                       const Icon(Icons.calendar_today_outlined,
                                           size: 16, color: Color(0xFF64748B)),
-                                      Text(
-                                        _formatDate(_fromDate),
-                                        style: const TextStyle(
-                                          fontSize: 13,
-                                          color: Color(0xFF1E293B),
-                                          fontWeight: FontWeight.w500,
+                                      const SizedBox(width: 4),
+                                      Expanded(
+                                        child: Text(
+                                          _customFromDate != null
+                                              ? _formatDate(_customFromDate!)
+                                              : 'Select Date',
+                                          textAlign: TextAlign.center,
+                                          style: TextStyle(
+                                            fontSize: 13,
+                                            color: _customFromDate != null
+                                                ? const Color(0xFF1E293B)
+                                                : const Color(0xFF94A3B8),
+                                            fontWeight: _customFromDate != null
+                                                ? FontWeight.w500
+                                                : FontWeight.normal,
+                                          ),
                                         ),
                                       ),
-                                      const Icon(Icons.calendar_month,
-                                          size: 16, color: Color(0xFF1E293B)),
+                                      if (_customFromDate != null)
+                                        GestureDetector(
+                                          onTap: () {
+                                            setState(() {
+                                              _customFromDate = null;
+                                            });
+                                          },
+                                          child: const Icon(Icons.close_rounded,
+                                              size: 16, color: Color(0xFF64748B)),
+                                        )
+                                      else
+                                        const Icon(Icons.calendar_month,
+                                            size: 16, color: Color(0xFF1E293B)),
                                     ],
                                   ),
                                 ),
@@ -733,16 +751,37 @@ class _HistoryPageState extends State<HistoryPage> {
                                     children: [
                                       const Icon(Icons.calendar_today_outlined,
                                           size: 16, color: Color(0xFF64748B)),
-                                      Text(
-                                        _formatDate(_toDate),
-                                        style: const TextStyle(
-                                          fontSize: 13,
-                                          color: Color(0xFF1E293B),
-                                          fontWeight: FontWeight.w500,
+                                      const SizedBox(width: 4),
+                                      Expanded(
+                                        child: Text(
+                                          _customToDate != null
+                                              ? _formatDate(_customToDate!)
+                                              : 'Select Date',
+                                          textAlign: TextAlign.center,
+                                          style: TextStyle(
+                                            fontSize: 13,
+                                            color: _customToDate != null
+                                                ? const Color(0xFF1E293B)
+                                                : const Color(0xFF94A3B8),
+                                            fontWeight: _customToDate != null
+                                                ? FontWeight.w500
+                                                : FontWeight.normal,
+                                          ),
                                         ),
                                       ),
-                                      const Icon(Icons.calendar_month,
-                                          size: 16, color: Color(0xFF1E293B)),
+                                      if (_customToDate != null)
+                                        GestureDetector(
+                                          onTap: () {
+                                            setState(() {
+                                              _customToDate = null;
+                                            });
+                                          },
+                                          child: const Icon(Icons.close_rounded,
+                                              size: 16, color: Color(0xFF64748B)),
+                                        )
+                                      else
+                                        const Icon(Icons.calendar_month,
+                                            size: 16, color: Color(0xFF1E293B)),
                                     ],
                                   ),
                                 ),
@@ -752,15 +791,21 @@ class _HistoryPageState extends State<HistoryPage> {
                         ),
                       ],
                     ),
+                    if (_isAdmin) ...[
+                      const SizedBox(height: 14),
+                      _buildSearchInputField(),
+                    ],
                     const SizedBox(height: 16),
                     SizedBox(
                       width: double.infinity,
                       height: 42,
                       child: ElevatedButton.icon(
-                        onPressed: () => _applyPeriod('Custom'),
+                        onPressed: () {
+                          FocusScope.of(context).unfocus();
+                          _applyPeriod('Custom', page: 0);
+                        },
                         icon: const Icon(Icons.search_rounded,
                             size: 18, color: Colors.white),
-
                         style: ElevatedButton.styleFrom(
                           backgroundColor: primaryNavy,
                           shape: RoundedRectangleBorder(
@@ -776,14 +821,6 @@ class _HistoryPageState extends State<HistoryPage> {
                             fontSize: 14,
                           ),
                         ),
-                        // child: const Text(
-                        //   'Search',
-                        //   style: TextStyle(
-                        //     color: Colors.white,
-                        //     fontWeight: FontWeight.bold,
-                        //     fontSize: 14,
-                        //   ),
-                        // ),
                       ),
                     )
                   ],
@@ -792,8 +829,8 @@ class _HistoryPageState extends State<HistoryPage> {
               const SizedBox(height: 16),
             ],
 
-            // Search Bar (Only visible to admin)
-            if (_isAdmin) ...[
+            // Search Bar (Only visible to admin when NOT in Custom period)
+            if (_isAdmin && _selectedPeriod != 'Custom') ...[
               _buildSearchBar(),
               const SizedBox(height: 16),
             ],
@@ -977,53 +1014,57 @@ class _HistoryPageState extends State<HistoryPage> {
     );
   }
 
+  Widget _buildSearchInputField() {
+    return Container(
+      decoration: BoxDecoration(
+        color: Colors.white,
+        borderRadius: BorderRadius.circular(12),
+        border: Border.all(color: AppColors.borderGrey),
+      ),
+      child: TextField(
+        controller: _searchController,
+        onChanged: (val) => setState(() {}),
+        onSubmitted: (_) {
+          FocusScope.of(context).unfocus();
+          _applyPeriod(_selectedPeriod, page: 0);
+        },
+        decoration: InputDecoration(
+          hintText: 'Search requests or employees...',
+          hintStyle: const TextStyle(
+            color: AppColors.textLight,
+            fontSize: 13,
+          ),
+          prefixIcon: const Icon(
+            Icons.search_rounded,
+            color: AppColors.textMuted,
+            size: 20,
+          ),
+          suffixIcon: _searchController.text.isNotEmpty
+              ? IconButton(
+                  icon: const Icon(Icons.clear_rounded, size: 18),
+                  onPressed: () {
+                    _searchController.clear();
+                    FocusScope.of(context).unfocus();
+                    setState(() {});
+                    _applyPeriod(_selectedPeriod, page: 0);
+                  },
+                )
+              : null,
+          border: InputBorder.none,
+          contentPadding: const EdgeInsets.symmetric(
+            vertical: 12,
+            horizontal: 14,
+          ),
+        ),
+      ),
+    );
+  }
+
   Widget _buildSearchBar() {
     return Column(
       crossAxisAlignment: CrossAxisAlignment.stretch,
       children: [
-        Container(
-          decoration: BoxDecoration(
-            color: Colors.white,
-            borderRadius: BorderRadius.circular(12),
-            border: Border.all(color: AppColors.borderGrey),
-          ),
-          child: TextField(
-            controller: _searchController,
-            onChanged: (val) => setState(() {}),
-            onSubmitted: (_) {
-              FocusScope.of(context).unfocus();
-              _applyPeriod(_selectedPeriod, page: 0);
-            },
-            decoration: InputDecoration(
-              hintText: 'Search requests or employees...',
-              hintStyle: const TextStyle(
-                color: AppColors.textLight,
-                fontSize: 13,
-              ),
-              prefixIcon: const Icon(
-                Icons.search_rounded,
-                color: AppColors.textMuted,
-                size: 20,
-              ),
-              suffixIcon: _searchController.text.isNotEmpty
-                  ? IconButton(
-                      icon: const Icon(Icons.clear_rounded, size: 18),
-                      onPressed: () {
-                        _searchController.clear();
-                        FocusScope.of(context).unfocus();
-                        setState(() {});
-                        _applyPeriod(_selectedPeriod, page: 0);
-                      },
-                    )
-                  : null,
-              border: InputBorder.none,
-              contentPadding: const EdgeInsets.symmetric(
-                vertical: 12,
-                horizontal: 14,
-              ),
-            ),
-          ),
-        ),
+        _buildSearchInputField(),
         const SizedBox(height: 8),
         SizedBox(
           width: double.infinity,
@@ -1229,7 +1270,7 @@ class _HistoryPageState extends State<HistoryPage> {
                   size: 16, color: Color(0xFFDC2626)),
               SizedBox(width: 4),
               Text(
-                'Missing Out',
+                'LWP',
                 style: TextStyle(
                   color: Color(0xFFDC2626),
                   fontWeight: FontWeight.w500,
