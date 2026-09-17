@@ -3,8 +3,6 @@ import 'package:flutter_bloc/flutter_bloc.dart';
 import '../../core/constants/app_colors.dart';
 import '../blocs/auth/auth_bloc.dart';
 import '../blocs/auth/auth_state.dart';
-import '../blocs/leave/leave_bloc.dart';
-import '../blocs/leave/leave_event.dart';
 import 'approvals_screen.dart';
 import 'create_employee_screen.dart';
 import 'history_page.dart';
@@ -90,19 +88,49 @@ class _MainNavigationPageState extends State<MainNavigationPage> {
           ),
         ];
 
+        final user = (authState is AuthenticatedState) ? authState.user : null;
+        final userName = user?.name.trim() ?? 'User';
         final safeIndex = _currentIndex < tabs.length ? _currentIndex : 0;
 
         return Scaffold(
-          body: SafeArea(
-            child: IndexedStack(
-              index: safeIndex,
-              children: List.generate(tabs.length, (index) {
-                if (_loadedIndices.contains(index)) {
-                  return tabs[index].page;
-                }
-                return const SizedBox.shrink();
-              }),
+          backgroundColor: AppColors.backgroundLight,
+          appBar: AppBar(
+            backgroundColor: AppColors.primaryNavy,
+            elevation: 0,
+            scrolledUnderElevation: 1,
+            centerTitle: false,
+            titleSpacing: 16,
+            title: Image.asset(
+              'assets/images/idealake_logo.png',
+              height: 28,
+              fit: BoxFit.contain,
+                color: Colors.white,
+                colorBlendMode: BlendMode.srcIn
             ),
+            actions: [
+              Padding(
+                padding: const EdgeInsets.only(right: 16.0),
+                child: Center(
+                  child: Text(
+                    'Hi, $userName',
+                    style: const TextStyle(
+                      color: Colors.white,
+                      fontSize: 14,
+                      fontWeight: FontWeight.w600,
+                    ),
+                  ),
+                ),
+              ),
+            ],
+          ),
+          body: IndexedStack(
+            index: safeIndex,
+            children: List.generate(tabs.length, (index) {
+              if (_loadedIndices.contains(index)) {
+                return tabs[index].page;
+              }
+              return const SizedBox.shrink();
+            }),
           ),
           bottomNavigationBar: BottomNavigationBar(
             currentIndex: safeIndex,
