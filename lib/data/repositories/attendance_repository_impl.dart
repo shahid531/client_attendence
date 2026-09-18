@@ -117,4 +117,24 @@ class AttendanceRepositoryImpl implements AttendanceRepository {
       return Left(ServerFailure(e.toString()));
     }
   }
+
+  @override
+  Future<Either<Failure, List<int>>> exportAttendance({
+    String? employeeId,
+    String? fromDate,
+    String? toDate,
+  }) async {
+    try {
+      final bytes = await remoteDataSource.exportAttendance(
+        employeeId: employeeId,
+        fromDate: fromDate,
+        toDate: toDate,
+      );
+      return Right(bytes);
+    } on ServerException catch (e) {
+      return Left(ServerFailure(e.message));
+    } catch (e) {
+      return Left(ServerFailure(e.toString()));
+    }
+  }
 }

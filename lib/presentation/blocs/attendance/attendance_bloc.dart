@@ -1,8 +1,10 @@
 import 'package:flutter_bloc/flutter_bloc.dart';
 import '../../../core/usecases/usecase.dart';
+import '../../../core/utils/excel_exporter.dart';
 import '../../../domain/entities/attendance_record.dart';
 import '../../../domain/usecases/attendance/check_in_usecase.dart';
 import '../../../domain/usecases/attendance/check_out_usecase.dart';
+import '../../../domain/usecases/attendance/export_attendance_usecase.dart';
 import '../../../domain/usecases/attendance/get_attendance_history_usecase.dart';
 import '../../../domain/usecases/attendance/get_today_attendance_usecase.dart';
 import '../../../domain/usecases/attendance/regularize_attendance_usecase.dart';
@@ -15,6 +17,7 @@ class AttendanceBloc extends Bloc<AttendanceEvent, AttendanceState> {
   final GetAttendanceHistoryUseCase getAttendanceHistoryUseCase;
   final GetTodayAttendanceUseCase getTodayAttendanceUseCase;
   final RegularizeAttendanceUseCase regularizeAttendanceUseCase;
+  final ExportAttendanceUseCase exportAttendanceUseCase;
 
   AttendanceBloc({
     required this.checkInUseCase,
@@ -22,6 +25,7 @@ class AttendanceBloc extends Bloc<AttendanceEvent, AttendanceState> {
     required this.getAttendanceHistoryUseCase,
     required this.getTodayAttendanceUseCase,
     required this.regularizeAttendanceUseCase,
+    required this.exportAttendanceUseCase,
   }) : super(AttendanceInitialState()) {
     on<LoadTodayAttendanceEvent>(_onLoadTodayAttendance);
     on<LoadAttendanceHistoryEvent>(_onLoadAttendanceHistory);
@@ -29,6 +33,7 @@ class AttendanceBloc extends Bloc<AttendanceEvent, AttendanceState> {
     on<CheckOutRequestedEvent>(_onCheckOutRequested);
     on<ResetAttendanceEvent>(_onResetAttendance);
     on<RegularizeAttendanceRequestedEvent>(_onRegularizeAttendanceRequested);
+    on<ExportAttendanceEvent>(_onExportAttendance);
   }
 
   void _onResetAttendance(
@@ -208,6 +213,88 @@ class AttendanceBloc extends Bloc<AttendanceEvent, AttendanceState> {
           emit(const AttendanceLoadedState(
             successMessage: 'Regularization request submitted successfully!',
           ));
+        }
+      },
+    );
+  }
+
+  Future<void> _onExportAttendance(
+    ExportAttendanceEvent event,
+    Emitter<AttendanceState> emit,
+  ) async {
+    final currentState = state;
+    if (currentState is AttendanceLoadedState) {
+      emit(currentState.copyWith(
+        isExporting: true,
+        exportErrorMessage: null,
+        exportResult: null,
+        isExportShareCompleted: false,
+      ));
+    }
+
+    final result = await exportAttendanceUseCase(
+      ExportAttendanceParams(
+        employeeId: event.employeeId,
+        fromDate: event.fromDate,
+        toDate: event.toDate,
+      ),
+    );
+
+    await result.fold(
+      (failure) async {
+        final stateNow = state;
+        if (stateNow is AttendanceLoadedState) {
+          emit(stateNow.copyWith(
+            isExporting: false,
+            exportErrorMessage: failure.message,
+          ));
+        } else {
+          emit(AttendanceErrorState(failure.message));
+        }
+      },
+      (bytes) async {
+        try {
+          if (event.action == ExportAction.download) {
+            final downloadResult = await ExcelExporter.saveBytesToDownloads(
+              bytes: bytes,
+              employeeId: event.employeeId,
+              dateRange: event.dateRange,
+              fromDate: event.fromDate,
+              toDate: event.toDate,
+            );
+            final stateNow = state;
+            if (stateNow is AttendanceLoadedState) {
+              emit(stateNow.copyWith(
+                isExporting: false,
+                exportResult: downloadResult,
+                exportErrorMessage: null,
+              ));
+            }
+          } else {
+            await ExcelExporter.shareBytes(
+              bytes: bytes,
+              employeeId: event.employeeId,
+              dateRange: event.dateRange,
+              fromDate: event.fromDate,
+              toDate: event.toDate,
+            );
+            final stateNow = state;
+            if (stateNow is AttendanceLoadedState) {
+              emit(stateNow.copyWith(
+                isExporting: false,
+                isExportShareCompleted: true,
+                exportErrorMessage: null,
+              ));
+            }
+          }
+        } catch (e) {
+          final stateNow = state;
+          if (stateNow is AttendanceLoadedState) {
+            emit(stateNow.copyWith(
+              isExporting: false,
+              exportErrorMessage: e.toString(),
+            ));
+          }
         }
       },
     );

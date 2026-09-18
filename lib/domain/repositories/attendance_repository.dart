@@ -35,5 +35,10 @@ abstract class AttendanceRepository {
     required String requestedTimeOut,
     required String reason,
   });
+  Future<Either<Failure, List<int>>> exportAttendance({
+    String? employeeId,
+    String? fromDate,
+    String? toDate,
+  });
 }
 

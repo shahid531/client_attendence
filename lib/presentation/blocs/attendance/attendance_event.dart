@@ -90,3 +90,24 @@ class RegularizeAttendanceRequestedEvent extends AttendanceEvent {
   @override
   List<Object?> get props => [attendanceId, requestedTimeOut, reason];
 }
+
+enum ExportAction { download, share }
+
+class ExportAttendanceEvent extends AttendanceEvent {
+  final String? employeeId;
+  final String? fromDate;
+  final String? toDate;
+  final String dateRange;
+  final ExportAction action;
+
+  const ExportAttendanceEvent({
+    this.employeeId,
+    this.fromDate,
+    this.toDate,
+    required this.dateRange,
+    required this.action,
+  });
+
+  @override
+  List<Object?> get props => [employeeId, fromDate, toDate, dateRange, action];
+}
