@@ -1,4 +1,5 @@
 import 'package:equatable/equatable.dart';
+import '../../../core/utils/excel_exporter.dart';
 import '../../../domain/entities/attendance_record.dart';
 
 abstract class AttendanceState extends Equatable {
@@ -24,6 +25,10 @@ class AttendanceLoadedState extends AttendanceState {
   final bool hasNext;
   final bool hasPrevious;
   final bool isLoadingMore;
+  final bool isExporting;
+  final ExcelExportResult? exportResult;
+  final bool isExportShareCompleted;
+  final String? exportErrorMessage;
 
   const AttendanceLoadedState({
     this.todayRecord,
@@ -37,6 +42,10 @@ class AttendanceLoadedState extends AttendanceState {
     this.hasNext = false,
     this.hasPrevious = false,
     this.isLoadingMore = false,
+    this.isExporting = false,
+    this.exportResult,
+    this.isExportShareCompleted = false,
+    this.exportErrorMessage,
   });
 
   AttendanceLoadedState copyWith({
@@ -51,6 +60,10 @@ class AttendanceLoadedState extends AttendanceState {
     bool? hasNext,
     bool? hasPrevious,
     bool? isLoadingMore,
+    bool? isExporting,
+    ExcelExportResult? exportResult,
+    bool? isExportShareCompleted,
+    String? exportErrorMessage,
   }) {
     return AttendanceLoadedState(
       todayRecord: todayRecord ?? this.todayRecord,
@@ -64,6 +77,10 @@ class AttendanceLoadedState extends AttendanceState {
       hasNext: hasNext ?? this.hasNext,
       hasPrevious: hasPrevious ?? this.hasPrevious,
       isLoadingMore: isLoadingMore ?? this.isLoadingMore,
+      isExporting: isExporting ?? this.isExporting,
+      exportResult: exportResult,
+      isExportShareCompleted: isExportShareCompleted ?? false,
+      exportErrorMessage: exportErrorMessage,
     );
   }
 
@@ -80,6 +97,10 @@ class AttendanceLoadedState extends AttendanceState {
         hasNext,
         hasPrevious,
         isLoadingMore,
+        isExporting,
+        exportResult,
+        isExportShareCompleted,
+        exportErrorMessage,
       ];
 }
 

@@ -42,6 +42,11 @@ abstract class AttendanceRemoteDataSource {
     required String requestedTimeOut,
     required String reason,
   });
+  Future<List<int>> exportAttendance({
+    String? employeeId,
+    String? fromDate,
+    String? toDate,
+  });
   Future<void> saveTodayRecord(AttendanceRecordModel? record);
   void clearCache();
 }
@@ -627,6 +632,58 @@ class AttendanceRemoteDataSourceImpl implements AttendanceRemoteDataSource {
         throw ServerException(e.toString());
       }
     }
+  }
+
+  @override
+  Future<List<int>> exportAttendance({
+    String? employeeId,
+    String? fromDate,
+    String? toDate,
+  }) async {
+    if (dio != null && sharedPreferences != null) {
+      try {
+        final token = sharedPreferences!.getString('auth_bearer_token');
+        final headers = <String, String>{
+          'Accept': '*/*',
+          'ngrok-skip-browser-warning': 'true',
+        };
+        if (token != null && token.isNotEmpty) {
+          headers['Authorization'] = 'Bearer $token';
+        }
+
+        final queryParams = <String, dynamic>{
+          if (employeeId != null && employeeId.isNotEmpty) 'employeeId': employeeId,
+          'fromDate': fromDate ?? '',
+          'toDate': toDate ?? '',
+        };
+
+        final response = await dio!.get<List<int>>(
+          ApiConstants.attendanceExport,
+          queryParameters: queryParams,
+          options: Options(
+            headers: headers,
+            responseType: ResponseType.bytes,
+          ),
+        );
+
+        if (response.statusCode == 200 && response.data != null) {
+          return response.data!;
+        } else {
+          throw ServerException('Failed to export attendance. Status: ${response.statusCode}');
+        }
+      } on DioException catch (e) {
+        print('[AttendanceRemoteDataSource] Export DioException: ${e.response?.data ?? e.message}');
+        throw ErrorHandler.handleDioError(
+          e,
+          fallbackMessage: 'Failed to export attendance report. Please try again.',
+        );
+      } catch (e) {
+        print('[AttendanceRemoteDataSource] Export Exception: $e');
+        if (e is ServerException) rethrow;
+        throw ServerException(e.toString());
+      }
+    }
+    throw const ServerException('Dependencies not initialized for export');
   }
 }
 

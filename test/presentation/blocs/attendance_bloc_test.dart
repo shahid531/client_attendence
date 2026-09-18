@@ -3,6 +3,7 @@ import 'package:client_attendence/domain/entities/attendance_record.dart';
 import 'package:client_attendence/domain/repositories/attendance_repository.dart';
 import 'package:client_attendence/domain/usecases/attendance/check_in_usecase.dart';
 import 'package:client_attendence/domain/usecases/attendance/check_out_usecase.dart';
+import 'package:client_attendence/domain/usecases/attendance/export_attendance_usecase.dart';
 import 'package:client_attendence/domain/usecases/attendance/get_attendance_history_usecase.dart';
 import 'package:client_attendence/domain/usecases/attendance/get_today_attendance_usecase.dart';
 import 'package:client_attendence/domain/usecases/attendance/regularize_attendance_usecase.dart';
@@ -94,6 +95,15 @@ class MockAttendanceRepository implements AttendanceRepository {
   }) async {
     return const Right(null);
   }
+
+  @override
+  Future<Either<Failure, List<int>>> exportAttendance({
+    String? employeeId,
+    String? fromDate,
+    String? toDate,
+  }) async {
+    return const Right([1, 2, 3, 4]);
+  }
 }
 
 void main() {
@@ -108,6 +118,7 @@ void main() {
       getAttendanceHistoryUseCase: GetAttendanceHistoryUseCase(repository),
       getTodayAttendanceUseCase: GetTodayAttendanceUseCase(repository),
       regularizeAttendanceUseCase: RegularizeAttendanceUseCase(repository),
+      exportAttendanceUseCase: ExportAttendanceUseCase(repository),
     );
   });
 
@@ -160,6 +171,7 @@ void main() {
       getAttendanceHistoryUseCase: GetAttendanceHistoryUseCase(failingRepo),
       getTodayAttendanceUseCase: GetTodayAttendanceUseCase(failingRepo),
       regularizeAttendanceUseCase: RegularizeAttendanceUseCase(failingRepo),
+      exportAttendanceUseCase: ExportAttendanceUseCase(failingRepo),
     );
 
     final expectation = expectLater(
@@ -302,6 +314,17 @@ class FailingAttendanceRepository implements AttendanceRepository {
   }) async {
     return const Left(
       ServerFailure('Regularization failed'),
+    );
+  }
+
+  @override
+  Future<Either<Failure, List<int>>> exportAttendance({
+    String? employeeId,
+    String? fromDate,
+    String? toDate,
+  }) async {
+    return const Left(
+      ServerFailure('Export failed'),
     );
   }
 }

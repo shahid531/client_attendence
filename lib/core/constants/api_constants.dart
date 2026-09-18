@@ -9,6 +9,7 @@ class ApiConstants {
 
   // Attendance Endpoints
   static const String attendance = '$baseUrl/attendance';
+  static const String attendanceExport = '$baseUrl/attendance/export';
   static String attendanceRegularization(String attendanceId) =>
       '$baseUrl/attendance/$attendanceId/regularization';
 

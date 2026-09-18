@@ -27,7 +27,6 @@ class _HistoryPageState extends State<HistoryPage> {
   DateTime? _customFromDate;
   DateTime? _customToDate;
   String _displayRangeStr = '';
-  bool _isExporting = false;
 
   // Pagination State
   static const int _pageSize = 10;
@@ -198,28 +197,56 @@ class _HistoryPageState extends State<HistoryPage> {
     return DateFormat('dd/MM/yyyy').format(date);
   }
 
-  void _onExportPressed() {
-    final attendanceState = context.read<AttendanceBloc>().state;
-    final records = attendanceState is AttendanceLoadedState
-        ? attendanceState.history
-        : <AttendanceRecord>[];
-
-    if (records.isEmpty) {
-      SnackbarHelper.showWarning(
-        context,
-        'No attendance records available to export for this period.',
+  (String, String) _getExportDateParams() {
+    final now = DateTime.now();
+    if (_selectedPeriod == 'This Month') {
+      final start = DateTime(now.year, now.month, 1);
+      final end = DateTime(now.year, now.month + 1, 0);
+      return (
+        DateFormat('yyyy-MM-dd').format(start),
+        DateFormat('yyyy-MM-dd').format(end),
       );
-      return;
+    } else if (_selectedPeriod == 'Last Month') {
+      final start = DateTime(now.year, now.month - 1, 1);
+      final end = DateTime(now.year, now.month, 0);
+      return (
+        DateFormat('yyyy-MM-dd').format(start),
+        DateFormat('yyyy-MM-dd').format(end),
+      );
+    } else {
+      final fromStr = _customFromDate != null
+          ? DateFormat('yyyy-MM-dd').format(_customFromDate!)
+          : '';
+      final toStr = _customToDate != null
+          ? DateFormat('yyyy-MM-dd').format(_customToDate!)
+          : '';
+      return (fromStr, toStr);
     }
-
-    _showExportModal(context, records);
   }
 
-  void _showExportModal(BuildContext context, List<AttendanceRecord> records) {
+  String? _getExportEmployeeId() {
+    if (_isAdmin) {
+      final query = _searchController.text.trim();
+      if (query.isNotEmpty && RegExp(r'^[0-9]+$').hasMatch(query)) {
+        return query;
+      }
+    }
     final authState = context.read<AuthBloc>().state;
-    final user = authState is AuthenticatedState ? authState.user : null;
+    if (authState is AuthenticatedState) {
+      return authState.user.id;
+    }
+    return null;
+  }
+
+  void _onExportPressed() {
+    _showExportModal(context);
+  }
+
+  void _showExportModal(BuildContext context) {
     final dateRange =
         _displayRangeStr.isNotEmpty ? _displayRangeStr : _selectedPeriod;
+    final (fromDate, toDate) = _getExportDateParams();
+    final employeeId = _getExportEmployeeId();
 
     showModalBottomSheet(
       context: context,
@@ -256,7 +283,7 @@ class _HistoryPageState extends State<HistoryPage> {
                 ),
                 const SizedBox(height: 4),
                 Text(
-                  'Includes ${records.length} record(s) for $dateRange',
+                  'Exporting attendance records for $dateRange',
                   style: const TextStyle(
                     fontSize: 13,
                     color: Color(0xFF64748B),
@@ -266,10 +293,14 @@ class _HistoryPageState extends State<HistoryPage> {
 
                 // Option 1: Download directly to device
                 InkWell(
-                  onTap: () async {
+                  onTap: () {
                     Navigator.of(modalCtx).pop();
-                    await _handleDirectDownload(
-                        records, dateRange, user?.name, user?.id);
+                    _handleDirectDownload(
+                      employeeId: employeeId,
+                      fromDate: fromDate,
+                      toDate: toDate,
+                      dateRange: dateRange,
+                    );
                   },
                   borderRadius: BorderRadius.circular(12),
                   child: Container(
@@ -331,10 +362,14 @@ class _HistoryPageState extends State<HistoryPage> {
 
                 // Option 2: Share file via system share
                 InkWell(
-                  onTap: () async {
+                  onTap: () {
                     Navigator.of(modalCtx).pop();
-                    await _handleShareReport(
-                        records, dateRange, user?.name, user?.id);
+                    _handleShareReport(
+                      employeeId: employeeId,
+                      fromDate: fromDate,
+                      toDate: toDate,
+                      dateRange: dateRange,
+                    );
                   },
                   borderRadius: BorderRadius.circular(12),
                   child: Container(
@@ -402,74 +437,46 @@ class _HistoryPageState extends State<HistoryPage> {
     );
   }
 
-  Future<void> _handleDirectDownload(
-    List<AttendanceRecord> records,
-    String dateRange,
-    String? employeeName,
+  void _handleDirectDownload({
     String? employeeId,
-  ) async {
-    setState(() => _isExporting = true);
-    try {
-      final result = await ExcelExporter.downloadToDevice(
-        records: records,
-        dateRange: dateRange,
-        employeeName: employeeName,
-        employeeId: employeeId,
-      );
-
-      if (mounted) {
-        SnackbarHelper.showSuccess(
-          context,
-          'Downloaded: ${result.fileName}',
-          duration: const Duration(seconds: 4),
-          action: SnackBarAction(
-            label: 'OPEN',
-            textColor: Colors.white,
-            onPressed: () {
-              ExcelExporter.openFile(result.filePath);
-            },
+    required String fromDate,
+    required String toDate,
+    required String dateRange,
+  }) {
+    context.read<AttendanceBloc>().add(
+          ExportAttendanceEvent(
+            employeeId: employeeId,
+            fromDate: fromDate,
+            toDate: toDate,
+            dateRange: dateRange,
+            action: ExportAction.download,
           ),
         );
-      }
-    } catch (e) {
-      if (mounted) {
-        SnackbarHelper.showError(context, 'Failed to download file: $e');
-      }
-    } finally {
-      if (mounted) {
-        setState(() => _isExporting = false);
-      }
-    }
   }
 
-  Future<void> _handleShareReport(
-    List<AttendanceRecord> records,
-    String dateRange,
-    String? employeeName,
+  void _handleShareReport({
     String? employeeId,
-  ) async {
-    setState(() => _isExporting = true);
-    try {
-      await ExcelExporter.shareExcelReport(
-        records: records,
-        dateRange: dateRange,
-        employeeName: employeeName,
-        employeeId: employeeId,
-      );
-    } catch (e) {
-      if (mounted) {
-        SnackbarHelper.showError(context, 'Failed to share file: $e');
-      }
-    } finally {
-      if (mounted) {
-        setState(() => _isExporting = false);
-      }
-    }
+    required String fromDate,
+    required String toDate,
+    required String dateRange,
+  }) {
+    context.read<AttendanceBloc>().add(
+          ExportAttendanceEvent(
+            employeeId: employeeId,
+            fromDate: fromDate,
+            toDate: toDate,
+            dateRange: dateRange,
+            action: ExportAction.share,
+          ),
+        );
   }
 
   @override
   Widget build(BuildContext context) {
     const primaryNavy = AppColors.primaryNavy;
+    final attendanceState = context.watch<AttendanceBloc>().state;
+    final isExporting =
+        attendanceState is AttendanceLoadedState && attendanceState.isExporting;
 
     return RefreshIndicator(
       onRefresh: () async {
@@ -495,8 +502,8 @@ class _HistoryPageState extends State<HistoryPage> {
                   ),
                 ),
                 ElevatedButton.icon(
-                  onPressed: _isExporting ? null : _onExportPressed,
-                  icon: _isExporting
+                  onPressed: isExporting ? null : _onExportPressed,
+                  icon: isExporting
                       ? const SizedBox(
                           width: 14,
                           height: 14,
@@ -509,7 +516,7 @@ class _HistoryPageState extends State<HistoryPage> {
                       : const Icon(Icons.download,
                           size: 16, color: primaryNavy),
                   label: Text(
-                    _isExporting ? 'Exporting...' : 'Export',
+                    isExporting ? 'Exporting...' : 'Export',
                     style: const TextStyle(
                       color: primaryNavy,
                       fontWeight: FontWeight.w600,
@@ -615,7 +622,7 @@ class _HistoryPageState extends State<HistoryPage> {
                   borderRadius: BorderRadius.circular(16),
                   boxShadow: [
                     BoxShadow(
-                      color: Colors.black.withOpacity(0.04),
+                      color: Colors.black.withValues(alpha: 0.04),
                       blurRadius: 10,
                       offset: const Offset(0, 2),
                     ),
@@ -839,7 +846,23 @@ class _HistoryPageState extends State<HistoryPage> {
             BlocConsumer<AttendanceBloc, AttendanceState>(
               listener: (context, state) {
                 if (state is AttendanceLoadedState) {
-                  if (state.successMessage != null &&
+                  if (state.exportResult != null) {
+                    SnackbarHelper.showSuccess(
+                      context,
+                      'Downloaded: ${state.exportResult!.fileName}',
+                      duration: const Duration(seconds: 4),
+                      action: SnackBarAction(
+                        label: 'OPEN',
+                        textColor: Colors.white,
+                        onPressed: () {
+                          ExcelExporter.openFile(state.exportResult!.filePath);
+                        },
+                      ),
+                    );
+                  } else if (state.exportErrorMessage != null &&
+                      state.exportErrorMessage!.isNotEmpty) {
+                    SnackbarHelper.showError(context, state.exportErrorMessage!);
+                  } else if (state.successMessage != null &&
                       state.successMessage!.isNotEmpty) {
                     SnackbarHelper.showSuccess(context, state.successMessage!);
                     _applyPeriod(_selectedPeriod);
@@ -1388,7 +1411,7 @@ class _HistoryPageState extends State<HistoryPage> {
         borderRadius: BorderRadius.circular(12),
         boxShadow: [
           BoxShadow(
-            color: Colors.black.withOpacity(0.02),
+            color: Colors.black.withValues(alpha: 0.02),
             blurRadius: 8,
             offset: const Offset(0, 2),
           ),
