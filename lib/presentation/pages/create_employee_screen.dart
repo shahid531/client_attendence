@@ -1547,6 +1547,7 @@ class _LocationSearchModalState extends State<_LocationSearchModal> {
           clientName: result.clientName ?? 'Map Selected Location',
           locationName: locName,
           address: result.address,
+          city: result.city,
           latitude: result.latitude,
           longitude: result.longitude,
           allowedRadius: result.allowedRadius ?? 100.0,

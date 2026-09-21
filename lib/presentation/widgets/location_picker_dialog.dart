@@ -15,6 +15,7 @@ class LocationPickerResult {
   final double latitude;
   final double longitude;
   final String? address;
+  final String? city;
   final String? placeName;
   final String? clientName;
   final double? allowedRadius;
@@ -24,6 +25,7 @@ class LocationPickerResult {
     required this.latitude,
     required this.longitude,
     this.address,
+    this.city,
     this.placeName,
     this.clientName,
     this.allowedRadius,
@@ -84,6 +86,7 @@ class _LocationPickerDialogState extends State<LocationPickerDialog> {
 
   late ll.LatLng _currentSelectedLocation;
   String _currentAddress = 'Fetching address...';
+  String? _currentCity;
   final TextEditingController _searchController = TextEditingController();
   late final TextEditingController _clientNameController;
   late final TextEditingController _radiusController;
@@ -151,6 +154,40 @@ class _LocationPickerDialogState extends State<LocationPickerDialog> {
     super.dispose();
   }
 
+  String? _extractCityFallback(String address) {
+    if (address.trim().isEmpty) return null;
+    final parts = address
+        .split(',')
+        .map((e) => e.trim())
+        .where((e) => e.isNotEmpty)
+        .toList();
+    if (parts.length < 2) return null;
+
+    // Address often formatted as: [Street, Area, Subdistrict, City, State, Pin, Country]
+    // Filter out country and pure pincodes
+    final filtered = parts.where((p) {
+      final lower = p.toLowerCase();
+      return lower != 'india' && !RegExp(r'^\d{5,6}$').hasMatch(p);
+    }).toList();
+
+    if (filtered.isEmpty) return null;
+
+    // If we have at least 2 remaining components: (e.g. ..., City, State)
+    if (filtered.length >= 2) {
+      // Pick component before state
+      final candidate = filtered[filtered.length - 2]
+          .replaceAll(RegExp(r'\b\d{5,6}\b'), '')
+          .trim();
+      if (candidate.isNotEmpty &&
+          !candidate.toLowerCase().contains('subdistrict') &&
+          !candidate.toLowerCase().contains('tehsil') &&
+          !candidate.toLowerCase().contains('taluka')) {
+        return candidate;
+      }
+    }
+    return filtered.last.replaceAll(RegExp(r'\b\d{5,6}\b'), '').trim();
+  }
+
   Future<void> _reverseGeocode(ll.LatLng position) async {
     // 1. Try native geocoding first
     try {
@@ -172,9 +209,19 @@ class _LocationPickerDialogState extends State<LocationPickerDialog> {
           if (p.postalCode != null && p.postalCode!.isNotEmpty) p.postalCode!,
         ];
 
+        final detectedCity = p.locality?.isNotEmpty == true
+            ? p.locality
+            : (p.subAdministrativeArea?.isNotEmpty == true
+                ? p.subAdministrativeArea
+                : (p.administrativeArea?.isNotEmpty == true
+                    ? p.administrativeArea
+                    : null));
+
         if (parts.isNotEmpty) {
+          final fullAddress = parts.join(', ');
           setState(() {
-            _currentAddress = parts.join(', ');
+            _currentAddress = fullAddress;
+            _currentCity = detectedCity ?? _extractCityFallback(fullAddress);
           });
           return;
         }
@@ -202,10 +249,23 @@ class _LocationPickerDialogState extends State<LocationPickerDialog> {
       );
 
       if (response.data is Map && mounted) {
-        final displayName = response.data['display_name']?.toString();
+        final data = response.data as Map;
+        final displayName = data['display_name']?.toString();
+        String? detectedCity;
+        if (data['address'] is Map) {
+          final addr = data['address'] as Map;
+          detectedCity = addr['city']?.toString() ??
+              addr['town']?.toString() ??
+              addr['city_district']?.toString() ??
+              addr['municipality']?.toString() ??
+              addr['village']?.toString() ??
+              addr['county']?.toString() ??
+              addr['state_district']?.toString();
+        }
         if (displayName != null && displayName.isNotEmpty) {
           setState(() {
             _currentAddress = displayName;
+            _currentCity = detectedCity ?? _extractCityFallback(displayName);
           });
           return;
         }
@@ -216,6 +276,7 @@ class _LocationPickerDialogState extends State<LocationPickerDialog> {
       setState(() {
         _currentAddress =
             'Lat: ${position.latitude.toStringAsFixed(5)}, Lng: ${position.longitude.toStringAsFixed(5)}';
+        _currentCity = null;
       });
     }
   }
@@ -237,6 +298,7 @@ class _LocationPickerDialogState extends State<LocationPickerDialog> {
           'q': trimmed,
           'format': 'json',
           'limit': 1,
+          'addressdetails': 1,
         },
         options: Options(
           headers: {'User-Agent': 'ClientAttendanceApp/1.0'},
@@ -250,10 +312,26 @@ class _LocationPickerDialogState extends State<LocationPickerDialog> {
         final lat = double.tryParse(first['lat']?.toString() ?? '');
         final lon = double.tryParse(first['lon']?.toString() ?? '');
         final displayName = first['display_name']?.toString();
+        String? searchCity;
+        if (first['address'] is Map) {
+          final addr = first['address'] as Map;
+          searchCity = addr['city']?.toString() ??
+              addr['town']?.toString() ??
+              addr['city_district']?.toString() ??
+              addr['municipality']?.toString() ??
+              addr['village']?.toString() ??
+              addr['county']?.toString() ??
+              addr['state_district']?.toString();
+        }
 
         if (lat != null && lon != null && mounted) {
           final target = ll.LatLng(lat, lon);
-          _updateSelectedLocation(target, animateMap: true, address: displayName);
+          _updateSelectedLocation(
+            target,
+            animateMap: true,
+            address: displayName,
+            city: searchCity,
+          );
           return;
         }
       }
@@ -336,6 +414,7 @@ class _LocationPickerDialogState extends State<LocationPickerDialog> {
     ll.LatLng newLocation, {
     bool animateMap = false,
     String? address,
+    String? city,
   }) {
     setState(() {
       _currentSelectedLocation = newLocation;
@@ -343,18 +422,21 @@ class _LocationPickerDialogState extends State<LocationPickerDialog> {
       if (address != null && address.isNotEmpty) {
         _currentAddress = address;
       }
+      if (city != null && city.isNotEmpty) {
+        _currentCity = city;
+      } else {
+        _currentCity = null;
+      }
     });
 
     if (animateMap) {
       _mapController.move(newLocation, 15.0);
     }
 
-    if (address == null) {
-      _debounceTimer?.cancel();
-      _debounceTimer = Timer(const Duration(milliseconds: 400), () {
-        _reverseGeocode(newLocation);
-      });
-    }
+    _debounceTimer?.cancel();
+    _debounceTimer = Timer(const Duration(milliseconds: 300), () {
+      _reverseGeocode(newLocation);
+    });
   }
 
   @override
@@ -830,6 +912,45 @@ class _LocationPickerDialogState extends State<LocationPickerDialog> {
                                         color: Color(0xFF0F172A),
                                       ),
                                     ),
+                                    if (_currentCity != null &&
+                                        _currentCity!.isNotEmpty) ...[
+                                      const SizedBox(height: 4),
+                                      Container(
+                                        padding: const EdgeInsets.symmetric(
+                                          horizontal: 8,
+                                          vertical: 3,
+                                        ),
+                                        decoration: BoxDecoration(
+                                          color: AppColors.primaryNavy
+                                              .withValues(alpha: 0.08),
+                                          borderRadius:
+                                              BorderRadius.circular(6),
+                                        ),
+                                        child: Row(
+                                          mainAxisSize: MainAxisSize.min,
+                                          children: [
+                                            const Icon(
+                                              Icons.location_city_rounded,
+                                              size: 13,
+                                              color: AppColors.primaryNavy,
+                                            ),
+                                            const SizedBox(width: 4),
+                                            Flexible(
+                                              child: Text(
+                                                'City: $_currentCity',
+                                                style: const TextStyle(
+                                                  fontSize: 11,
+                                                  color: AppColors.primaryNavy,
+                                                  fontWeight: FontWeight.w600,
+                                                ),
+                                                overflow:
+                                                    TextOverflow.ellipsis,
+                                              ),
+                                            ),
+                                          ],
+                                        ),
+                                      ),
+                                    ],
                                   ],
                                 ),
                               ),
@@ -1117,6 +1238,7 @@ class _LocationPickerDialogState extends State<LocationPickerDialog> {
           clientName: clientName,
           locationName: clientName,
           address: _currentAddress,
+          city: _currentCity,
           latitude: _currentSelectedLocation.latitude,
           longitude: _currentSelectedLocation.longitude,
           allowedRadius: radius,
@@ -1142,6 +1264,7 @@ class _LocationPickerDialogState extends State<LocationPickerDialog> {
               latitude: createdLocation.latitude ?? _currentSelectedLocation.latitude,
               longitude: createdLocation.longitude ?? _currentSelectedLocation.longitude,
               address: createdLocation.address ?? _currentAddress,
+              city: _currentCity,
               clientName: createdLocation.clientName ?? clientName,
               allowedRadius: createdLocation.allowedRadius ?? radius,
               createdLocation: createdLocation,

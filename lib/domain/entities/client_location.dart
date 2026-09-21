@@ -1,4 +1,4 @@
-﻿import 'package:equatable/equatable.dart';
+import 'package:equatable/equatable.dart';
 
 class ClientLocation extends Equatable {
   final int? id;
@@ -6,6 +6,7 @@ class ClientLocation extends Equatable {
   final String? clientName;
   final String locationName;
   final String? address;
+  final String? city;
   final double? latitude;
   final double? longitude;
   final double? allowedRadius;
@@ -19,6 +20,7 @@ class ClientLocation extends Equatable {
     this.clientName,
     required this.locationName,
     this.address,
+    this.city,
     this.latitude,
     this.longitude,
     this.allowedRadius,
@@ -34,6 +36,7 @@ class ClientLocation extends Equatable {
         clientName,
         locationName,
         address,
+        city,
         latitude,
         longitude,
         allowedRadius,

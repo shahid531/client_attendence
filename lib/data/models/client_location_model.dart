@@ -1,4 +1,4 @@
-﻿import '../../domain/entities/client_location.dart';
+import '../../domain/entities/client_location.dart';
 
 class ClientLocationModel extends ClientLocation {
   const ClientLocationModel({
@@ -7,6 +7,7 @@ class ClientLocationModel extends ClientLocation {
     super.clientName,
     required super.locationName,
     super.address,
+    super.city,
     super.latitude,
     super.longitude,
     super.allowedRadius,
@@ -31,6 +32,7 @@ class ClientLocationModel extends ClientLocation {
       clientName: json['clientName']?.toString(),
       locationName: json['locationName']?.toString() ?? '',
       address: json['address']?.toString(),
+      city: json['city']?.toString(),
       latitude: parseDouble(json['latitude'] ?? json['lat']),
       longitude: parseDouble(json['longitude'] ?? json['lng'] ?? json['log']),
       allowedRadius: parseDouble(json['allowedRadius']),
@@ -47,6 +49,7 @@ class ClientLocationModel extends ClientLocation {
       'clientName': clientName,
       'locationName': locationName,
       'address': address,
+      'city': city,
       'latitude': latitude,
       'longitude': longitude,
       'allowedRadius': allowedRadius,

@@ -113,6 +113,7 @@ class AdminBloc extends Bloc<AdminEvent, AdminState> {
         clientName: event.clientName,
         locationName: event.locationName,
         address: event.address,
+        city: event.city,
         latitude: event.latitude,
         longitude: event.longitude,
         allowedRadius: event.allowedRadius,

@@ -71,6 +71,7 @@ class CreateLocationSubmittedEvent extends AdminEvent {
   final String clientName;
   final String locationName;
   final String address;
+  final String? city;
   final double latitude;
   final double longitude;
   final double allowedRadius;
@@ -79,6 +80,7 @@ class CreateLocationSubmittedEvent extends AdminEvent {
     required this.clientName,
     required this.locationName,
     required this.address,
+    this.city,
     required this.latitude,
     required this.longitude,
     required this.allowedRadius,
@@ -89,6 +91,7 @@ class CreateLocationSubmittedEvent extends AdminEvent {
         clientName,
         locationName,
         address,
+        city,
         latitude,
         longitude,
         allowedRadius,
