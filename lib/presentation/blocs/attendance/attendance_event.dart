@@ -95,6 +95,7 @@ enum ExportAction { download, share }
 
 class ExportAttendanceEvent extends AttendanceEvent {
   final String? employeeId;
+  final String? search;
   final String? fromDate;
   final String? toDate;
   final String dateRange;
@@ -102,6 +103,7 @@ class ExportAttendanceEvent extends AttendanceEvent {
 
   const ExportAttendanceEvent({
     this.employeeId,
+    this.search,
     this.fromDate,
     this.toDate,
     required this.dateRange,
@@ -109,5 +111,5 @@ class ExportAttendanceEvent extends AttendanceEvent {
   });
 
   @override
-  List<Object?> get props => [employeeId, fromDate, toDate, dateRange, action];
+  List<Object?> get props => [employeeId, search, fromDate, toDate, dateRange, action];
 }

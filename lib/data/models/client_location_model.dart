@@ -1,10 +1,11 @@
-﻿import '../../domain/entities/client_location.dart';
+import '../../domain/entities/client_location.dart';
 
 class ClientLocationModel extends ClientLocation {
   const ClientLocationModel({
     super.id,
     required super.locationId,
     super.clientName,
+    super.city,
     required super.locationName,
     super.address,
     super.latitude,
@@ -29,7 +30,8 @@ class ClientLocationModel extends ClientLocation {
           : int.tryParse(json['id']?.toString() ?? ''),
       locationId: json['locationId']?.toString() ?? '',
       clientName: json['clientName']?.toString(),
-      locationName: json['locationName']?.toString() ?? '',
+      city: json['city']?.toString() ?? json['cityName']?.toString(),
+      locationName: json['locationName']?.toString() ?? json['clientName']?.toString() ?? '',
       address: json['address']?.toString(),
       latitude: parseDouble(json['latitude'] ?? json['lat']),
       longitude: parseDouble(json['longitude'] ?? json['lng'] ?? json['log']),
@@ -45,6 +47,7 @@ class ClientLocationModel extends ClientLocation {
       'id': id,
       'locationId': locationId,
       'clientName': clientName,
+      'city': city,
       'locationName': locationName,
       'address': address,
       'latitude': latitude,

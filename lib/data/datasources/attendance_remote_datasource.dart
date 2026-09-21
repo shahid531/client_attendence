@@ -44,6 +44,7 @@ abstract class AttendanceRemoteDataSource {
   });
   Future<List<int>> exportAttendance({
     String? employeeId,
+    String? search,
     String? fromDate,
     String? toDate,
   });
@@ -637,6 +638,7 @@ class AttendanceRemoteDataSourceImpl implements AttendanceRemoteDataSource {
   @override
   Future<List<int>> exportAttendance({
     String? employeeId,
+    String? search,
     String? fromDate,
     String? toDate,
   }) async {
@@ -653,6 +655,7 @@ class AttendanceRemoteDataSourceImpl implements AttendanceRemoteDataSource {
 
         final queryParams = <String, dynamic>{
           if (employeeId != null && employeeId.isNotEmpty) 'employeeId': employeeId,
+          if (search != null && search.isNotEmpty) 'search': search,
           'fromDate': fromDate ?? '',
           'toDate': toDate ?? '',
         };
