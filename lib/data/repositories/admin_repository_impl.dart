@@ -106,6 +106,42 @@ class AdminRepositoryImpl implements AdminRepository {
   }
 
   @override
+  Future<Either<Failure, ClientLocation>> updateLocation({
+    required dynamic id,
+    required String clientName,
+    required String locationName,
+    required String address,
+    String? city,
+    required double latitude,
+    required double longitude,
+    required double allowedRadius,
+    double? halfDayHrs,
+    double? fullDayHrs,
+    String? status,
+  }) async {
+    try {
+      final result = await remoteDataSource.updateLocation(
+        id: id,
+        clientName: clientName,
+        locationName: locationName,
+        address: address,
+        city: city,
+        latitude: latitude,
+        longitude: longitude,
+        allowedRadius: allowedRadius,
+        halfDayHrs: halfDayHrs,
+        fullDayHrs: fullDayHrs,
+        status: status,
+      );
+      return Right(result);
+    } on ServerException catch (e) {
+      return Left(ServerFailure(e.message));
+    } catch (e) {
+      return Left(ServerFailure(e.toString()));
+    }
+  }
+
+  @override
   Future<Either<Failure, String>> downloadBulkUploadSample() async {
     try {
       final bytes = await remoteDataSource.downloadBulkUploadSample();

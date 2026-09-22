@@ -39,6 +39,7 @@ class LocationPickerDialog extends StatefulWidget {
   final String? initialLocationName;
   final String? initialClientName;
   final double? initialRadius;
+  final bool enableCreateLocation;
 
   const LocationPickerDialog({
     super.key,
@@ -47,6 +48,7 @@ class LocationPickerDialog extends StatefulWidget {
     this.initialLocationName,
     this.initialClientName,
     this.initialRadius,
+    this.enableCreateLocation = true,
   });
 
   static Future<LocationPickerResult?> show(
@@ -56,6 +58,7 @@ class LocationPickerDialog extends StatefulWidget {
     String? initialLocationName,
     String? initialClientName,
     double? initialRadius,
+    bool enableCreateLocation = true,
   }) {
     return showModalBottomSheet<LocationPickerResult>(
       context: context,
@@ -68,6 +71,7 @@ class LocationPickerDialog extends StatefulWidget {
         initialLocationName: initialLocationName,
         initialClientName: initialClientName,
         initialRadius: initialRadius,
+        enableCreateLocation: enableCreateLocation,
       ),
     );
   }
@@ -1046,111 +1050,113 @@ class _LocationPickerDialogState extends State<LocationPickerDialog> {
                             ],
                           ),
 
-                          const SizedBox(height: 10),
+                          if (widget.enableCreateLocation) ...[
+                            const SizedBox(height: 10),
 
-                          // Client Name Input Field
-                          const Text(
-                            'Client Name',
-                            style: TextStyle(
-                              fontSize: 12,
-                              fontWeight: FontWeight.bold,
-                              color: Color(0xFF334155),
-                            ),
-                          ),
-                          const SizedBox(height: 4),
-                          Container(
-                            decoration: BoxDecoration(
-                              color: const Color(0xFFF8FAFC),
-                              borderRadius: BorderRadius.circular(10),
-                              border:
-                                  Border.all(color: const Color(0xFFCBD5E1)),
-                            ),
-                            child: TextFormField(
-                              controller: _clientNameController,
-                              focusNode: _clientNameFocusNode,
-                              enabled: !_isCreatingLocation,
-                              style: const TextStyle(
-                                fontSize: 13.5,
-                                color: Color(0xFF0F172A),
-                                fontWeight: FontWeight.w500,
-                              ),
-                              decoration: const InputDecoration(
-                                hintText: 'e.g. Global Enterprise Corp',
-                                hintStyle: TextStyle(
-                                  color: Color(0xFF94A3B8),
-                                  fontSize: 13,
-                                ),
-                                prefixIcon: Icon(
-                                  Icons.business_rounded,
-                                  color: AppColors.primaryNavy,
-                                  size: 18,
-                                ),
-                                border: InputBorder.none,
-                                contentPadding: EdgeInsets.symmetric(
-                                  horizontal: 12,
-                                  vertical: 10,
-                                ),
+                            // Client Name Input Field
+                            const Text(
+                              'Client Name',
+                              style: TextStyle(
+                                fontSize: 12,
+                                fontWeight: FontWeight.bold,
+                                color: Color(0xFF334155),
                               ),
                             ),
-                          ),
-
-                          const SizedBox(height: 10),
-
-                          // Allowed Radius Input Field
-                          const Text(
-                            'Allowed Radius (meters)',
-                            style: TextStyle(
-                              fontSize: 12,
-                              fontWeight: FontWeight.bold,
-                              color: Color(0xFF334155),
-                            ),
-                          ),
-                          const SizedBox(height: 4),
-                          Container(
-                            decoration: BoxDecoration(
-                              color: const Color(0xFFF8FAFC),
-                              borderRadius: BorderRadius.circular(10),
-                              border:
-                                  Border.all(color: const Color(0xFFCBD5E1)),
-                            ),
-                            child: TextFormField(
-                              controller: _radiusController,
-                              focusNode: _radiusFocusNode,
-                              keyboardType:
-                                  const TextInputType.numberWithOptions(
-                                decimal: true,
+                            const SizedBox(height: 4),
+                            Container(
+                              decoration: BoxDecoration(
+                                color: const Color(0xFFF8FAFC),
+                                borderRadius: BorderRadius.circular(10),
+                                border:
+                                    Border.all(color: const Color(0xFFCBD5E1)),
                               ),
-                              enabled: !_isCreatingLocation,
-                              style: const TextStyle(
-                                fontSize: 13.5,
-                                color: Color(0xFF0F172A),
-                                fontWeight: FontWeight.w500,
-                              ),
-                              decoration: const InputDecoration(
-                                hintText: 'e.g. 100.0',
-                                hintStyle: TextStyle(
-                                  color: Color(0xFF94A3B8),
-                                  fontSize: 13,
-                                ),
-                                prefixIcon: Icon(
-                                  Icons.radar_rounded,
-                                  color: AppColors.primaryNavy,
-                                  size: 18,
-                                ),
-                                suffixText: 'meters',
-                                suffixStyle: TextStyle(
-                                  fontSize: 12,
-                                  color: Color(0xFF64748B),
+                              child: TextFormField(
+                                controller: _clientNameController,
+                                focusNode: _clientNameFocusNode,
+                                enabled: !_isCreatingLocation,
+                                style: const TextStyle(
+                                  fontSize: 13.5,
+                                  color: Color(0xFF0F172A),
                                   fontWeight: FontWeight.w500,
                                 ),
-                                border: InputBorder.none,
-                                contentPadding: EdgeInsets.symmetric(
-                                  horizontal: 12,
-                                  vertical: 10,
+                                decoration: const InputDecoration(
+                                  hintText: 'e.g. Global Enterprise Corp',
+                                  hintStyle: TextStyle(
+                                    color: Color(0xFF94A3B8),
+                                    fontSize: 13,
+                                  ),
+                                  prefixIcon: Icon(
+                                    Icons.business_rounded,
+                                    color: AppColors.primaryNavy,
+                                    size: 18,
+                                  ),
+                                  border: InputBorder.none,
+                                  contentPadding: EdgeInsets.symmetric(
+                                    horizontal: 12,
+                                    vertical: 10,
+                                  ),
                                 ),
                               ),
                             ),
-                          ),
+
+                            const SizedBox(height: 10),
+
+                            // Allowed Radius Input Field
+                            const Text(
+                              'Allowed Radius (meters)',
+                              style: TextStyle(
+                                fontSize: 12,
+                                fontWeight: FontWeight.bold,
+                                color: Color(0xFF334155),
+                              ),
+                            ),
+                            const SizedBox(height: 4),
+                            Container(
+                              decoration: BoxDecoration(
+                                color: const Color(0xFFF8FAFC),
+                                borderRadius: BorderRadius.circular(10),
+                                border:
+                                    Border.all(color: const Color(0xFFCBD5E1)),
+                              ),
+                              child: TextFormField(
+                                controller: _radiusController,
+                                focusNode: _radiusFocusNode,
+                                keyboardType:
+                                    const TextInputType.numberWithOptions(
+                                  decimal: true,
+                                ),
+                                enabled: !_isCreatingLocation,
+                                style: const TextStyle(
+                                  fontSize: 13.5,
+                                  color: Color(0xFF0F172A),
+                                  fontWeight: FontWeight.w500,
+                                ),
+                                decoration: const InputDecoration(
+                                  hintText: 'e.g. 100.0',
+                                  hintStyle: TextStyle(
+                                    color: Color(0xFF94A3B8),
+                                    fontSize: 13,
+                                  ),
+                                  prefixIcon: Icon(
+                                    Icons.radar_rounded,
+                                    color: AppColors.primaryNavy,
+                                    size: 18,
+                                  ),
+                                  suffixText: 'meters',
+                                  suffixStyle: TextStyle(
+                                    fontSize: 12,
+                                    color: Color(0xFF64748B),
+                                    fontWeight: FontWeight.w500,
+                                  ),
+                                  border: InputBorder.none,
+                                  contentPadding: EdgeInsets.symmetric(
+                                    horizontal: 12,
+                                    vertical: 10,
+                                  ),
+                                ),
+                              ),
+                            ),
+                          ],
 
                           const SizedBox(height: 14),
 
@@ -1161,7 +1167,7 @@ class _LocationPickerDialogState extends State<LocationPickerDialog> {
                             child: ElevatedButton.icon(
                               onPressed: _isCreatingLocation
                                   ? null
-                                  : _confirmAndCreateLocation,
+                                  : _handleConfirmLocation,
                               icon: _isCreatingLocation
                                   ? const SizedBox(
                                       width: 18,
@@ -1209,6 +1215,24 @@ class _LocationPickerDialogState extends State<LocationPickerDialog> {
         ),
       ),
     );
+  }
+
+  Future<void> _handleConfirmLocation() async {
+    if (!widget.enableCreateLocation) {
+      Navigator.of(context).pop(
+        LocationPickerResult(
+          latitude: _currentSelectedLocation.latitude,
+          longitude: _currentSelectedLocation.longitude,
+          address: _currentAddress,
+          city: _currentCity,
+          clientName: widget.initialClientName,
+          allowedRadius: widget.initialRadius,
+        ),
+      );
+      return;
+    }
+
+    await _confirmAndCreateLocation();
   }
 
   Future<void> _confirmAndCreateLocation() async {

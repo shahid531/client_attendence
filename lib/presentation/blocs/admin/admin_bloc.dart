@@ -7,12 +7,14 @@ import '../../../domain/usecases/admin/create_location_usecase.dart';
 import '../../../domain/usecases/admin/download_bulk_upload_sample_usecase.dart';
 import '../../../domain/usecases/admin/get_employees_usecase.dart';
 import '../../../domain/usecases/admin/get_locations_usecase.dart';
+import '../../../domain/usecases/admin/update_location_usecase.dart';
 import 'admin_event.dart';
 import 'admin_state.dart';
 
 class AdminBloc extends Bloc<AdminEvent, AdminState> {
   final CreateEmployeeUseCase createEmployeeUseCase;
   final CreateLocationUseCase createLocationUseCase;
+  final UpdateLocationUseCase updateLocationUseCase;
   final GetEmployeesUseCase getEmployeesUseCase;
   final GetLocationsUseCase getLocationsUseCase;
   final DownloadBulkUploadSampleUseCase downloadBulkUploadSampleUseCase;
@@ -21,6 +23,7 @@ class AdminBloc extends Bloc<AdminEvent, AdminState> {
   AdminBloc({
     required this.createEmployeeUseCase,
     required this.createLocationUseCase,
+    required this.updateLocationUseCase,
     required this.getEmployeesUseCase,
     required this.getLocationsUseCase,
     required this.downloadBulkUploadSampleUseCase,
@@ -29,6 +32,7 @@ class AdminBloc extends Bloc<AdminEvent, AdminState> {
     on<LoadEmployeesEvent>(_onLoadEmployees);
     on<LoadLocationsEvent>(_onLoadLocations);
     on<CreateLocationSubmittedEvent>(_onCreateLocationSubmitted);
+    on<UpdateLocationSubmittedEvent>(_onUpdateLocationSubmitted);
     on<CreateEmployeeSubmittedEvent>(_onCreateEmployeeSubmitted);
     on<DownloadBulkSampleEvent>(_onDownloadBulkSample);
     on<BulkUploadEmployeesEvent>(_onBulkUploadEmployees);
@@ -155,6 +159,75 @@ class AdminBloc extends Bloc<AdminEvent, AdminState> {
         emit(
           CreateLocationSuccessState(
             createdLocation: location,
+            employees: state.employees,
+            locations: updatedLocations,
+            isLoadingEmployees: state.isLoadingEmployees,
+            employeesError: state.employeesError,
+            isLoadingLocations: false,
+            locationsError: null,
+          ),
+        );
+      },
+    );
+  }
+
+  Future<void> _onUpdateLocationSubmitted(
+    UpdateLocationSubmittedEvent event,
+    Emitter<AdminState> emit,
+  ) async {
+    emit(UpdateLocationLoadingState(
+      employees: state.employees,
+      locations: state.locations,
+      isLoadingEmployees: state.isLoadingEmployees,
+      employeesError: state.employeesError,
+      isLoadingLocations: state.isLoadingLocations,
+      locationsError: state.locationsError,
+    ));
+
+    final result = await updateLocationUseCase(
+      UpdateLocationParams(
+        id: event.id,
+        clientName: event.clientName,
+        locationName: event.locationName,
+        address: event.address,
+        city: event.city,
+        latitude: event.latitude,
+        longitude: event.longitude,
+        allowedRadius: event.allowedRadius,
+        halfDayHrs: event.halfDayHrs,
+        fullDayHrs: event.fullDayHrs,
+        status: event.status,
+      ),
+    );
+
+    result.fold(
+      (failure) => emit(
+        UpdateLocationFailureState(
+          failure.message,
+          employees: state.employees,
+          locations: state.locations,
+          isLoadingEmployees: state.isLoadingEmployees,
+          employeesError: state.employeesError,
+          isLoadingLocations: state.isLoadingLocations,
+          locationsError: state.locationsError,
+        ),
+      ),
+      (updatedLocation) {
+        final updatedLocations = state.locations.map((loc) {
+          if (loc.id != null &&
+              updatedLocation.id != null &&
+              loc.id == updatedLocation.id) {
+            return updatedLocation;
+          }
+          if (loc.locationId == updatedLocation.locationId) {
+            return updatedLocation;
+          }
+          return loc;
+        }).toList();
+
+        emit(
+          UpdateLocationSuccessState(
+            updatedLocation: updatedLocation,
             employees: state.employees,
             locations: updatedLocations,
             isLoadingEmployees: state.isLoadingEmployees,

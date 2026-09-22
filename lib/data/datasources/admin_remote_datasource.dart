@@ -37,6 +37,20 @@ abstract class AdminRemoteDataSource {
     required double allowedRadius,
   });
 
+  Future<ClientLocationModel> updateLocation({
+    required dynamic id,
+    required String clientName,
+    required String locationName,
+    required String address,
+    String? city,
+    required double latitude,
+    required double longitude,
+    required double allowedRadius,
+    double? halfDayHrs,
+    double? fullDayHrs,
+    String? status,
+  });
+
   Future<List<int>> downloadBulkUploadSample();
 
   Future<Map<String, dynamic>> bulkUploadEmployees({
@@ -288,6 +302,73 @@ class AdminRemoteDataSourceImpl implements AdminRemoteDataSource {
       throw const ServerException('Invalid response format from server');
     } on DioException catch (e) {
       throw ErrorHandler.handleDioError(e, fallbackMessage: 'Failed to create location. Please try again.');
+    } catch (e) {
+      if (e is ServerException) rethrow;
+      throw ServerException(e.toString());
+    }
+  }
+
+  @override
+  Future<ClientLocationModel> updateLocation({
+    required dynamic id,
+    required String clientName,
+    required String locationName,
+    required String address,
+    String? city,
+    required double latitude,
+    required double longitude,
+    required double allowedRadius,
+    double? halfDayHrs,
+    double? fullDayHrs,
+    String? status,
+  }) async {
+    try {
+      final cachedToken = sharedPreferences.getString('auth_bearer_token');
+
+      final headers = <String, String>{
+        'Content-Type': 'application/json',
+        'Accept': '*/*',
+        'ngrok-skip-browser-warning': 'true',
+      };
+      if (cachedToken != null && cachedToken.isNotEmpty) {
+        headers['Authorization'] = 'Bearer $cachedToken';
+      }
+
+      final payload = <String, dynamic>{
+        'clientName': clientName,
+        'locationName': locationName,
+        'address': address,
+        if (city != null && city.isNotEmpty) 'city': city,
+        'latitude': latitude,
+        'longitude': longitude,
+        'allowedRadius': allowedRadius,
+        if (halfDayHrs != null) 'halfDayHrs': halfDayHrs,
+        if (fullDayHrs != null) 'fullDayHrs': fullDayHrs,
+        if (status != null && status.isNotEmpty) 'status': status,
+      };
+
+      final response = await dio.put(
+        ApiConstants.adminLocationUpdate(id),
+        options: Options(headers: headers),
+        data: payload,
+      );
+
+      final data = response.data;
+      if (data is Map<String, dynamic>) {
+        if (data['success'] == false) {
+          throw ServerException(data['message'] ?? 'Failed to update location');
+        }
+
+        final locationData = data['data'] is Map<String, dynamic>
+            ? data['data'] as Map<String, dynamic>
+            : data;
+
+        return ClientLocationModel.fromJson(locationData);
+      }
+
+      throw const ServerException('Invalid response format from server');
+    } on DioException catch (e) {
+      throw ErrorHandler.handleDioError(e, fallbackMessage: 'Failed to update location. Please try again.');
     } catch (e) {
       if (e is ServerException) rethrow;
       throw ServerException(e.toString());

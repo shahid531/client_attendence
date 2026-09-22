@@ -131,3 +131,46 @@ class ResetBulkUploadStateEvent extends AdminEvent {
   const ResetBulkUploadStateEvent();
 }
 
+class UpdateLocationSubmittedEvent extends AdminEvent {
+  final dynamic id;
+  final String clientName;
+  final String locationName;
+  final String address;
+  final String? city;
+  final double latitude;
+  final double longitude;
+  final double allowedRadius;
+  final double? halfDayHrs;
+  final double? fullDayHrs;
+  final String? status;
+
+  const UpdateLocationSubmittedEvent({
+    required this.id,
+    required this.clientName,
+    required this.locationName,
+    required this.address,
+    this.city,
+    required this.latitude,
+    required this.longitude,
+    required this.allowedRadius,
+    this.halfDayHrs,
+    this.fullDayHrs,
+    this.status,
+  });
+
+  @override
+  List<Object?> get props => [
+        id,
+        clientName,
+        locationName,
+        address,
+        city,
+        latitude,
+        longitude,
+        allowedRadius,
+        halfDayHrs,
+        fullDayHrs,
+        status,
+      ];
+}
+

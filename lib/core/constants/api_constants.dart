@@ -36,6 +36,7 @@ class ApiConstants {
   static const String adminBulkUpload = '$baseUrl/admin/employees/bulk-upload';
   static const String adminBulkUploadSample = '$baseUrl/admin/employees/bulk-upload/sample';
   static const String adminLocations = '$baseUrl/admin/locations';
+  static String adminLocationUpdate(dynamic id) => '$baseUrl/admin/locations/$id';
 
   // App Version / Force Update Endpoints
   static String appVersion(String platform) => '$baseUrl/version/${platform.toUpperCase()}';

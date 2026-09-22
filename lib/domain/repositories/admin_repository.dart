@@ -34,6 +34,20 @@ abstract class AdminRepository {
     required double allowedRadius,
   });
 
+  Future<Either<Failure, ClientLocation>> updateLocation({
+    required dynamic id,
+    required String clientName,
+    required String locationName,
+    required String address,
+    String? city,
+    required double latitude,
+    required double longitude,
+    required double allowedRadius,
+    double? halfDayHrs,
+    double? fullDayHrs,
+    String? status,
+  });
+
   Future<Either<Failure, String>> downloadBulkUploadSample();
 
   Future<Either<Failure, Map<String, dynamic>>> bulkUploadEmployees({

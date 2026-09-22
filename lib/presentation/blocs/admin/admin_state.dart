@@ -389,4 +389,68 @@ class BulkUploadFailureState extends AdminState {
       ];
 }
 
+class UpdateLocationLoadingState extends AdminState {
+  const UpdateLocationLoadingState({
+    super.employees,
+    super.isLoadingEmployees,
+    super.employeesError,
+    super.locations,
+    super.isLoadingLocations,
+    super.locationsError,
+  });
+}
+
+class UpdateLocationSuccessState extends AdminState {
+  final ClientLocation updatedLocation;
+  final String message;
+
+  const UpdateLocationSuccessState({
+    required this.updatedLocation,
+    this.message = 'Location updated successfully',
+    super.employees,
+    super.isLoadingEmployees,
+    super.employeesError,
+    super.locations,
+    super.isLoadingLocations,
+    super.locationsError,
+  });
+
+  @override
+  List<Object?> get props => [
+        updatedLocation,
+        message,
+        employees,
+        isLoadingEmployees,
+        employeesError,
+        locations,
+        isLoadingLocations,
+        locationsError,
+      ];
+}
+
+class UpdateLocationFailureState extends AdminState {
+  final String message;
+
+  const UpdateLocationFailureState(
+    this.message, {
+    super.employees,
+    super.isLoadingEmployees,
+    super.employeesError,
+    super.locations,
+    super.isLoadingLocations,
+    super.locationsError,
+  });
+
+  @override
+  List<Object?> get props => [
+        message,
+        employees,
+        isLoadingEmployees,
+        employeesError,
+        locations,
+        isLoadingLocations,
+        locationsError,
+      ];
+}
+
 

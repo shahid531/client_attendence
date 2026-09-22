@@ -11,6 +11,8 @@ class ClientLocationModel extends ClientLocation {
     super.latitude,
     super.longitude,
     super.allowedRadius,
+    super.halfDayHrs,
+    super.fullDayHrs,
     super.status,
     super.createdAt,
     super.updatedAt,
@@ -36,6 +38,8 @@ class ClientLocationModel extends ClientLocation {
       latitude: parseDouble(json['latitude'] ?? json['lat']),
       longitude: parseDouble(json['longitude'] ?? json['lng'] ?? json['log']),
       allowedRadius: parseDouble(json['allowedRadius']),
+      halfDayHrs: parseDouble(json['halfDayHrs']),
+      fullDayHrs: parseDouble(json['fullDayHrs']),
       status: json['status']?.toString() ?? 'Active',
       createdAt: json['createdAt']?.toString(),
       updatedAt: json['updatedAt']?.toString(),
@@ -44,19 +48,20 @@ class ClientLocationModel extends ClientLocation {
 
   Map<String, dynamic> toJson() {
     return {
-      'id': id,
+      if (id != null) 'id': id,
       'locationId': locationId,
       'clientName': clientName,
       'city': city,
       'locationName': locationName,
       'address': address,
-      'city': city,
       'latitude': latitude,
       'longitude': longitude,
       'allowedRadius': allowedRadius,
+      if (halfDayHrs != null) 'halfDayHrs': halfDayHrs,
+      if (fullDayHrs != null) 'fullDayHrs': fullDayHrs,
       'status': status,
-      'createdAt': createdAt,
-      'updatedAt': updatedAt,
+      if (createdAt != null) 'createdAt': createdAt,
+      if (updatedAt != null) 'updatedAt': updatedAt,
     };
   }
 }
