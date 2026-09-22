@@ -13,12 +13,20 @@ class ClientLocationsPage extends StatefulWidget {
   const ClientLocationsPage({super.key});
 
   @override
-  State<ClientLocationsPage> createState() => _ClientLocationsPageState();
+  State<ClientLocationsPage> createState() => ClientLocationsPageState();
 }
 
-class _ClientLocationsPageState extends State<ClientLocationsPage> {
+class ClientLocationsPageState extends State<ClientLocationsPage> {
   final TextEditingController _searchController = TextEditingController();
   ClientLocation? _selectedLocation;
+
+  void resetToLocationsList() {
+    if (_selectedLocation != null) {
+      setState(() {
+        _selectedLocation = null;
+      });
+    }
+  }
 
   Future<void> _openAddLocationPicker() async {
     final result = await LocationPickerDialog.show(context);
