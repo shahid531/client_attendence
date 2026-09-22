@@ -47,6 +47,40 @@ class CreateEmployeeSubmittedEvent extends AdminEvent {
       ];
 }
 
+class UpdateEmployeeSubmittedEvent extends AdminEvent {
+  final int id;
+  final String fullName;
+  final String email;
+  final String contactNumber;
+  final String role;
+  final String? status;
+  final String locationId;
+  final String? reportingManagerEmployeeId;
+
+  const UpdateEmployeeSubmittedEvent({
+    required this.id,
+    required this.fullName,
+    required this.email,
+    required this.contactNumber,
+    required this.role,
+    this.status,
+    required this.locationId,
+    this.reportingManagerEmployeeId,
+  });
+
+  @override
+  List<Object?> get props => [
+        id,
+        fullName,
+        email,
+        contactNumber,
+        role,
+        status,
+        locationId,
+        reportingManagerEmployeeId,
+      ];
+}
+
 class ResetAdminStateEvent extends AdminEvent {}
 
 class LoadEmployeesEvent extends AdminEvent {

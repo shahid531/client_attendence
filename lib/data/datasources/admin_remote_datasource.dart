@@ -20,6 +20,17 @@ abstract class AdminRemoteDataSource {
     String? reportingManagerEmployeeId,
   });
 
+  Future<CreatedEmployeeModel> updateEmployee({
+    required int id,
+    required String fullName,
+    required String email,
+    required String contactNumber,
+    required String role,
+    String? status,
+    required String locationId,
+    String? reportingManagerEmployeeId,
+  });
+
   Future<List<CreatedEmployeeModel>> getEmployees({String? name});
 
   Future<List<ClientLocationModel>> getLocations({
@@ -228,6 +239,73 @@ class AdminRemoteDataSourceImpl implements AdminRemoteDataSource {
       throw const ServerException('Invalid response format from server');
     } on DioException catch (e) {
       throw ErrorHandler.handleDioError(e, fallbackMessage: 'Failed to create employee. Please try again.');
+    } catch (e) {
+      if (e is ServerException) rethrow;
+      throw ServerException(e.toString());
+    }
+  }
+
+  @override
+  Future<CreatedEmployeeModel> updateEmployee({
+    required int id,
+    required String fullName,
+    required String email,
+    required String contactNumber,
+    required String role,
+    String? status,
+    required String locationId,
+    String? reportingManagerEmployeeId,
+  }) async {
+    try {
+      final cachedToken = sharedPreferences.getString('auth_bearer_token');
+
+      final headers = <String, String>{
+        'Content-Type': 'application/json',
+        'Accept': '*/*',
+        'ngrok-skip-browser-warning': 'true',
+      };
+      if (cachedToken != null && cachedToken.isNotEmpty) {
+        headers['Authorization'] = 'Bearer $cachedToken';
+      }
+
+      final payload = <String, dynamic>{
+        'fullName': fullName,
+        'email': email,
+        'contactNumber': contactNumber,
+        'reportingManagerEmployeeId': (reportingManagerEmployeeId != null &&
+                reportingManagerEmployeeId.trim().isNotEmpty)
+            ? reportingManagerEmployeeId.trim()
+            : null,
+        'locationId': locationId,
+        'role': role,
+        'status': status ?? 'ACTIVE',
+      };
+
+      final response = await dio.put(
+        '${ApiConstants.adminEmployees}/$id',
+        options: Options(headers: headers),
+        data: payload,
+      );
+
+      final data = response.data;
+      if (data is Map<String, dynamic>) {
+        if (data['success'] == false) {
+          throw ServerException(data['message'] ?? 'Failed to update employee');
+        }
+
+        final employeeData = data['data'] is Map<String, dynamic>
+            ? data['data'] as Map<String, dynamic>
+            : data;
+
+        return CreatedEmployeeModel.fromJson(employeeData);
+      }
+
+      throw const ServerException('Invalid response format from server');
+    } on DioException catch (e) {
+      throw ErrorHandler.handleDioError(
+        e,
+        fallbackMessage: 'Failed to update employee. Please try again.',
+      );
     } catch (e) {
       if (e is ServerException) rethrow;
       throw ServerException(e.toString());

@@ -7,11 +7,13 @@ import '../../../domain/usecases/admin/create_location_usecase.dart';
 import '../../../domain/usecases/admin/download_bulk_upload_sample_usecase.dart';
 import '../../../domain/usecases/admin/get_employees_usecase.dart';
 import '../../../domain/usecases/admin/get_locations_usecase.dart';
+import '../../../domain/usecases/admin/update_employee_usecase.dart';
 import 'admin_event.dart';
 import 'admin_state.dart';
 
 class AdminBloc extends Bloc<AdminEvent, AdminState> {
   final CreateEmployeeUseCase createEmployeeUseCase;
+  final UpdateEmployeeUseCase updateEmployeeUseCase;
   final CreateLocationUseCase createLocationUseCase;
   final GetEmployeesUseCase getEmployeesUseCase;
   final GetLocationsUseCase getLocationsUseCase;
@@ -20,6 +22,7 @@ class AdminBloc extends Bloc<AdminEvent, AdminState> {
 
   AdminBloc({
     required this.createEmployeeUseCase,
+    required this.updateEmployeeUseCase,
     required this.createLocationUseCase,
     required this.getEmployeesUseCase,
     required this.getLocationsUseCase,
@@ -30,6 +33,7 @@ class AdminBloc extends Bloc<AdminEvent, AdminState> {
     on<LoadLocationsEvent>(_onLoadLocations);
     on<CreateLocationSubmittedEvent>(_onCreateLocationSubmitted);
     on<CreateEmployeeSubmittedEvent>(_onCreateEmployeeSubmitted);
+    on<UpdateEmployeeSubmittedEvent>(_onUpdateEmployeeSubmitted);
     on<DownloadBulkSampleEvent>(_onDownloadBulkSample);
     on<BulkUploadEmployeesEvent>(_onBulkUploadEmployees);
     on<ResetBulkUploadStateEvent>(_onResetBulkUploadState);
@@ -209,6 +213,70 @@ class AdminBloc extends Bloc<AdminEvent, AdminState> {
         );
         // Automatically refresh employees list so newly created employee is available
         add(const LoadEmployeesEvent(isRefresh: true));
+      },
+    );
+  }
+
+  Future<void> _onUpdateEmployeeSubmitted(
+    UpdateEmployeeSubmittedEvent event,
+    Emitter<AdminState> emit,
+  ) async {
+    emit(UpdateEmployeeLoadingState(
+      employees: state.employees,
+      locations: state.locations,
+      isLoadingEmployees: state.isLoadingEmployees,
+      employeesError: state.employeesError,
+      isLoadingLocations: state.isLoadingLocations,
+      locationsError: state.locationsError,
+    ));
+
+    final result = await updateEmployeeUseCase(
+      UpdateEmployeeParams(
+        id: event.id,
+        fullName: event.fullName,
+        email: event.email,
+        contactNumber: event.contactNumber,
+        role: event.role,
+        status: event.status,
+        locationId: event.locationId,
+        reportingManagerEmployeeId: event.reportingManagerEmployeeId,
+      ),
+    );
+
+    result.fold(
+      (failure) => emit(
+        UpdateEmployeeFailureState(
+          failure.message,
+          employees: state.employees,
+          locations: state.locations,
+          isLoadingEmployees: state.isLoadingEmployees,
+          employeesError: state.employeesError,
+          isLoadingLocations: state.isLoadingLocations,
+          locationsError: state.locationsError,
+        ),
+      ),
+      (updatedEmployee) {
+        final updatedEmployees = state.employees.map((emp) {
+          if (emp.id == updatedEmployee.id ||
+              (emp.employeeId.isNotEmpty &&
+                  emp.employeeId.toLowerCase() ==
+                      updatedEmployee.employeeId.toLowerCase())) {
+            return updatedEmployee;
+          }
+          return emp;
+        }).toList();
+
+        emit(
+          UpdateEmployeeSuccessState(
+            employee: updatedEmployee,
+            employees: updatedEmployees,
+            locations: state.locations,
+            isLoadingEmployees: false,
+            employeesError: null,
+            isLoadingLocations: state.isLoadingLocations,
+            locationsError: state.locationsError,
+          ),
+        );
       },
     );
   }

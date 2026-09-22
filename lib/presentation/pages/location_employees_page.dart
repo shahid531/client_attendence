@@ -1,6 +1,7 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_bloc/flutter_bloc.dart';
 import '../../core/constants/app_colors.dart';
+import '../../core/utils/snackbar_helper.dart';
 import '../../domain/entities/client_location.dart';
 import '../../domain/entities/created_employee.dart';
 import '../blocs/admin/admin_bloc.dart';
@@ -83,167 +84,16 @@ class _LocationEmployeesPageState extends State<LocationEmployeesPage> {
     }).toList();
   }
 
-  void _showEmployeeDetailsDialog(BuildContext context, CreatedEmployee employee) {
+  void _showUpdateEmployeeDialog(BuildContext context, CreatedEmployee employee) {
     showDialog(
       context: context,
+      barrierDismissible: true,
       builder: (dialogCtx) {
-        return AlertDialog(
-          shape: RoundedRectangleBorder(
-            borderRadius: BorderRadius.circular(16),
-          ),
-          titlePadding: const EdgeInsets.fromLTRB(20, 20, 20, 12),
-          contentPadding: const EdgeInsets.fromLTRB(20, 0, 20, 16),
-          title: Row(
-            children: [
-              CircleAvatar(
-                radius: 20,
-                backgroundColor: AppColors.primaryNavy.withValues(alpha: 0.1),
-                child: Text(
-                  employee.fullName.isNotEmpty
-                      ? employee.fullName.substring(0, 1).toUpperCase()
-                      : 'E',
-                  style: const TextStyle(
-                    color: AppColors.primaryNavy,
-                    fontWeight: FontWeight.bold,
-                    fontSize: 16,
-                  ),
-                ),
-              ),
-              const SizedBox(width: 12),
-              Expanded(
-                child: Column(
-                  crossAxisAlignment: CrossAxisAlignment.start,
-                  children: [
-                    Text(
-                      employee.fullName,
-                      style: const TextStyle(
-                        fontSize: 17,
-                        fontWeight: FontWeight.bold,
-                        color: Color(0xFF0F172A),
-                      ),
-                      maxLines: 1,
-                      overflow: TextOverflow.ellipsis,
-                    ),
-                    const SizedBox(height: 2),
-                    Text(
-                      'ID: ${employee.employeeId}',
-                      style: const TextStyle(
-                        fontSize: 12,
-                        color: Color(0xFF64748B),
-                        fontWeight: FontWeight.w500,
-                      ),
-                    ),
-                  ],
-                ),
-              ),
-            ],
-          ),
-          content: Column(
-            mainAxisSize: MainAxisSize.min,
-            crossAxisAlignment: CrossAxisAlignment.start,
-            children: [
-              const Divider(height: 16, color: Color(0xFFE2E8F0)),
-              _buildDetailItem(
-                label: 'Employee ID',
-                value: employee.employeeId,
-                icon: Icons.badge_outlined,
-              ),
-              const SizedBox(height: 12),
-              _buildDetailItem(
-                label: 'Full Name',
-                value: employee.fullName,
-                icon: Icons.person_outline,
-              ),
-              const SizedBox(height: 12),
-              _buildDetailItem(
-                label: 'Email',
-                value: employee.email,
-                icon: Icons.email_outlined,
-              ),
-              const SizedBox(height: 12),
-              _buildDetailItem(
-                label: 'Contact Number',
-                value: (employee.contactNumber != null && employee.contactNumber!.isNotEmpty)
-                    ? employee.contactNumber!
-                    : '-',
-                icon: Icons.phone_outlined,
-              ),
-              const SizedBox(height: 12),
-              _buildDetailItem(
-                label: 'Reporting Manager',
-                value: (employee.reportingManagerName != null && employee.reportingManagerName!.isNotEmpty)
-                    ? employee.reportingManagerName!
-                    : (employee.reportingManagerEmployeeId != null && employee.reportingManagerEmployeeId!.isNotEmpty
-                        ? 'ID: ${employee.reportingManagerEmployeeId}'
-                        : 'Not Assigned'),
-                icon: Icons.supervisor_account_outlined,
-              ),
-            ],
-          ),
-          actions: [
-            SizedBox(
-              width: double.infinity,
-              height: 42,
-              child: ElevatedButton(
-                onPressed: () => Navigator.of(dialogCtx).pop(),
-                style: ElevatedButton.styleFrom(
-                  backgroundColor: AppColors.primaryNavy,
-                  elevation: 0,
-                  shape: RoundedRectangleBorder(
-                    borderRadius: BorderRadius.circular(10),
-                  ),
-                ),
-                child: const Text(
-                  'Close',
-                  style: TextStyle(
-                    color: Colors.white,
-                    fontWeight: FontWeight.bold,
-                    fontSize: 14,
-                  ),
-                ),
-              ),
-            ),
-          ],
+        return _UpdateEmployeeDialog(
+          employee: employee,
+          currentLocation: widget.location,
         );
       },
-    );
-  }
-
-  Widget _buildDetailItem({
-    required String label,
-    required String value,
-    required IconData icon,
-  }) {
-    return Row(
-      crossAxisAlignment: CrossAxisAlignment.start,
-      children: [
-        Icon(icon, size: 18, color: const Color(0xFF64748B)),
-        const SizedBox(width: 10),
-        Expanded(
-          child: Column(
-            crossAxisAlignment: CrossAxisAlignment.start,
-            children: [
-              Text(
-                label,
-                style: const TextStyle(
-                  fontSize: 11,
-                  fontWeight: FontWeight.w600,
-                  color: Color(0xFF94A3B8),
-                ),
-              ),
-              const SizedBox(height: 2),
-              SelectableText(
-                value,
-                style: const TextStyle(
-                  fontSize: 13.5,
-                  fontWeight: FontWeight.w600,
-                  color: Color(0xFF1E293B),
-                ),
-              ),
-            ],
-          ),
-        ),
-      ],
     );
   }
 
@@ -610,7 +460,7 @@ class _LocationEmployeesPageState extends State<LocationEmployeesPage> {
       child: Material(
         color: Colors.transparent,
         child: InkWell(
-          onTap: () => _showEmployeeDetailsDialog(context, emp),
+          onTap: () => _showUpdateEmployeeDialog(context, emp),
           borderRadius: BorderRadius.circular(12),
           child: IntrinsicHeight(
             child: Row(
@@ -658,3 +508,1612 @@ class _LocationEmployeesPageState extends State<LocationEmployeesPage> {
     );
   }
 }
+
+class _UpdateEmployeeDialog extends StatefulWidget {
+  final CreatedEmployee employee;
+  final ClientLocation currentLocation;
+
+  const _UpdateEmployeeDialog({
+    required this.employee,
+    required this.currentLocation,
+  });
+
+  @override
+  State<_UpdateEmployeeDialog> createState() => _UpdateEmployeeDialogState();
+}
+
+class _UpdateEmployeeDialogState extends State<_UpdateEmployeeDialog> {
+  final _formKey = GlobalKey<FormState>();
+
+  late final TextEditingController _fullNameController;
+  late final TextEditingController _employeeIdController;
+  late final TextEditingController _emailController;
+  late final TextEditingController _contactController;
+
+  CreatedEmployee? _selectedReportingManager;
+  ClientLocation? _selectedLocation;
+  late String _selectedRoleCode;
+  bool _isEditing = false;
+  String? _errorMessage;
+
+  final List<Map<String, String>> _roleOptions = [
+    {'label': 'RM (Relationship Manager)', 'code': 'RM'},
+    {'label': 'EMPLOYEE', 'code': 'EMPLOYEE'},
+  ];
+
+  @override
+  void initState() {
+    super.initState();
+    _fullNameController = TextEditingController(text: widget.employee.fullName);
+    _employeeIdController =
+        TextEditingController(text: widget.employee.employeeId);
+    _emailController = TextEditingController(text: widget.employee.email);
+    _contactController =
+        TextEditingController(text: widget.employee.contactNumber ?? '');
+
+    final matchingRole = _roleOptions.firstWhere(
+      (r) => r['code']?.toUpperCase() == widget.employee.role.toUpperCase(),
+      orElse: () => _roleOptions[1], // Default to EMPLOYEE
+    );
+    _selectedRoleCode = matchingRole['code']!;
+
+    _selectedLocation = widget.currentLocation;
+
+    final adminState = context.read<AdminBloc>().state;
+    if (widget.employee.reportingManagerEmployeeId != null &&
+        widget.employee.reportingManagerEmployeeId!.isNotEmpty) {
+      try {
+        _selectedReportingManager = adminState.employees.firstWhere(
+          (e) =>
+              e.employeeId.toLowerCase() ==
+              widget.employee.reportingManagerEmployeeId!.toLowerCase(),
+        );
+      } catch (_) {
+        _selectedReportingManager = null;
+      }
+    }
+  }
+
+  @override
+  void dispose() {
+    _fullNameController.dispose();
+    _employeeIdController.dispose();
+    _emailController.dispose();
+    _contactController.dispose();
+    super.dispose();
+  }
+
+  bool get _hasChanges {
+    final nameChanged =
+        _fullNameController.text.trim() != widget.employee.fullName.trim();
+    final emailChanged =
+        _emailController.text.trim() != widget.employee.email.trim();
+    final contactChanged = _contactController.text.trim() !=
+        (widget.employee.contactNumber ?? '').trim();
+    final roleChanged =
+        _selectedRoleCode.toUpperCase() != widget.employee.role.toUpperCase();
+    final initialLocationId =
+        widget.employee.locationId ?? widget.currentLocation.locationId;
+    final locationChanged = _selectedLocation?.locationId != initialLocationId;
+    final initialManagerId =
+        widget.employee.reportingManagerEmployeeId?.trim().toLowerCase() ?? '';
+    final currentManagerId =
+        _selectedReportingManager?.employeeId.trim().toLowerCase() ?? '';
+    final managerChanged = currentManagerId != initialManagerId;
+
+    return nameChanged ||
+        emailChanged ||
+        contactChanged ||
+        roleChanged ||
+        locationChanged ||
+        managerChanged;
+  }
+
+  void _resetToOriginalValues() {
+    _errorMessage = null;
+    _fullNameController.text = widget.employee.fullName;
+    _emailController.text = widget.employee.email;
+    _contactController.text = widget.employee.contactNumber ?? '';
+    final matchingRole = _roleOptions.firstWhere(
+      (r) => r['code']?.toUpperCase() == widget.employee.role.toUpperCase(),
+      orElse: () => _roleOptions[1],
+    );
+    _selectedRoleCode = matchingRole['code']!;
+    _selectedLocation = widget.currentLocation;
+
+    final adminState = context.read<AdminBloc>().state;
+    if (widget.employee.reportingManagerEmployeeId != null &&
+        widget.employee.reportingManagerEmployeeId!.isNotEmpty) {
+      try {
+        _selectedReportingManager = adminState.employees.firstWhere(
+          (e) =>
+              e.employeeId.toLowerCase() ==
+              widget.employee.reportingManagerEmployeeId!.toLowerCase(),
+        );
+      } catch (_) {
+        _selectedReportingManager = null;
+      }
+    } else {
+      _selectedReportingManager = null;
+    }
+  }
+
+  void _onUpdatePressed() {
+    FocusScope.of(context).unfocus();
+    setState(() {
+      _errorMessage = null;
+    });
+
+    if (_formKey.currentState?.validate() ?? false) {
+      final empId = widget.employee.id ??
+          int.tryParse(widget.employee.employeeId) ??
+          0;
+      final selectedLocId = _selectedLocation?.locationId.isNotEmpty == true
+          ? _selectedLocation!.locationId
+          : (widget.employee.locationId ?? widget.currentLocation.locationId);
+
+      context.read<AdminBloc>().add(
+            UpdateEmployeeSubmittedEvent(
+              id: empId,
+              fullName: _fullNameController.text.trim(),
+              email: _emailController.text.trim(),
+              contactNumber: _contactController.text.trim(),
+              role: _selectedRoleCode,
+              status: widget.employee.status?.isNotEmpty == true
+                  ? widget.employee.status!
+                  : 'ACTIVE',
+              locationId: selectedLocId,
+              reportingManagerEmployeeId:
+                  _selectedReportingManager?.employeeId.isNotEmpty == true
+                      ? _selectedReportingManager!.employeeId
+                      : null,
+            ),
+          );
+    }
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    return Dialog(
+      shape: RoundedRectangleBorder(
+        borderRadius: BorderRadius.circular(20),
+      ),
+      insetPadding: const EdgeInsets.symmetric(horizontal: 16, vertical: 24),
+      backgroundColor: Colors.white,
+      clipBehavior: Clip.antiAlias,
+      child: ConstrainedBox(
+        constraints: BoxConstraints(
+          maxWidth: 520,
+          maxHeight: MediaQuery.of(context).size.height * 0.88,
+        ),
+        child: BlocConsumer<AdminBloc, AdminState>(
+          listener: (context, state) {
+            if (state is UpdateEmployeeSuccessState) {
+              Navigator.of(context).pop();
+              SnackbarHelper.showSuccess(context, state.message);
+            } else if (state is UpdateEmployeeFailureState) {
+              setState(() {
+                _errorMessage = state.message;
+              });
+              SnackbarHelper.showError(context, state.message);
+            }
+          },
+          builder: (context, state) {
+            final isSaving = state is UpdateEmployeeLoadingState;
+            final isFieldEnabled = _isEditing && !isSaving;
+
+            return Column(
+              mainAxisSize: MainAxisSize.min,
+              children: [
+                // Dialog Header
+                Container(
+                  padding: const EdgeInsets.fromLTRB(20, 18, 14, 16),
+                  decoration: const BoxDecoration(
+                    color: Colors.white,
+                    border: Border(
+                      bottom: BorderSide(color: Color(0xFFE2E8F0)),
+                    ),
+                  ),
+                  child: Row(
+                    children: [
+                      CircleAvatar(
+                        radius: 20,
+                        backgroundColor:
+                            AppColors.primaryNavy.withValues(alpha: 0.1),
+                        child: Text(
+                          widget.employee.fullName.isNotEmpty
+                              ? widget.employee.fullName
+                                  .substring(0, 1)
+                                  .toUpperCase()
+                              : 'E',
+                          style: const TextStyle(
+                            color: AppColors.primaryNavy,
+                            fontWeight: FontWeight.bold,
+                            fontSize: 16,
+                          ),
+                        ),
+                      ),
+                      const SizedBox(width: 12),
+                      Expanded(
+                        child: Column(
+                          crossAxisAlignment: CrossAxisAlignment.start,
+                          children: [
+                            Text(
+                              _isEditing
+                                  ? 'Edit Employee Details'
+                                  : 'Employee Details',
+                              style: const TextStyle(
+                                fontSize: 16,
+                                fontWeight: FontWeight.bold,
+                                color: Color(0xFF0F172A),
+                              ),
+                            ),
+                            const SizedBox(height: 2),
+                            Text(
+                              'ID: ${widget.employee.employeeId}',
+                              style: const TextStyle(
+                                fontSize: 12,
+                                color: Color(0xFF64748B),
+                                fontWeight: FontWeight.w500,
+                              ),
+                            ),
+                          ],
+                        ),
+                      ),
+                      IconButton(
+                        onPressed: () => Navigator.of(context).pop(),
+                        icon: const Icon(
+                          Icons.close_rounded,
+                          color: Color(0xFF64748B),
+                          size: 22,
+                        ),
+                        splashRadius: 20,
+                      ),
+                    ],
+                  ),
+                ),
+
+                // Inline Error Banner (Visible when API fails)
+                if (_errorMessage != null && _errorMessage!.isNotEmpty)
+                  Container(
+                    margin: const EdgeInsets.fromLTRB(20, 14, 20, 0),
+                    padding: const EdgeInsets.symmetric(
+                      horizontal: 14,
+                      vertical: 10,
+                    ),
+                    decoration: BoxDecoration(
+                      color: const Color(0xFFFEF2F2),
+                      borderRadius: BorderRadius.circular(10),
+                      border: Border.all(color: const Color(0xFFFECACA)),
+                    ),
+                    child: Row(
+                      crossAxisAlignment: CrossAxisAlignment.start,
+                      children: [
+                        const Icon(
+                          Icons.error_outline_rounded,
+                          color: AppColors.dangerRose,
+                          size: 18,
+                        ),
+                        const SizedBox(width: 8),
+                        Expanded(
+                          child: Text(
+                            _errorMessage!,
+                            style: const TextStyle(
+                              color: Color(0xFF991B1B),
+                              fontSize: 12.5,
+                              fontWeight: FontWeight.w600,
+                            ),
+                          ),
+                        ),
+                      ],
+                    ),
+                  ),
+
+                // Scrollable Form Content
+                Flexible(
+                  child: SingleChildScrollView(
+                    padding: const EdgeInsets.all(20),
+                    child: Form(
+                      key: _formKey,
+                      child: Column(
+                        crossAxisAlignment: CrossAxisAlignment.start,
+                        children: [
+                          // Full Name Field
+                          _buildFieldLabel('Full Name'),
+                          _buildInputField(
+                            controller: _fullNameController,
+                            hintText: 'Enter full name',
+                            icon: Icons.person_outline,
+                            showEditIcon: isFieldEnabled,
+                            enabled: isFieldEnabled,
+                            onChanged: (_) => setState(() {
+                              _errorMessage = null;
+                            }),
+                            validator: (val) {
+                              if (val == null || val.trim().isEmpty) {
+                                return 'Please enter full name';
+                              }
+                              return null;
+                            },
+                          ),
+
+                          // Employee ID Field (Permanently Disabled)
+                          _buildFieldLabel('Employee ID'),
+                          _buildInputField(
+                            controller: _employeeIdController,
+                            hintText: 'Employee ID',
+                            iconText: '#',
+                            enabled: false,
+                            suffixIcon: const Icon(
+                              Icons.lock_outline_rounded,
+                              color: Color(0xFF94A3B8),
+                              size: 18,
+                            ),
+                          ),
+                          const Padding(
+                            padding: EdgeInsets.only(top: 2, bottom: 14),
+                            child: Text(
+                              'Employee ID is unique and cannot be modified.',
+                              style: TextStyle(
+                                fontSize: 11,
+                                color: Color(0xFF94A3B8),
+                                fontWeight: FontWeight.w500,
+                              ),
+                            ),
+                          ),
+
+                          // Official Email Field
+                          _buildFieldLabel('Official Email'),
+                          _buildInputField(
+                            controller: _emailController,
+                            hintText: 'Enter official email',
+                            icon: Icons.email_outlined,
+                            showEditIcon: isFieldEnabled,
+                            keyboardType: TextInputType.emailAddress,
+                            enabled: isFieldEnabled,
+                            onChanged: (_) => setState(() {
+                              _errorMessage = null;
+                            }),
+                            validator: (val) {
+                              if (val == null || val.trim().isEmpty) {
+                                return 'Please enter official email';
+                              }
+                              if (!val.contains('@') || !val.contains('.')) {
+                                return 'Please enter a valid email address';
+                              }
+                              return null;
+                            },
+                          ),
+
+                          // Contact Number Field
+                          _buildFieldLabel('Contact Number'),
+                          _buildInputField(
+                            controller: _contactController,
+                            hintText: 'Enter contact number',
+                            icon: Icons.phone_outlined,
+                            showEditIcon: isFieldEnabled,
+                            keyboardType: TextInputType.phone,
+                            enabled: isFieldEnabled,
+                            onChanged: (_) => setState(() {
+                              _errorMessage = null;
+                            }),
+                            validator: (val) {
+                              if (val == null || val.trim().isEmpty) {
+                                return 'Please enter contact number';
+                              }
+                              return null;
+                            },
+                          ),
+
+                          // Role / Designation Dropdown
+                          _buildFieldLabel('Role / Designation'),
+                          Container(
+                            padding: const EdgeInsets.symmetric(horizontal: 12),
+                            decoration: BoxDecoration(
+                              color: isFieldEnabled
+                                  ? const Color(0xFFF8FAFC)
+                                  : const Color(0xFFF1F5F9),
+                              borderRadius: BorderRadius.circular(12),
+                              border:
+                                  Border.all(color: const Color(0xFFE2E8F0)),
+                            ),
+                            child: DropdownButtonHideUnderline(
+                              child: DropdownButton<String>(
+                                value: _selectedRoleCode,
+                                isExpanded: true,
+                                icon: Icon(
+                                  Icons.keyboard_arrow_down_rounded,
+                                  color: isFieldEnabled
+                                      ? const Color(0xFF64748B)
+                                      : const Color(0xFF94A3B8),
+                                ),
+                                items: _roleOptions.map((roleMap) {
+                                  return DropdownMenuItem<String>(
+                                    value: roleMap['code'],
+                                    child: Row(
+                                      children: [
+                                        Icon(
+                                          Icons.business_center_outlined,
+                                          color: isFieldEnabled
+                                              ? const Color(0xFF94A3B8)
+                                              : const Color(0xFFCBD5E1),
+                                          size: 20,
+                                        ),
+                                        const SizedBox(width: 12),
+                                        Text(
+                                          roleMap['label']!,
+                                          style: TextStyle(
+                                            fontSize: 14,
+                                            color: isFieldEnabled
+                                                ? const Color(0xFF0F172A)
+                                                : const Color(0xFF64748B),
+                                            fontWeight: FontWeight.w500,
+                                          ),
+                                        ),
+                                      ],
+                                    ),
+                                  );
+                                }).toList(),
+                                onChanged: isFieldEnabled
+                                    ? (String? newValue) {
+                                        if (newValue != null) {
+                                          setState(() {
+                                            _errorMessage = null;
+                                            _selectedRoleCode = newValue;
+                                          });
+                                        }
+                                      }
+                                    : null,
+                              ),
+                            ),
+                          ),
+                          const SizedBox(height: 16),
+
+                          // Client Location Selector
+                          _buildFieldLabel('Client Location'),
+                          _buildLocationSelector(
+                            context: context,
+                            state: state,
+                            isEnabled: isFieldEnabled,
+                          ),
+                          const SizedBox(height: 4),
+
+                          // Reporting Manager Selector
+                          _buildFieldLabel(
+                            'Reporting Manager',
+                            bottomPadding: 0,
+                          ),
+                          const SizedBox(height: 8),
+                          _buildReportingManagerSelector(
+                            context: context,
+                            state: state,
+                            isEnabled: isFieldEnabled,
+                          ),
+                          const SizedBox(height: 4),
+                          const Text(
+                            'Select a reporting manager or leave blank if none.',
+                            style: TextStyle(
+                              fontSize: 11,
+                              color: Color(0xFF94A3B8),
+                            ),
+                          ),
+                        ],
+                      ),
+                    ),
+                  ),
+                ),
+
+                // Dialog Action Buttons (Edit and Update in a Row)
+                Container(
+                  padding: const EdgeInsets.all(16),
+                  decoration: const BoxDecoration(
+                    color: Colors.white,
+                    border: Border(
+                      top: BorderSide(color: Color(0xFFE2E8F0)),
+                    ),
+                  ),
+                  child: Row(
+                    children: [
+                      // Edit / Cancel Edit Button
+                      Expanded(
+                        child: SizedBox(
+                          height: 44,
+                          child: OutlinedButton.icon(
+                            onPressed: isSaving
+                                ? null
+                                : () {
+                                    setState(() {
+                                      if (_isEditing) {
+                                        _resetToOriginalValues();
+                                        _isEditing = false;
+                                      } else {
+                                        _isEditing = true;
+                                      }
+                                    });
+                                  },
+                            icon: Icon(
+                              _isEditing
+                                  ? Icons.close_rounded
+                                  : Icons.edit_rounded,
+                              size: 16,
+                              color: _isEditing
+                                  ? const Color(0xFF64748B)
+                                  : AppColors.primaryNavy,
+                            ),
+                            label: Text(
+                              _isEditing ? 'Cancel Edit' : 'Edit',
+                              style: TextStyle(
+                                color: _isEditing
+                                    ? const Color(0xFF64748B)
+                                    : AppColors.primaryNavy,
+                                fontWeight: FontWeight.bold,
+                                fontSize: 13.5,
+                              ),
+                            ),
+                            style: OutlinedButton.styleFrom(
+                              side: BorderSide(
+                                color: _isEditing
+                                    ? const Color(0xFFCBD5E1)
+                                    : AppColors.primaryNavy,
+                                width: 1.2,
+                              ),
+                              shape: RoundedRectangleBorder(
+                                borderRadius: BorderRadius.circular(10),
+                              ),
+                            ),
+                          ),
+                        ),
+                      ),
+                      const SizedBox(width: 12),
+
+                      // Update Button (Enabled only if editing and has changes)
+                      Expanded(
+                        child: SizedBox(
+                          height: 44,
+                          child: ElevatedButton.icon(
+                            onPressed: (_isEditing && _hasChanges && !isSaving)
+                                ? _onUpdatePressed
+                                : null,
+                            icon: isSaving
+                                ? const SizedBox(
+                                    width: 18,
+                                    height: 18,
+                                    child: CircularProgressIndicator(
+                                      strokeWidth: 2,
+                                      valueColor:
+                                          AlwaysStoppedAnimation<Color>(
+                                        Colors.white,
+                                      ),
+                                    ),
+                                  )
+                                : const Icon(
+                                    Icons.check_circle_outline_rounded,
+                                    color: Colors.white,
+                                    size: 17,
+                                  ),
+                            label: Text(
+                              isSaving ? 'Updating...' : 'Update',
+                              style: const TextStyle(
+                                color: Colors.white,
+                                fontSize: 13.5,
+                                fontWeight: FontWeight.bold,
+                              ),
+                            ),
+                            style: ElevatedButton.styleFrom(
+                              backgroundColor: AppColors.primaryNavy,
+                              disabledBackgroundColor: const Color(0xFFCBD5E1),
+                              disabledForegroundColor: Colors.white70,
+                              elevation: 0,
+                              shape: RoundedRectangleBorder(
+                                borderRadius: BorderRadius.circular(10),
+                              ),
+                            ),
+                          ),
+                        ),
+                      ),
+                    ],
+                  ),
+                ),
+              ],
+            );
+          },
+        ),
+      ),
+    );
+  }
+
+  Widget _buildFieldLabel(String label, {double bottomPadding = 8}) {
+    return Padding(
+      padding: EdgeInsets.only(bottom: bottomPadding),
+      child: Text(
+        label,
+        style: const TextStyle(
+          fontSize: 13,
+          fontWeight: FontWeight.bold,
+          color: Color(0xFF1E293B),
+        ),
+      ),
+    );
+  }
+
+  Widget _buildInputField({
+    required TextEditingController controller,
+    IconData? icon,
+    String? iconText,
+    String? hintText,
+    TextInputType? keyboardType,
+    bool enabled = true,
+    bool showEditIcon = false,
+    Widget? suffixIcon,
+    ValueChanged<String>? onChanged,
+    String? Function(String?)? validator,
+  }) {
+    final border = OutlineInputBorder(
+      borderRadius: BorderRadius.circular(12),
+      borderSide: const BorderSide(color: Color(0xFFE2E8F0), width: 1),
+    );
+
+    return Padding(
+      padding: const EdgeInsets.only(bottom: 14.0),
+      child: TextFormField(
+        controller: controller,
+        keyboardType: keyboardType,
+        enabled: enabled,
+        validator: validator,
+        onChanged: onChanged,
+        style: TextStyle(
+          fontSize: 14,
+          color: enabled ? const Color(0xFF0F172A) : const Color(0xFF64748B),
+          fontWeight: FontWeight.w500,
+        ),
+        decoration: InputDecoration(
+          isDense: true,
+          filled: true,
+          fillColor: enabled ? const Color(0xFFF8FAFC) : const Color(0xFFF1F5F9),
+          hintText: hintText,
+          hintStyle: const TextStyle(
+            color: Color(0xFF94A3B8),
+            fontSize: 13.5,
+          ),
+          prefixIcon: icon != null
+              ? Icon(
+                  icon,
+                  color: enabled
+                      ? const Color(0xFF94A3B8)
+                      : const Color(0xFFCBD5E1),
+                  size: 20,
+                )
+              : iconText != null
+                  ? Container(
+                      width: 44,
+                      alignment: Alignment.center,
+                      child: Text(
+                        iconText,
+                        style: TextStyle(
+                          color: enabled
+                              ? const Color(0xFF94A3B8)
+                              : const Color(0xFFCBD5E1),
+                          fontSize: 16,
+                          fontWeight: FontWeight.w600,
+                        ),
+                      ),
+                    )
+                  : null,
+          suffixIcon: suffixIcon ??
+              (showEditIcon
+                  ? const Icon(
+                      Icons.edit_outlined,
+                      color: Color(0xFF94A3B8),
+                      size: 18,
+                    )
+                  : null),
+          border: border,
+          enabledBorder: border,
+          disabledBorder: OutlineInputBorder(
+            borderRadius: BorderRadius.circular(12),
+            borderSide: const BorderSide(color: Color(0xFFE2E8F0), width: 1),
+          ),
+          focusedBorder: OutlineInputBorder(
+            borderRadius: BorderRadius.circular(12),
+            borderSide: const BorderSide(color: AppColors.primaryNavy, width: 1.5),
+          ),
+          errorBorder: OutlineInputBorder(
+            borderRadius: BorderRadius.circular(12),
+            borderSide: const BorderSide(color: AppColors.dangerRose, width: 1),
+          ),
+          focusedErrorBorder: OutlineInputBorder(
+            borderRadius: BorderRadius.circular(12),
+            borderSide: const BorderSide(color: AppColors.dangerRose, width: 1.5),
+          ),
+          contentPadding:
+              const EdgeInsets.symmetric(horizontal: 16, vertical: 14),
+        ),
+      ),
+    );
+  }
+
+  Widget _buildLocationSelector({
+    required BuildContext context,
+    required AdminState state,
+    required bool isEnabled,
+  }) {
+    final hasSelection = _selectedLocation != null;
+
+    return Padding(
+      padding: const EdgeInsets.only(bottom: 14.0),
+      child: InkWell(
+        onTap: isEnabled
+            ? () => _openLocationPicker(
+                  state.locations,
+                  state.isLoadingLocations,
+                  state.locationsError,
+                )
+            : null,
+        borderRadius: BorderRadius.circular(12),
+        child: Container(
+          padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 13),
+          decoration: BoxDecoration(
+            color: isEnabled ? const Color(0xFFF8FAFC) : const Color(0xFFF1F5F9),
+            borderRadius: BorderRadius.circular(12),
+            border: Border.all(
+              color: (hasSelection && isEnabled)
+                  ? AppColors.primaryNavy.withValues(alpha: 0.5)
+                  : const Color(0xFFE2E8F0),
+            ),
+          ),
+          child: Row(
+            children: [
+              Icon(
+                Icons.location_on_outlined,
+                color: isEnabled
+                    ? const Color(0xFF94A3B8)
+                    : const Color(0xFFCBD5E1),
+                size: 20,
+              ),
+              const SizedBox(width: 12),
+              Expanded(
+                child: hasSelection
+                    ? Text(
+                        _selectedLocation!.clientName?.isNotEmpty == true
+                            ? _selectedLocation!.clientName!
+                            : _selectedLocation!.locationName,
+                        style: TextStyle(
+                          fontSize: 14,
+                          color: isEnabled
+                              ? const Color(0xFF0F172A)
+                              : const Color(0xFF64748B),
+                          fontWeight: FontWeight.w600,
+                        ),
+                        overflow: TextOverflow.ellipsis,
+                      )
+                    : const Text(
+                        'Select client location',
+                        style: TextStyle(
+                          color: Color(0xFF94A3B8),
+                          fontSize: 14,
+                        ),
+                      ),
+              ),
+              if (isEnabled)
+                const Icon(
+                  Icons.edit_outlined,
+                  color: Color(0xFF94A3B8),
+                  size: 18,
+                ),
+            ],
+          ),
+        ),
+      ),
+    );
+  }
+
+  Future<void> _openLocationPicker(
+    List<ClientLocation> locations,
+    bool isLoadingLocations,
+    String? locationsError,
+  ) async {
+    if (locations.isEmpty && !isLoadingLocations) {
+      context.read<AdminBloc>().add(const LoadLocationsEvent());
+    }
+
+    final result = await showModalBottomSheet<_LocationSelectionResult>(
+      context: context,
+      isScrollControlled: true,
+      backgroundColor: Colors.transparent,
+      builder: (modalCtx) {
+        return BlocBuilder<AdminBloc, AdminState>(
+          builder: (context, state) {
+            return _LocationSearchModal(
+              initialSelected: _selectedLocation,
+              locations: state.locations,
+              isLoading: state.isLoadingLocations,
+              error: state.locationsError,
+              onRetry: () {
+                context
+                    .read<AdminBloc>()
+                    .add(const LoadLocationsEvent(isRefresh: true));
+              },
+            );
+          },
+        );
+      },
+    );
+
+    if (result != null) {
+      setState(() {
+        _selectedLocation = result.location;
+      });
+    }
+  }
+
+  Widget _buildReportingManagerSelector({
+    required BuildContext context,
+    required AdminState state,
+    required bool isEnabled,
+  }) {
+    final hasSelection = _selectedReportingManager != null;
+
+    return Padding(
+      padding: const EdgeInsets.only(bottom: 8.0),
+      child: InkWell(
+        onTap: isEnabled
+            ? () => _openReportingManagerPicker(
+                  state.employees,
+                  state.isLoadingEmployees,
+                  state.employeesError,
+                )
+            : null,
+        borderRadius: BorderRadius.circular(12),
+        child: Container(
+          padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 13),
+          decoration: BoxDecoration(
+            color: isEnabled ? const Color(0xFFF8FAFC) : const Color(0xFFF1F5F9),
+            borderRadius: BorderRadius.circular(12),
+            border: Border.all(
+              color: (hasSelection && isEnabled)
+                  ? AppColors.primaryNavy.withValues(alpha: 0.5)
+                  : const Color(0xFFE2E8F0),
+            ),
+          ),
+          child: Row(
+            children: [
+              Icon(
+                Icons.groups_outlined,
+                color: isEnabled
+                    ? const Color(0xFF94A3B8)
+                    : const Color(0xFFCBD5E1),
+                size: 20,
+              ),
+              const SizedBox(width: 12),
+              Expanded(
+                child: hasSelection
+                    ? Text(
+                        '${_selectedReportingManager!.fullName} (ID: ${_selectedReportingManager!.employeeId})',
+                        style: TextStyle(
+                          fontSize: 14,
+                          color: isEnabled
+                              ? const Color(0xFF0F172A)
+                              : const Color(0xFF64748B),
+                          fontWeight: FontWeight.w600,
+                        ),
+                        overflow: TextOverflow.ellipsis,
+                      )
+                    : const Text(
+                        'Select reporting manager',
+                        style: TextStyle(
+                          color: Color(0xFF94A3B8),
+                          fontSize: 14,
+                        ),
+                      ),
+              ),
+              if (isEnabled)
+                const Icon(
+                  Icons.edit_outlined,
+                  color: Color(0xFF94A3B8),
+                  size: 18,
+                ),
+            ],
+          ),
+        ),
+      ),
+    );
+  }
+
+  Future<void> _openReportingManagerPicker(
+    List<CreatedEmployee> employees,
+    bool isLoadingEmployees,
+    String? employeesError,
+  ) async {
+    if (employees.isEmpty && !isLoadingEmployees) {
+      context.read<AdminBloc>().add(const LoadEmployeesEvent());
+    }
+
+    final result = await showModalBottomSheet<_EmployeeSelectionResult>(
+      context: context,
+      isScrollControlled: true,
+      backgroundColor: Colors.transparent,
+      builder: (modalCtx) {
+        return BlocBuilder<AdminBloc, AdminState>(
+          builder: (context, state) {
+            return _ReportingManagerSearchModal(
+              initialSelected: _selectedReportingManager,
+              excludeEmployeeId: widget.employee.employeeId,
+              employees: state.employees,
+              isLoading: state.isLoadingEmployees,
+              error: state.employeesError,
+              onRetry: () {
+                context
+                    .read<AdminBloc>()
+                    .add(const LoadEmployeesEvent(isRefresh: true));
+              },
+            );
+          },
+        );
+      },
+    );
+
+    if (result != null) {
+      setState(() {
+        if (result.isCleared) {
+          _selectedReportingManager = null;
+        } else {
+          _selectedReportingManager = result.employee;
+        }
+      });
+    }
+  }
+}
+
+class _EmployeeSelectionResult {
+  final bool isCleared;
+  final CreatedEmployee? employee;
+
+  const _EmployeeSelectionResult({
+    this.isCleared = false,
+    this.employee,
+  });
+}
+
+class _ReportingManagerSearchModal extends StatefulWidget {
+  final CreatedEmployee? initialSelected;
+  final String? excludeEmployeeId;
+  final List<CreatedEmployee> employees;
+  final bool isLoading;
+  final String? error;
+  final VoidCallback onRetry;
+
+  const _ReportingManagerSearchModal({
+    required this.initialSelected,
+    this.excludeEmployeeId,
+    required this.employees,
+    required this.isLoading,
+    this.error,
+    required this.onRetry,
+  });
+
+  @override
+  State<_ReportingManagerSearchModal> createState() =>
+      _ReportingManagerSearchModalState();
+}
+
+class _ReportingManagerSearchModalState
+    extends State<_ReportingManagerSearchModal> {
+  final TextEditingController _searchController = TextEditingController();
+  String _searchQuery = '';
+
+  @override
+  void dispose() {
+    _searchController.dispose();
+    super.dispose();
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    final query = _searchQuery.trim().toLowerCase();
+    final filteredEmployees = widget.employees.where((emp) {
+      if (widget.excludeEmployeeId != null &&
+          widget.excludeEmployeeId!.trim().isNotEmpty &&
+          emp.employeeId.trim().toLowerCase() ==
+              widget.excludeEmployeeId!.trim().toLowerCase()) {
+        return false;
+      }
+      if (query.isEmpty) return true;
+      final nameMatches = emp.fullName.toLowerCase().contains(query);
+      final idMatches = emp.employeeId.toLowerCase().contains(query);
+      final emailMatches = emp.email.toLowerCase().contains(query);
+      final roleMatches = emp.role.toLowerCase().contains(query);
+      return nameMatches || idMatches || emailMatches || roleMatches;
+    }).toList();
+
+    return Material(
+      color: Colors.white,
+      borderRadius: const BorderRadius.vertical(top: Radius.circular(24)),
+      clipBehavior: Clip.antiAlias,
+      child: SizedBox(
+        height: MediaQuery.of(context).size.height * 0.78,
+        child: Column(
+          children: [
+            const SizedBox(height: 12),
+            Container(
+              width: 40,
+              height: 4,
+              decoration: BoxDecoration(
+                color: const Color(0xFFCBD5E1),
+                borderRadius: BorderRadius.circular(2),
+              ),
+            ),
+            const SizedBox(height: 12),
+            Padding(
+              padding: const EdgeInsets.symmetric(horizontal: 20.0),
+              child: Row(
+                mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                children: [
+                  Column(
+                    crossAxisAlignment: CrossAxisAlignment.start,
+                    children: [
+                      const Text(
+                        'Select Reporting Manager',
+                        style: TextStyle(
+                          fontSize: 17,
+                          fontWeight: FontWeight.bold,
+                          color: Color(0xFF0F172A),
+                        ),
+                      ),
+                      const SizedBox(height: 2),
+                      Text(
+                        'Search by name, ID, or designation',
+                        style: TextStyle(
+                          fontSize: 12,
+                          color: Colors.grey.shade600,
+                        ),
+                      ),
+                    ],
+                  ),
+                  IconButton(
+                    onPressed: () => Navigator.of(context).pop(),
+                    icon: const Icon(
+                      Icons.close_rounded,
+                      color: Color(0xFF64748B),
+                    ),
+                  ),
+                ],
+              ),
+            ),
+            const SizedBox(height: 12),
+            Padding(
+              padding: const EdgeInsets.symmetric(horizontal: 16.0),
+              child: Container(
+                decoration: BoxDecoration(
+                  color: const Color(0xFFF1F5F9),
+                  borderRadius: BorderRadius.circular(14),
+                  border: Border.all(color: const Color(0xFFE2E8F0)),
+                ),
+                child: TextField(
+                  controller: _searchController,
+                  autofocus: false,
+                  onChanged: (val) {
+                    setState(() {
+                      _searchQuery = val;
+                    });
+                  },
+                  decoration: InputDecoration(
+                    hintText: 'Search reporting manager...',
+                    hintStyle: const TextStyle(
+                      fontSize: 14,
+                      color: Color(0xFF94A3B8),
+                    ),
+                    prefixIcon: const Icon(
+                      Icons.search_rounded,
+                      color: AppColors.primaryNavy,
+                      size: 22,
+                    ),
+                    suffixIcon: _searchQuery.isNotEmpty
+                        ? IconButton(
+                            icon: const Icon(
+                              Icons.cancel_rounded,
+                              color: Color(0xFF94A3B8),
+                              size: 18,
+                            ),
+                            onPressed: () {
+                              _searchController.clear();
+                              setState(() {
+                                _searchQuery = '';
+                              });
+                            },
+                          )
+                        : null,
+                    border: InputBorder.none,
+                    contentPadding: const EdgeInsets.symmetric(
+                      horizontal: 16,
+                      vertical: 14,
+                    ),
+                  ),
+                ),
+              ),
+            ),
+            const SizedBox(height: 12),
+            const Divider(height: 1, color: Color(0xFFE2E8F0)),
+            Expanded(
+              child: widget.isLoading && widget.employees.isEmpty
+                  ? const Center(
+                      child: CircularProgressIndicator(strokeWidth: 2.5),
+                    )
+                  : widget.error != null && widget.employees.isEmpty
+                      ? Center(
+                          child: Padding(
+                            padding: const EdgeInsets.all(24.0),
+                            child: Column(
+                              mainAxisSize: MainAxisSize.min,
+                              children: [
+                                const Icon(
+                                  Icons.error_outline_rounded,
+                                  color: AppColors.dangerRose,
+                                  size: 40,
+                                ),
+                                const SizedBox(height: 10),
+                                Text(
+                                  widget.error!,
+                                  textAlign: TextAlign.center,
+                                  style: const TextStyle(
+                                    fontSize: 13,
+                                    color: Color(0xFF64748B),
+                                  ),
+                                ),
+                                const SizedBox(height: 14),
+                                ElevatedButton.icon(
+                                  onPressed: widget.onRetry,
+                                  icon: const Icon(Icons.refresh, size: 16),
+                                  label: const Text('Retry'),
+                                  style: ElevatedButton.styleFrom(
+                                    backgroundColor: AppColors.primaryNavy,
+                                    foregroundColor: Colors.white,
+                                  ),
+                                ),
+                              ],
+                            ),
+                          ),
+                        )
+                      : ListView.separated(
+                          padding: const EdgeInsets.symmetric(
+                            horizontal: 16,
+                            vertical: 12,
+                          ),
+                          itemCount: filteredEmployees.length + 1,
+                          separatorBuilder: (_, __) => const Divider(
+                            height: 1,
+                            indent: 64,
+                            color: Color(0xFFF1F5F9),
+                          ),
+                          itemBuilder: (context, index) {
+                            if (index == 0) {
+                              final isSelectedNone =
+                                  widget.initialSelected == null;
+                              return ListTile(
+                                contentPadding: const EdgeInsets.symmetric(
+                                  horizontal: 12,
+                                  vertical: 4,
+                                ),
+                                shape: RoundedRectangleBorder(
+                                  borderRadius: BorderRadius.circular(12),
+                                ),
+                                leading: Container(
+                                  width: 42,
+                                  height: 42,
+                                  decoration: BoxDecoration(
+                                    color: const Color(0xFFF1F5F9),
+                                    borderRadius: BorderRadius.circular(10),
+                                  ),
+                                  child: const Icon(
+                                    Icons.block_rounded,
+                                    color: Color(0xFF94A3B8),
+                                    size: 20,
+                                  ),
+                                ),
+                                title: const Text(
+                                  'None (No Reporting Manager)',
+                                  style: TextStyle(
+                                    fontSize: 14,
+                                    fontWeight: FontWeight.w600,
+                                    color: Color(0xFF475569),
+                                  ),
+                                ),
+                                subtitle: const Text(
+                                  'Leave reporting manager unassigned',
+                                  style: TextStyle(
+                                    fontSize: 12,
+                                    color: Color(0xFF94A3B8),
+                                  ),
+                                ),
+                                trailing: isSelectedNone
+                                    ? const Icon(
+                                        Icons.check_circle_rounded,
+                                        color: AppColors.primaryNavy,
+                                        size: 22,
+                                      )
+                                    : null,
+                                onTap: () {
+                                  Navigator.of(context).pop(
+                                    const _EmployeeSelectionResult(
+                                      isCleared: true,
+                                    ),
+                                  );
+                                },
+                              );
+                            }
+
+                            final employee = filteredEmployees[index - 1];
+                            final isSelected =
+                                widget.initialSelected?.employeeId ==
+                                    employee.employeeId;
+
+                            return ListTile(
+                              contentPadding: const EdgeInsets.symmetric(
+                                horizontal: 12,
+                                vertical: 4,
+                              ),
+                              shape: RoundedRectangleBorder(
+                                borderRadius: BorderRadius.circular(12),
+                              ),
+                              leading: Container(
+                                width: 42,
+                                height: 42,
+                                decoration: BoxDecoration(
+                                  color: AppColors.primaryNavy
+                                      .withValues(alpha: 0.1),
+                                  borderRadius: BorderRadius.circular(10),
+                                ),
+                                alignment: Alignment.center,
+                                child: Text(
+                                  employee.fullName.isNotEmpty
+                                      ? employee.fullName
+                                          .substring(0, 1)
+                                          .toUpperCase()
+                                      : 'E',
+                                  style: const TextStyle(
+                                    fontSize: 14,
+                                    fontWeight: FontWeight.bold,
+                                    color: AppColors.primaryNavy,
+                                  ),
+                                ),
+                              ),
+                              title: Text(
+                                employee.fullName,
+                                style: const TextStyle(
+                                  fontSize: 14.5,
+                                  fontWeight: FontWeight.bold,
+                                  color: Color(0xFF0F172A),
+                                ),
+                              ),
+                              subtitle: Text(
+                                'ID: ${employee.employeeId}  •  ${employee.role}',
+                                style: const TextStyle(
+                                  fontSize: 12,
+                                  color: Color(0xFF64748B),
+                                ),
+                              ),
+                              trailing: isSelected
+                                  ? const Icon(
+                                      Icons.check_circle_rounded,
+                                      color: AppColors.primaryNavy,
+                                      size: 22,
+                                    )
+                                  : null,
+                              onTap: () {
+                                Navigator.of(context).pop(
+                                  _EmployeeSelectionResult(
+                                    employee: employee,
+                                  ),
+                                );
+                              },
+                            );
+                          },
+                        ),
+            ),
+          ],
+        ),
+      ),
+    );
+  }
+}
+
+class _LocationSelectionResult {
+  final ClientLocation? location;
+
+  const _LocationSelectionResult({
+    this.location,
+  });
+}
+
+class _LocationSearchModal extends StatefulWidget {
+  final ClientLocation? initialSelected;
+  final List<ClientLocation> locations;
+  final bool isLoading;
+  final String? error;
+  final VoidCallback onRetry;
+
+  const _LocationSearchModal({
+    required this.initialSelected,
+    required this.locations,
+    required this.isLoading,
+    this.error,
+    required this.onRetry,
+  });
+
+  @override
+  State<_LocationSearchModal> createState() => _LocationSearchModalState();
+}
+
+class _LocationSearchModalState extends State<_LocationSearchModal> {
+  final TextEditingController _searchController = TextEditingController();
+  String _searchQuery = '';
+
+  @override
+  void dispose() {
+    _searchController.dispose();
+    super.dispose();
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    final query = _searchQuery.trim().toLowerCase();
+    final filteredLocations = widget.locations.where((loc) {
+      if (query.isEmpty) return true;
+      final nameMatches = loc.locationName.toLowerCase().contains(query);
+      final clientMatches =
+          loc.clientName?.toLowerCase().contains(query) ?? false;
+      final addressMatches =
+          loc.address?.toLowerCase().contains(query) ?? false;
+      final cityMatches = loc.city?.toLowerCase().contains(query) ?? false;
+      return nameMatches || clientMatches || addressMatches || cityMatches;
+    }).toList();
+
+    return Material(
+      color: Colors.white,
+      borderRadius: const BorderRadius.vertical(top: Radius.circular(24)),
+      clipBehavior: Clip.antiAlias,
+      child: SizedBox(
+        height: MediaQuery.of(context).size.height * 0.78,
+        child: Column(
+          children: [
+            const SizedBox(height: 12),
+            Container(
+              width: 40,
+              height: 4,
+              decoration: BoxDecoration(
+                color: const Color(0xFFCBD5E1),
+                borderRadius: BorderRadius.circular(2),
+              ),
+            ),
+            const SizedBox(height: 12),
+            Padding(
+              padding: const EdgeInsets.symmetric(horizontal: 20.0),
+              child: Row(
+                mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                children: [
+                  Column(
+                    crossAxisAlignment: CrossAxisAlignment.start,
+                    children: [
+                      const Text(
+                        'Select Client Location',
+                        style: TextStyle(
+                          fontSize: 17,
+                          fontWeight: FontWeight.bold,
+                          color: Color(0xFF0F172A),
+                        ),
+                      ),
+                      const SizedBox(height: 2),
+                      Text(
+                        'Search by client name, location, or city',
+                        style: TextStyle(
+                          fontSize: 12,
+                          color: Colors.grey.shade600,
+                        ),
+                      ),
+                    ],
+                  ),
+                  IconButton(
+                    onPressed: () => Navigator.of(context).pop(),
+                    icon: const Icon(
+                      Icons.close_rounded,
+                      color: Color(0xFF64748B),
+                    ),
+                  ),
+                ],
+              ),
+            ),
+            const SizedBox(height: 12),
+            Padding(
+              padding: const EdgeInsets.symmetric(horizontal: 16.0),
+              child: Container(
+                decoration: BoxDecoration(
+                  color: const Color(0xFFF1F5F9),
+                  borderRadius: BorderRadius.circular(14),
+                  border: Border.all(color: const Color(0xFFE2E8F0)),
+                ),
+                child: TextField(
+                  controller: _searchController,
+                  autofocus: false,
+                  onChanged: (val) {
+                    setState(() {
+                      _searchQuery = val;
+                    });
+                  },
+                  decoration: InputDecoration(
+                    hintText: 'Search client location...',
+                    hintStyle: const TextStyle(
+                      fontSize: 14,
+                      color: Color(0xFF94A3B8),
+                    ),
+                    prefixIcon: const Icon(
+                      Icons.search_rounded,
+                      color: AppColors.primaryNavy,
+                      size: 22,
+                    ),
+                    suffixIcon: _searchQuery.isNotEmpty
+                        ? IconButton(
+                            icon: const Icon(
+                              Icons.cancel_rounded,
+                              color: Color(0xFF94A3B8),
+                              size: 18,
+                            ),
+                            onPressed: () {
+                              _searchController.clear();
+                              setState(() {
+                                _searchQuery = '';
+                              });
+                            },
+                          )
+                        : null,
+                    border: InputBorder.none,
+                    contentPadding: const EdgeInsets.symmetric(
+                      horizontal: 16,
+                      vertical: 14,
+                    ),
+                  ),
+                ),
+              ),
+            ),
+            const SizedBox(height: 12),
+            const Divider(height: 1, color: Color(0xFFE2E8F0)),
+            Expanded(
+              child: widget.isLoading && widget.locations.isEmpty
+                  ? const Center(
+                      child: CircularProgressIndicator(strokeWidth: 2.5),
+                    )
+                  : widget.error != null && widget.locations.isEmpty
+                      ? Center(
+                          child: Padding(
+                            padding: const EdgeInsets.all(24.0),
+                            child: Column(
+                              mainAxisSize: MainAxisSize.min,
+                              children: [
+                                const Icon(
+                                  Icons.error_outline_rounded,
+                                  color: AppColors.dangerRose,
+                                  size: 40,
+                                ),
+                                const SizedBox(height: 10),
+                                Text(
+                                  widget.error!,
+                                  textAlign: TextAlign.center,
+                                  style: const TextStyle(
+                                    fontSize: 13,
+                                    color: Color(0xFF64748B),
+                                  ),
+                                ),
+                                const SizedBox(height: 14),
+                                ElevatedButton.icon(
+                                  onPressed: widget.onRetry,
+                                  icon: const Icon(Icons.refresh, size: 16),
+                                  label: const Text('Retry'),
+                                  style: ElevatedButton.styleFrom(
+                                    backgroundColor: AppColors.primaryNavy,
+                                    foregroundColor: Colors.white,
+                                  ),
+                                ),
+                              ],
+                            ),
+                          ),
+                        )
+                      : ListView.separated(
+                          padding: const EdgeInsets.symmetric(
+                            horizontal: 16,
+                            vertical: 12,
+                          ),
+                          itemCount: filteredLocations.length,
+                          separatorBuilder: (_, __) => const Divider(
+                            height: 1,
+                            indent: 64,
+                            color: Color(0xFFF1F5F9),
+                          ),
+                          itemBuilder: (context, index) {
+                            final loc = filteredLocations[index];
+                            final isSelected = widget.initialSelected != null &&
+                                ((loc.locationId.isNotEmpty &&
+                                        loc.locationId ==
+                                            widget
+                                                .initialSelected!.locationId) ||
+                                    (loc.clientName != null &&
+                                        loc.clientName ==
+                                            widget.initialSelected!
+                                                .clientName));
+
+                            return ListTile(
+                              contentPadding: const EdgeInsets.symmetric(
+                                horizontal: 12,
+                                vertical: 6,
+                              ),
+                              shape: RoundedRectangleBorder(
+                                borderRadius: BorderRadius.circular(12),
+                              ),
+                              leading: Container(
+                                width: 42,
+                                height: 42,
+                                decoration: BoxDecoration(
+                                  color: AppColors.primaryNavy
+                                      .withValues(alpha: 0.1),
+                                  borderRadius: BorderRadius.circular(10),
+                                ),
+                                child: const Icon(
+                                  Icons.location_on_rounded,
+                                  color: AppColors.primaryNavy,
+                                  size: 22,
+                                ),
+                              ),
+                              title: Text(
+                                loc.clientName?.isNotEmpty == true
+                                    ? loc.clientName!
+                                    : loc.locationName,
+                                style: const TextStyle(
+                                  fontSize: 14.5,
+                                  fontWeight: FontWeight.bold,
+                                  color: Color(0xFF0F172A),
+                                ),
+                              ),
+                              subtitle: Column(
+                                crossAxisAlignment: CrossAxisAlignment.start,
+                                children: [
+                                  if (loc.locationName.isNotEmpty &&
+                                      loc.locationName != loc.clientName)
+                                    Text(
+                                      loc.locationName,
+                                      style: const TextStyle(
+                                        fontSize: 12,
+                                        color: Color(0xFF475569),
+                                        fontWeight: FontWeight.w500,
+                                      ),
+                                    ),
+                                  if (loc.city != null &&
+                                      loc.city!.isNotEmpty)
+                                    Text(
+                                      loc.city!,
+                                      style: const TextStyle(
+                                        fontSize: 11.5,
+                                        color: Color(0xFF64748B),
+                                      ),
+                                    ),
+                                ],
+                              ),
+                              trailing: isSelected
+                                  ? const Icon(
+                                      Icons.check_circle_rounded,
+                                      color: AppColors.primaryNavy,
+                                      size: 22,
+                                    )
+                                  : null,
+                              onTap: () {
+                                Navigator.of(context).pop(
+                                  _LocationSelectionResult(location: loc),
+                                );
+                              },
+                            );
+                          },
+                        ),
+            ),
+          ],
+        ),
+      ),
+    );
+  }
+}
+

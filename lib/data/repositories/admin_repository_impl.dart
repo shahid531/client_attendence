@@ -48,6 +48,36 @@ class AdminRepositoryImpl implements AdminRepository {
   }
 
   @override
+  Future<Either<Failure, CreatedEmployee>> updateEmployee({
+    required int id,
+    required String fullName,
+    required String email,
+    required String contactNumber,
+    required String role,
+    String? status,
+    required String locationId,
+    String? reportingManagerEmployeeId,
+  }) async {
+    try {
+      final result = await remoteDataSource.updateEmployee(
+        id: id,
+        fullName: fullName,
+        email: email,
+        contactNumber: contactNumber,
+        role: role,
+        status: status,
+        locationId: locationId,
+        reportingManagerEmployeeId: reportingManagerEmployeeId,
+      );
+      return Right(result);
+    } on ServerException catch (e) {
+      return Left(ServerFailure(e.message));
+    } catch (e) {
+      return Left(ServerFailure(e.toString()));
+    }
+  }
+
+  @override
   Future<Either<Failure, List<CreatedEmployee>>> getEmployees({String? name}) async {
     try {
       final result = await remoteDataSource.getEmployees(name: name);
