@@ -17,9 +17,12 @@ abstract class AdminRepository {
     String? reportingManagerEmployeeId,
   });
 
-  Future<Either<Failure, List<CreatedEmployee>>> getEmployees();
+  Future<Either<Failure, List<CreatedEmployee>>> getEmployees({String? name});
 
-  Future<Either<Failure, List<ClientLocation>>> getLocations();
+  Future<Either<Failure, List<ClientLocation>>> getLocations({
+    String? clientName,
+    String? city,
+  });
 
   Future<Either<Failure, ClientLocation>> createLocation({
     required String clientName,

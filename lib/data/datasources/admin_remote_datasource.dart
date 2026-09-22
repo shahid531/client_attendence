@@ -20,9 +20,12 @@ abstract class AdminRemoteDataSource {
     String? reportingManagerEmployeeId,
   });
 
-  Future<List<CreatedEmployeeModel>> getEmployees();
+  Future<List<CreatedEmployeeModel>> getEmployees({String? name});
 
-  Future<List<ClientLocationModel>> getLocations();
+  Future<List<ClientLocationModel>> getLocations({
+    String? clientName,
+    String? city,
+  });
 
   Future<ClientLocationModel> createLocation({
     required String clientName,
@@ -53,7 +56,10 @@ class AdminRemoteDataSourceImpl implements AdminRemoteDataSource {
   });
 
   @override
-  Future<List<ClientLocationModel>> getLocations() async {
+  Future<List<ClientLocationModel>> getLocations({
+    String? clientName,
+    String? city,
+  }) async {
     try {
       final cachedToken = sharedPreferences.getString('auth_bearer_token');
 
@@ -66,8 +72,17 @@ class AdminRemoteDataSourceImpl implements AdminRemoteDataSource {
         headers['Authorization'] = 'Bearer $cachedToken';
       }
 
+      final queryParams = <String, dynamic>{};
+      if (clientName != null && clientName.trim().isNotEmpty) {
+        queryParams['clientName'] = clientName.trim();
+      }
+      if (city != null && city.trim().isNotEmpty) {
+        queryParams['city'] = city.trim();
+      }
+
       final response = await dio.get(
         ApiConstants.adminLocations,
+        queryParameters: queryParams.isNotEmpty ? queryParams : null,
         options: Options(headers: headers),
       );
 
@@ -97,7 +112,7 @@ class AdminRemoteDataSourceImpl implements AdminRemoteDataSource {
   }
 
   @override
-  Future<List<CreatedEmployeeModel>> getEmployees() async {
+  Future<List<CreatedEmployeeModel>> getEmployees({String? name}) async {
     try {
       final cachedToken = sharedPreferences.getString('auth_bearer_token');
 
@@ -110,8 +125,14 @@ class AdminRemoteDataSourceImpl implements AdminRemoteDataSource {
         headers['Authorization'] = 'Bearer $cachedToken';
       }
 
+      final queryParams = <String, dynamic>{};
+      if (name != null && name.trim().isNotEmpty) {
+        queryParams['name'] = name.trim();
+      }
+
       final response = await dio.get(
         ApiConstants.adminEmployees,
+        queryParameters: queryParams.isNotEmpty ? queryParams : null,
         options: Options(headers: headers),
       );
 

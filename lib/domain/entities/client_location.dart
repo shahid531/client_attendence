@@ -4,6 +4,7 @@ class ClientLocation extends Equatable {
   final int? id;
   final String locationId;
   final String? clientName;
+  final String? city;
   final String locationName;
   final String? address;
   final String? city;
@@ -18,6 +19,7 @@ class ClientLocation extends Equatable {
     this.id,
     required this.locationId,
     this.clientName,
+    this.city,
     required this.locationName,
     this.address,
     this.city,
@@ -34,6 +36,7 @@ class ClientLocation extends Equatable {
         id,
         locationId,
         clientName,
+        city,
         locationName,
         address,
         city,

@@ -224,18 +224,23 @@ class _HistoryPageState extends State<HistoryPage> {
     }
   }
 
-  String? _getExportEmployeeId() {
+  (String?, String?) _getExportSearchParams() {
     if (_isAdmin) {
       final query = _searchController.text.trim();
-      if (query.isNotEmpty && RegExp(r'^[0-9]+$').hasMatch(query)) {
-        return query;
+      if (query.isNotEmpty) {
+        if (RegExp(r'^[0-9]+$').hasMatch(query)) {
+          return (query, null);
+        } else {
+          return (null, query);
+        }
       }
+      return (null, null);
     }
     final authState = context.read<AuthBloc>().state;
     if (authState is AuthenticatedState) {
-      return authState.user.id;
+      return (authState.user.id, null);
     }
-    return null;
+    return (null, null);
   }
 
   void _onExportPressed() {
@@ -246,7 +251,7 @@ class _HistoryPageState extends State<HistoryPage> {
     final dateRange =
         _displayRangeStr.isNotEmpty ? _displayRangeStr : _selectedPeriod;
     final (fromDate, toDate) = _getExportDateParams();
-    final employeeId = _getExportEmployeeId();
+    final (employeeId, search) = _getExportSearchParams();
 
     showModalBottomSheet(
       context: context,
@@ -297,6 +302,7 @@ class _HistoryPageState extends State<HistoryPage> {
                     Navigator.of(modalCtx).pop();
                     _handleDirectDownload(
                       employeeId: employeeId,
+                      search: search,
                       fromDate: fromDate,
                       toDate: toDate,
                       dateRange: dateRange,
@@ -366,6 +372,7 @@ class _HistoryPageState extends State<HistoryPage> {
                     Navigator.of(modalCtx).pop();
                     _handleShareReport(
                       employeeId: employeeId,
+                      search: search,
                       fromDate: fromDate,
                       toDate: toDate,
                       dateRange: dateRange,
@@ -439,6 +446,7 @@ class _HistoryPageState extends State<HistoryPage> {
 
   void _handleDirectDownload({
     String? employeeId,
+    String? search,
     required String fromDate,
     required String toDate,
     required String dateRange,
@@ -446,6 +454,7 @@ class _HistoryPageState extends State<HistoryPage> {
     context.read<AttendanceBloc>().add(
           ExportAttendanceEvent(
             employeeId: employeeId,
+            search: search,
             fromDate: fromDate,
             toDate: toDate,
             dateRange: dateRange,
@@ -456,6 +465,7 @@ class _HistoryPageState extends State<HistoryPage> {
 
   void _handleShareReport({
     String? employeeId,
+    String? search,
     required String fromDate,
     required String toDate,
     required String dateRange,
@@ -463,6 +473,7 @@ class _HistoryPageState extends State<HistoryPage> {
     context.read<AttendanceBloc>().add(
           ExportAttendanceEvent(
             employeeId: employeeId,
+            search: search,
             fromDate: fromDate,
             toDate: toDate,
             dateRange: dateRange,
@@ -489,7 +500,7 @@ class _HistoryPageState extends State<HistoryPage> {
         child: Column(
           crossAxisAlignment: CrossAxisAlignment.start,
           children: [
-            // Header Row: Title & Export Button
+            // Header Row: Title & Export Button (only in header for non-admin)
             Row(
               mainAxisAlignment: MainAxisAlignment.spaceBetween,
               children: [
@@ -501,38 +512,11 @@ class _HistoryPageState extends State<HistoryPage> {
                     color: Color(0xFF1E293B),
                   ),
                 ),
-                ElevatedButton.icon(
-                  onPressed: isExporting ? null : _onExportPressed,
-                  icon: isExporting
-                      ? const SizedBox(
-                          width: 14,
-                          height: 14,
-                          child: CircularProgressIndicator(
-                            strokeWidth: 2,
-                            valueColor:
-                                AlwaysStoppedAnimation<Color>(primaryNavy),
-                          ),
-                        )
-                      : const Icon(Icons.download,
-                          size: 16, color: primaryNavy),
-                  label: Text(
-                    isExporting ? 'Exporting...' : 'Export',
-                    style: const TextStyle(
-                      color: primaryNavy,
-                      fontWeight: FontWeight.w600,
-                      fontSize: 13,
-                    ),
+                if (!_isAdmin)
+                  _buildExportButton(
+                    isExporting: isExporting,
+                    primaryNavy: primaryNavy,
                   ),
-                  style: ElevatedButton.styleFrom(
-                    backgroundColor: const Color(0xFFEEF2FF),
-                    elevation: 0,
-                    shape: RoundedRectangleBorder(
-                      borderRadius: BorderRadius.circular(8),
-                    ),
-                    padding:
-                        const EdgeInsets.symmetric(horizontal: 12, vertical: 8),
-                  ),
-                ),
               ],
             ),
             const SizedBox(height: 12),
@@ -803,33 +787,77 @@ class _HistoryPageState extends State<HistoryPage> {
                       _buildSearchInputField(),
                     ],
                     const SizedBox(height: 16),
-                    SizedBox(
-                      width: double.infinity,
-                      height: 42,
-                      child: ElevatedButton.icon(
-                        onPressed: () {
-                          FocusScope.of(context).unfocus();
-                          _applyPeriod('Custom', page: 0);
-                        },
-                        icon: const Icon(Icons.search_rounded,
-                            size: 18, color: Colors.white),
-                        style: ElevatedButton.styleFrom(
-                          backgroundColor: primaryNavy,
-                          shape: RoundedRectangleBorder(
-                            borderRadius: BorderRadius.circular(8),
+                    if (_isAdmin)
+                      Row(
+                        children: [
+                          Expanded(
+                            child: SizedBox(
+                              height: 42,
+                              child: ElevatedButton.icon(
+                                onPressed: () {
+                                  FocusScope.of(context).unfocus();
+                                  _applyPeriod('Custom', page: 0);
+                                },
+                                icon: const Icon(Icons.search_rounded,
+                                    size: 18, color: Colors.white),
+                                style: ElevatedButton.styleFrom(
+                                  backgroundColor: primaryNavy,
+                                  shape: RoundedRectangleBorder(
+                                    borderRadius: BorderRadius.circular(8),
+                                  ),
+                                  elevation: 0,
+                                ),
+                                label: const Text(
+                                  'Search',
+                                  style: TextStyle(
+                                    color: Colors.white,
+                                    fontWeight: FontWeight.bold,
+                                    fontSize: 14,
+                                  ),
+                                ),
+                              ),
+                            ),
                           ),
-                          elevation: 0,
-                        ),
-                        label: const Text(
-                          'Search',
-                          style: TextStyle(
-                            color: Colors.white,
-                            fontWeight: FontWeight.bold,
-                            fontSize: 14,
+                          const SizedBox(width: 10),
+                          Expanded(
+                            child: SizedBox(
+                              height: 42,
+                              child: _buildExportButton(
+                                isExporting: isExporting,
+                                primaryNavy: primaryNavy,
+                              ),
+                            ),
+                          ),
+                        ],
+                      )
+                    else
+                      SizedBox(
+                        width: double.infinity,
+                        height: 42,
+                        child: ElevatedButton.icon(
+                          onPressed: () {
+                            FocusScope.of(context).unfocus();
+                            _applyPeriod('Custom', page: 0);
+                          },
+                          icon: const Icon(Icons.search_rounded,
+                              size: 18, color: Colors.white),
+                          style: ElevatedButton.styleFrom(
+                            backgroundColor: primaryNavy,
+                            shape: RoundedRectangleBorder(
+                              borderRadius: BorderRadius.circular(8),
+                            ),
+                            elevation: 0,
+                          ),
+                          label: const Text(
+                            'Search',
+                            style: TextStyle(
+                              color: Colors.white,
+                              fontWeight: FontWeight.bold,
+                              fontSize: 14,
+                            ),
                           ),
                         ),
                       ),
-                    )
                   ],
                 ),
               ),
@@ -838,7 +866,7 @@ class _HistoryPageState extends State<HistoryPage> {
 
             // Search Bar (Only visible to admin when NOT in Custom period)
             if (_isAdmin && _selectedPeriod != 'Custom') ...[
-              _buildSearchBar(),
+              _buildSearchBar(isExporting, primaryNavy),
               const SizedBox(height: 16),
             ],
 
@@ -1083,38 +1111,88 @@ class _HistoryPageState extends State<HistoryPage> {
     );
   }
 
-  Widget _buildSearchBar() {
+  Widget _buildExportButton({
+    required bool isExporting,
+    required Color primaryNavy,
+  }) {
+    return ElevatedButton.icon(
+      onPressed: isExporting ? null : _onExportPressed,
+      icon: isExporting
+          ? const SizedBox(
+              width: 14,
+              height: 14,
+              child: CircularProgressIndicator(
+                strokeWidth: 2,
+                valueColor: AlwaysStoppedAnimation<Color>(AppColors.primaryNavy),
+              ),
+            )
+          : const Icon(Icons.download, size: 16, color: AppColors.primaryNavy),
+      label: Text(
+        isExporting ? 'Exporting...' : 'Export',
+        style: const TextStyle(
+          color: AppColors.primaryNavy,
+          fontWeight: FontWeight.w600,
+          fontSize: 13,
+        ),
+      ),
+      style: ElevatedButton.styleFrom(
+        backgroundColor: const Color(0xFFEEF2FF),
+        elevation: 0,
+        shape: RoundedRectangleBorder(
+          borderRadius: BorderRadius.circular(8),
+        ),
+        padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 8),
+      ),
+    );
+  }
+
+  Widget _buildSearchBar(bool isExporting, Color primaryNavy) {
     return Column(
       crossAxisAlignment: CrossAxisAlignment.stretch,
       children: [
         _buildSearchInputField(),
         const SizedBox(height: 8),
-        SizedBox(
-          width: double.infinity,
-          height: 42,
-          child: ElevatedButton.icon(
-            onPressed: () {
-              FocusScope.of(context).unfocus();
-              _applyPeriod(_selectedPeriod, page: 0);
-            },
-            icon:
-                const Icon(Icons.search_rounded, size: 18, color: Colors.white),
-            label: const Text(
-              'Search',
-              style: TextStyle(
-                color: Colors.white,
-                fontWeight: FontWeight.bold,
-                fontSize: 14,
+        Row(
+          children: [
+            Expanded(
+              child: SizedBox(
+                height: 42,
+                child: ElevatedButton.icon(
+                  onPressed: () {
+                    FocusScope.of(context).unfocus();
+                    _applyPeriod(_selectedPeriod, page: 0);
+                  },
+                  icon:
+                      const Icon(Icons.search_rounded, size: 18, color: Colors.white),
+                  label: const Text(
+                    'Search',
+                    style: TextStyle(
+                      color: Colors.white,
+                      fontWeight: FontWeight.bold,
+                      fontSize: 14,
+                    ),
+                  ),
+                  style: ElevatedButton.styleFrom(
+                    backgroundColor: AppColors.primaryNavy,
+                    elevation: 0,
+                    shape: RoundedRectangleBorder(
+                      borderRadius: BorderRadius.circular(8),
+                    ),
+                  ),
+                ),
               ),
             ),
-            style: ElevatedButton.styleFrom(
-              backgroundColor: AppColors.primaryNavy,
-              elevation: 0,
-              shape: RoundedRectangleBorder(
-                borderRadius: BorderRadius.circular(8),
+            const SizedBox(width: 10),
+            Expanded(
+              child: SizedBox(
+                height: 42,
+                child: _buildExportButton(
+                  isExporting: isExporting,
+                  primaryNavy: primaryNavy,
+                ),
               ),
             ),
-          ),
+          ],
         ),
       ],
     );

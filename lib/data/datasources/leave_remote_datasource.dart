@@ -1,5 +1,6 @@
 import 'package:dio/dio.dart';
 import 'package:shared_preferences/shared_preferences.dart';
+import '../../core/errors/error_handler.dart';
 import '../../core/errors/exceptions.dart';
 import '../../domain/entities/leave_request.dart';
 import '../models/dashboard_stats_model.dart';
@@ -144,12 +145,10 @@ class LeaveRemoteDataSourceImpl implements LeaveRemoteDataSource {
         return const LeaveRequestsResult(requests: []);
       } on DioException catch (e) {
         print('[LeaveRemoteDataSource] DioException on GET $endpoint: ${e.response?.data ?? e.message}');
-        if (e.response != null && e.response?.data is Map<String, dynamic>) {
-          final errMap = e.response!.data as Map<String, dynamic>;
-          final message = errMap['message'] ?? 'Failed to fetch requests (${e.response?.statusCode})';
-          throw ServerException(message.toString());
-        }
-        throw ServerException(e.message ?? 'Network error while fetching requests');
+        throw ErrorHandler.handleDioError(
+          e,
+          fallbackMessage: 'Failed to fetch requests. Please try again.',
+        );
       } catch (e) {
         print('[LeaveRemoteDataSource] Exception on GET $endpoint: $e');
         if (e is ServerException) rethrow;
@@ -314,12 +313,10 @@ class LeaveRemoteDataSourceImpl implements LeaveRemoteDataSource {
         return 'Request updated successfully';
       } on DioException catch (e) {
         print('[LeaveRemoteDataSource] DioException on POST update request $requestId: ${e.response?.data ?? e.message}');
-        if (e.response != null && e.response?.data is Map<String, dynamic>) {
-          final errMap = e.response!.data as Map<String, dynamic>;
-          final message = errMap['message'] ?? 'Failed to update request (${e.response?.statusCode})';
-          throw ServerException(message.toString());
-        }
-        throw ServerException(e.message ?? 'Network connection error while updating request status');
+        throw ErrorHandler.handleDioError(
+          e,
+          fallbackMessage: 'Failed to update request status. Please try again.',
+        );
       } catch (e) {
         print('[LeaveRemoteDataSource] Exception on POST update request $requestId: $e');
         if (e is ServerException) rethrow;

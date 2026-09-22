@@ -4,6 +4,7 @@ import '../../core/constants/app_colors.dart';
 import '../blocs/auth/auth_bloc.dart';
 import '../blocs/auth/auth_state.dart';
 import 'approvals_screen.dart';
+import 'client_locations.dart';
 import 'create_employee_screen.dart';
 import 'history_page.dart';
 import 'home_page.dart';
@@ -45,6 +46,15 @@ class _MainNavigationPageState extends State<MainNavigationPage> {
               label: isAdmin ? 'Create Emp' : 'Home',
             ),
           ),
+          if (isAdmin)
+            _NavTabItem(
+              page: const ClientLocationsPage(),
+              barItem: const BottomNavigationBarItem(
+                icon: Icon(Icons.location_on_outlined),
+                activeIcon: Icon(Icons.location_on),
+                label: 'Location',
+              ),
+            ),
           if (isRM || isAdmin)
             _NavTabItem(
               page: ApprovalsScreen(key: _approvalsScreenKey),
@@ -58,14 +68,15 @@ class _MainNavigationPageState extends State<MainNavigationPage> {
               },
             ),
 
-            _NavTabItem(
-              page: const HistoryPage(),
-              barItem: const BottomNavigationBarItem(
-                icon: Icon(Icons.history_outlined),
-                activeIcon: Icon(Icons.history),
-                label: 'History',
-              ),
+          _NavTabItem(
+            page: const HistoryPage(),
+            barItem: const BottomNavigationBarItem(
+              icon: Icon(Icons.history_outlined),
+              activeIcon: Icon(Icons.history),
+              label: 'History',
             ),
+          ),
+
           if (!isAdmin)
             _NavTabItem(
               page: RequestPage(key: _requestPageKey),

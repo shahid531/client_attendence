@@ -30,23 +30,49 @@ class ExcelExporter {
     final empPrefix = (employeeId != null && employeeId.isNotEmpty) ? '${employeeId}_' : '';
     final fileName = 'Attendance_Report_$empPrefix$sanitizedRange.xlsx';
 
-    Directory? targetDir;
-
     if (Platform.isAndroid) {
-      final androidDownload = Directory('/storage/emulated/0/Download');
-      if (await androidDownload.exists()) {
-        targetDir = androidDownload;
-      } else {
-        targetDir = await getExternalStorageDirectory();
+      // 1. Try public Download directory
+      try {
+        final androidDownload = Directory('/storage/emulated/0/Download');
+        if (await androidDownload.exists()) {
+          final file = File('${androidDownload.path}/$fileName');
+          await file.writeAsBytes(bytes, flush: true);
+          return ExcelExportResult(filePath: file.path, fileName: fileName);
+        }
+      } catch (_) {
+        // Scoped storage permission restricted, fallback below
       }
-    } else if (Platform.isIOS) {
+
+      // 2. Try App external downloads directory
+      try {
+        final extDirs =
+            await getExternalStorageDirectories(type: StorageDirectory.downloads);
+        if (extDirs != null && extDirs.isNotEmpty) {
+          final file = File('${extDirs.first.path}/$fileName');
+          await file.writeAsBytes(bytes, flush: true);
+          return ExcelExportResult(filePath: file.path, fileName: fileName);
+        }
+      } catch (_) {}
+
+      // 3. Try App external files directory
+      try {
+        final extDir = await getExternalStorageDirectory();
+        if (extDir != null) {
+          final file = File('${extDir.path}/$fileName');
+          await file.writeAsBytes(bytes, flush: true);
+          return ExcelExportResult(filePath: file.path, fileName: fileName);
+        }
+      } catch (_) {}
+    }
+
+    final Directory targetDir;
+
+    if (Platform.isIOS) {
       targetDir = await getApplicationDocumentsDirectory();
     } else {
       targetDir = await getDownloadsDirectory() ??
           await getApplicationDocumentsDirectory();
     }
-
-    targetDir ??= await getApplicationDocumentsDirectory();
 
     final filePath = '${targetDir.path}/$fileName';
     final file = File(filePath);

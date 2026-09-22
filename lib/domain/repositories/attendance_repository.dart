@@ -37,6 +37,7 @@ abstract class AttendanceRepository {
   });
   Future<Either<Failure, List<int>>> exportAttendance({
     String? employeeId,
+    String? search,
     String? fromDate,
     String? toDate,
   });

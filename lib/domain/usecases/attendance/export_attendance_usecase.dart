@@ -6,17 +6,19 @@ import '../../repositories/attendance_repository.dart';
 
 class ExportAttendanceParams extends Equatable {
   final String? employeeId;
+  final String? search;
   final String? fromDate;
   final String? toDate;
 
   const ExportAttendanceParams({
     this.employeeId,
+    this.search,
     this.fromDate,
     this.toDate,
   });
 
   @override
-  List<Object?> get props => [employeeId, fromDate, toDate];
+  List<Object?> get props => [employeeId, search, fromDate, toDate];
 }
 
 class ExportAttendanceUseCase
@@ -30,6 +32,7 @@ class ExportAttendanceUseCase
       ExportAttendanceParams params) async {
     return await repository.exportAttendance(
       employeeId: params.employeeId,
+      search: params.search,
       fromDate: params.fromDate,
       toDate: params.toDate,
     );

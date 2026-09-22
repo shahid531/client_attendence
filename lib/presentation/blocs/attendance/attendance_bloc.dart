@@ -230,11 +230,16 @@ class AttendanceBloc extends Bloc<AttendanceEvent, AttendanceState> {
         exportResult: null,
         isExportShareCompleted: false,
       ));
+    } else {
+      emit(const AttendanceLoadedState(
+        isExporting: true,
+      ));
     }
 
     final result = await exportAttendanceUseCase(
       ExportAttendanceParams(
         employeeId: event.employeeId,
+        search: event.search,
         fromDate: event.fromDate,
         toDate: event.toDate,
       ),
@@ -269,6 +274,11 @@ class AttendanceBloc extends Bloc<AttendanceEvent, AttendanceState> {
                 exportResult: downloadResult,
                 exportErrorMessage: null,
               ));
+            } else {
+              emit(AttendanceLoadedState(
+                isExporting: false,
+                exportResult: downloadResult,
+              ));
             }
           } else {
             await ExcelExporter.shareBytes(
@@ -285,12 +295,22 @@ class AttendanceBloc extends Bloc<AttendanceEvent, AttendanceState> {
                 isExportShareCompleted: true,
                 exportErrorMessage: null,
               ));
+            } else {
+              emit(const AttendanceLoadedState(
+                isExporting: false,
+                isExportShareCompleted: true,
+              ));
             }
           }
         } catch (e) {
           final stateNow = state;
           if (stateNow is AttendanceLoadedState) {
             emit(stateNow.copyWith(
+              isExporting: false,
+              exportErrorMessage: e.toString(),
+            ));
+          } else {
+            emit(AttendanceLoadedState(
               isExporting: false,
               exportErrorMessage: e.toString(),
             ));

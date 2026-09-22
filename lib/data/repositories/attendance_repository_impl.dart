@@ -121,12 +121,14 @@ class AttendanceRepositoryImpl implements AttendanceRepository {
   @override
   Future<Either<Failure, List<int>>> exportAttendance({
     String? employeeId,
+    String? search,
     String? fromDate,
     String? toDate,
   }) async {
     try {
       final bytes = await remoteDataSource.exportAttendance(
         employeeId: employeeId,
+        search: search,
         fromDate: fromDate,
         toDate: toDate,
       );

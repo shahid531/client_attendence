@@ -13,6 +13,7 @@ import 'dart:developer' as dev;
 import '../blocs/auth/auth_state.dart';
 import '../../core/utils/device_info_util.dart';
 import '../../core/utils/snackbar_helper.dart';
+import '../widgets/flowerpot_cracker_effect.dart';
 import 'main_navigation_page.dart';
 import 'change_password_page.dart';
 
@@ -210,20 +211,8 @@ class _LoginPageState extends State<LoginPage> {
                   crossAxisAlignment: CrossAxisAlignment.start,
                   children: [
                     const SizedBox(height: 40),
-                    Center(
-                      child: Container(
-                        width: 72,
-                        height: 72,
-                        decoration: BoxDecoration(
-                          color: AppColors.primaryNavy.withValues(alpha: 0.1),
-                          shape: BoxShape.circle,
-                        ),
-                        child: const Icon(
-                          Icons.apartment_rounded,
-                          size: 38,
-                          color: AppColors.primaryNavy,
-                        ),
-                      ),
+                    const Center(
+                      child: FlowerpotCrackerLogo(),
                     ),
                     const SizedBox(height: 24),
                     const Center(
