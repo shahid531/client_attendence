@@ -9,14 +9,15 @@ class _CrackerParticle {
   double y;
   double vx;
   double vy;
-  final double initialVx;
-  final double initialVy;
   final double size;
   final Color color;
   final double maxLifespan;
   final _ParticleType type;
   final double rotationSpeed;
   final double sparkleFreq;
+  final double swayFreq;
+  final double swayAmount;
+  final double swayOffset;
   double rotation;
   double life; // 0.0 -> 1.0
 
@@ -31,14 +32,16 @@ class _CrackerParticle {
     required this.type,
     required this.rotationSpeed,
     required this.sparkleFreq,
-  })  : initialVx = vx,
-        initialVy = vy,
-        rotation = 0.0,
+    required this.swayFreq,
+    required this.swayAmount,
+    required this.swayOffset,
+  })  : rotation = 0.0,
         life = 0.0;
 }
 
 /// An interactive logo widget that bursts a Flowerpot (Anaar) Cracker
-/// fountain animation and performs a tactile bounce when tapped.
+/// fountain animation that shoots upwards and cascades downwards in a
+/// sparkling shower.
 class FlowerpotCrackerLogo extends StatefulWidget {
   final Widget? child;
   final VoidCallback? onTap;
@@ -79,29 +82,29 @@ class _FlowerpotCrackerLogoState extends State<FlowerpotCrackerLogo>
 
     _crackerController = AnimationController(
       vsync: this,
-      duration: const Duration(milliseconds: 1400),
+      duration: const Duration(milliseconds: 2200),
     )..addListener(() {
         _updateParticles();
       });
 
     _bounceController = AnimationController(
       vsync: this,
-      duration: const Duration(milliseconds: 300),
+      duration: const Duration(milliseconds: 320),
     );
 
     _bounceAnimation = TweenSequence<double>([
       TweenSequenceItem(
-        tween: Tween<double>(begin: 1.0, end: 0.88)
+        tween: Tween<double>(begin: 1.0, end: 0.86)
             .chain(CurveTween(curve: Curves.easeOutCubic)),
         weight: 35,
       ),
       TweenSequenceItem(
-        tween: Tween<double>(begin: 0.88, end: 1.12)
+        tween: Tween<double>(begin: 0.86, end: 1.14)
             .chain(CurveTween(curve: Curves.easeOutBack)),
         weight: 35,
       ),
       TweenSequenceItem(
-        tween: Tween<double>(begin: 1.12, end: 1.0)
+        tween: Tween<double>(begin: 1.14, end: 1.0)
             .chain(CurveTween(curve: Curves.easeInOut)),
         weight: 30,
       ),
@@ -117,40 +120,42 @@ class _FlowerpotCrackerLogoState extends State<FlowerpotCrackerLogo>
 
   void _spawnParticles() {
     _particles.clear();
-    const particleCount = 65;
+    const particleCount = 75;
 
     for (int i = 0; i < particleCount; i++) {
-      // Upward cone spread (-80° to -100° with side flares -45° to -135°)
-      // angle in radians: -pi/2 is straight up
-      final angleSpread = (_random.nextDouble() - 0.5) * 1.3; // ~ -37° to +37° from straight up
+      // Fountain cone spread (-70° to -110° for center jets, -40° to -140° for wide cascading sparks)
+      final angleSpread = (_random.nextDouble() - 0.5) * 1.5; // ~ -43° to +43° from straight up
       final angle = -math.pi / 2 + angleSpread;
 
-      // Higher velocity for fountain jet effect
-      final speed = 180.0 + _random.nextDouble() * 260.0;
+      // Varied initial upward speed: some shoot high, others create the middle & lower cascade
+      final speed = 160.0 + _random.nextDouble() * 300.0;
       final vx = math.cos(angle) * speed;
       final vy = math.sin(angle) * speed;
 
       final color = _palette[_random.nextInt(_palette.length)];
-      final size = 2.5 + _random.nextDouble() * 4.5;
-      final lifespan = 0.6 + _random.nextDouble() * 0.4; // 0.6 to 1.0 of animation progress
+      final size = 2.2 + _random.nextDouble() * 4.5;
+      final lifespan = 0.75 + _random.nextDouble() * 0.25; // 0.75 to 1.0
 
       final typeIndex = _random.nextInt(10);
-      final _ParticleType type = typeIndex < 5
+      final _ParticleType type = typeIndex < 4
           ? _ParticleType.circle
-          : (typeIndex < 8 ? _ParticleType.star : _ParticleType.petal);
+          : (typeIndex < 7 ? _ParticleType.star : _ParticleType.petal);
 
       _particles.add(
         _CrackerParticle(
           x: 0,
-          y: -10, // Start slightly near top of logo
+          y: -12, // Start at top of the logo
           vx: vx,
           vy: vy,
           size: size,
           color: color,
           maxLifespan: lifespan,
           type: type,
-          rotationSpeed: (_random.nextDouble() - 0.5) * 12.0,
-          sparkleFreq: 10.0 + _random.nextDouble() * 20.0,
+          rotationSpeed: (_random.nextDouble() - 0.5) * 10.0,
+          sparkleFreq: 12.0 + _random.nextDouble() * 18.0,
+          swayFreq: 2.5 + _random.nextDouble() * 4.0,
+          swayAmount: 18.0 + _random.nextDouble() * 32.0,
+          swayOffset: _random.nextDouble() * math.pi * 2,
         ),
       );
     }
@@ -158,16 +163,24 @@ class _FlowerpotCrackerLogoState extends State<FlowerpotCrackerLogo>
 
   void _updateParticles() {
     final t = _crackerController.value;
-    const dt = 0.016; // approx 60fps delta
-    const gravity = 320.0; // Gravity pulling sparks down
+    const dt = 0.016; // ~60fps delta
+    const gravity = 360.0; // Gravity pulling sparks downwards
 
     for (final p in _particles) {
       p.life = (t / p.maxLifespan).clamp(0.0, 1.0);
       if (p.life < 1.0) {
-        // Drag + Gravity physics
+        // Upward burst transitions to downward gravity pull
         p.vy += gravity * dt;
-        p.vx *= 0.985;
-        p.x += p.vx * dt;
+
+        // Air drag
+        p.vx *= 0.982;
+
+        // Add fluttering horizontal sway as particle starts falling (vy > 0)
+        final sway = p.vy > 0
+            ? math.sin(t * p.swayFreq * math.pi * 2 + p.swayOffset) * p.swayAmount * dt
+            : 0.0;
+
+        p.x += (p.vx * dt) + sway;
         p.y += p.vy * dt;
         p.rotation += p.rotationSpeed * dt;
       }
@@ -193,7 +206,7 @@ class _FlowerpotCrackerLogoState extends State<FlowerpotCrackerLogo>
         clipBehavior: Clip.none,
         alignment: Alignment.center,
         children: [
-          // Fountain Cracker Particle Painter
+          // Fountain & Falling Shower Particle Painter
           if (_crackerController.isAnimating)
             Positioned.fill(
               child: CustomPaint(
@@ -244,35 +257,35 @@ class _FlowerpotPainter extends CustomPainter {
   void paint(Canvas canvas, Size size) {
     final center = Offset(size.width / 2, size.height / 2);
 
-    // 1. Initial Fountain Base Glow / Shockwave
-    if (progress < 0.4) {
-      final ringProgress = progress / 0.4;
-      final ringRadius = 36.0 + ringProgress * 30.0;
+    // 1. Initial Fountain Base Glow / Expanding Shockwave
+    if (progress < 0.25) {
+      final ringProgress = progress / 0.25;
+      final ringRadius = 36.0 + ringProgress * 35.0;
       final ringOpacity = (1.0 - ringProgress).clamp(0.0, 1.0);
 
       final glowPaint = Paint()
-        ..color = const Color(0xFFFFD700).withValues(alpha: ringOpacity * 0.4)
+        ..color = const Color(0xFFFFD700).withValues(alpha: ringOpacity * 0.45)
         ..style = PaintingStyle.stroke
-        ..strokeWidth = 3.0 * (1.0 - ringProgress);
+        ..strokeWidth = 3.5 * (1.0 - ringProgress);
       canvas.drawCircle(center, ringRadius, glowPaint);
     }
 
-    // 2. Draw Particles & Trails
+    // 2. Draw Cascading & Falling Particles
     for (final p in particles) {
       if (p.life >= 1.0) continue;
 
-      final remainingLife = 1.0 - p.life;
-      // Sparkle flicker
-      final flicker = 0.7 + 0.3 * math.sin(progress * p.sparkleFreq);
+      // Smooth cubic fade-out weighted near the bottom of fall
+      final remainingLife = (1.0 - math.pow(p.life, 2.2)).toDouble().clamp(0.0, 1.0);
+      final flicker = 0.72 + 0.28 * math.sin(progress * p.sparkleFreq);
       final alpha = (remainingLife * flicker).clamp(0.0, 1.0);
-      final currentSize = p.size * (0.4 + 0.6 * remainingLife);
+      final currentSize = p.size * (0.45 + 0.55 * remainingLife);
 
       final particlePos = center + Offset(p.x, p.y);
 
-      // Sparkler glow halo
+      // Soft glowing halo
       final haloPaint = Paint()
-        ..color = p.color.withValues(alpha: alpha * 0.3)
-        ..maskFilter = const MaskFilter.blur(BlurStyle.normal, 4.0);
+        ..color = p.color.withValues(alpha: alpha * 0.28)
+        ..maskFilter = const MaskFilter.blur(BlurStyle.normal, 4.5);
       canvas.drawCircle(particlePos, currentSize * 1.8, haloPaint);
 
       // Core particle paint
@@ -296,16 +309,16 @@ class _FlowerpotPainter extends CustomPainter {
           break;
       }
 
-      // Sparkler trailing spark line
-      if (remainingLife > 0.3 && p.vy.abs() > 30) {
-        final trailLength = (p.vy * 0.04).clamp(-12.0, 12.0);
+      // Sparkler trailing spark line (longer when falling or rising fast)
+      if (remainingLife > 0.25 && p.vy.abs() > 35) {
+        final trailLen = (p.vy * 0.035).clamp(-14.0, 14.0);
         final trailPaint = Paint()
-          ..color = p.color.withValues(alpha: alpha * 0.5)
+          ..color = p.color.withValues(alpha: alpha * 0.45)
           ..strokeWidth = currentSize * 0.6
           ..strokeCap = StrokeCap.round;
         canvas.drawLine(
           particlePos,
-          particlePos - Offset(p.vx * 0.02, trailLength),
+          particlePos - Offset(p.vx * 0.015, trailLen),
           trailPaint,
         );
       }

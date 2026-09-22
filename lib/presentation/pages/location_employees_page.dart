@@ -23,7 +23,6 @@ class LocationEmployeesPage extends StatefulWidget {
 
 class _LocationEmployeesPageState extends State<LocationEmployeesPage> {
   final TextEditingController _searchController = TextEditingController();
-  String _searchQuery = '';
 
   @override
   void initState() {
@@ -39,24 +38,28 @@ class _LocationEmployeesPageState extends State<LocationEmployeesPage> {
     super.dispose();
   }
 
-  void _onSearchChanged(String query) {
-    setState(() {
-      _searchQuery = query.trim().toLowerCase();
-    });
+  void _performSearch() {
+    FocusScope.of(context).unfocus();
+    final query = _searchController.text.trim();
+    context.read<AdminBloc>().add(
+          LoadEmployeesEvent(
+            name: query.isNotEmpty ? query : null,
+          ),
+        );
   }
 
   void _clearSearch() {
     _searchController.clear();
-    setState(() {
-      _searchQuery = '';
-    });
+    FocusScope.of(context).unfocus();
+    setState(() {});
+    context.read<AdminBloc>().add(const LoadEmployeesEvent());
   }
 
   List<CreatedEmployee> _getFilteredEmployees(List<CreatedEmployee> allEmployees) {
     final location = widget.location;
 
     // Filter employees assigned to this location
-    final assigned = allEmployees.where((emp) {
+    return allEmployees.where((emp) {
       if (emp.locationId != null &&
           emp.locationId!.isNotEmpty &&
           emp.locationId == location.locationId) {
@@ -75,13 +78,6 @@ class _LocationEmployeesPageState extends State<LocationEmployeesPage> {
         return true;
       }
       return false;
-    }).toList();
-
-    if (_searchQuery.isEmpty) return assigned;
-
-    return assigned.where((emp) {
-      return emp.fullName.toLowerCase().contains(_searchQuery) ||
-          emp.employeeId.toLowerCase().contains(_searchQuery);
     }).toList();
   }
 
@@ -305,7 +301,13 @@ class _LocationEmployeesPageState extends State<LocationEmployeesPage> {
       ),
       body: RefreshIndicator(
         onRefresh: () async {
-          context.read<AdminBloc>().add(const LoadEmployeesEvent(isRefresh: true));
+          final query = _searchController.text.trim();
+          context.read<AdminBloc>().add(
+                LoadEmployeesEvent(
+                  isRefresh: true,
+                  name: query.isNotEmpty ? query : null,
+                ),
+              );
         },
         child: SingleChildScrollView(
           physics: const AlwaysScrollableScrollPhysics(),
@@ -380,41 +382,8 @@ class _LocationEmployeesPageState extends State<LocationEmployeesPage> {
               ),
               const SizedBox(height: 16),
 
-              // Search Input Field
-              Container(
-                decoration: BoxDecoration(
-                  color: Colors.white,
-                  borderRadius: BorderRadius.circular(12),
-                  border: Border.all(color: AppColors.borderGrey),
-                ),
-                child: TextField(
-                  controller: _searchController,
-                  onChanged: _onSearchChanged,
-                  decoration: InputDecoration(
-                    hintText: 'Search employee name...',
-                    hintStyle: const TextStyle(
-                      color: AppColors.textLight,
-                      fontSize: 13,
-                    ),
-                    prefixIcon: const Icon(
-                      Icons.search_rounded,
-                      color: AppColors.textMuted,
-                      size: 20,
-                    ),
-                    suffixIcon: _searchController.text.isNotEmpty
-                        ? IconButton(
-                            icon: const Icon(Icons.clear_rounded, size: 18),
-                            onPressed: _clearSearch,
-                          )
-                        : null,
-                    border: InputBorder.none,
-                    contentPadding: const EdgeInsets.symmetric(
-                      vertical: 12,
-                      horizontal: 14,
-                    ),
-                  ),
-                ),
-              ),
+              // Search Bar & Search Button
+              _buildSearchBar(primaryNavy),
               const SizedBox(height: 16),
 
               // BlocBuilder for Employees List
@@ -444,6 +413,7 @@ class _LocationEmployeesPageState extends State<LocationEmployeesPage> {
                   final filteredEmployees = _getFilteredEmployees(state.employees);
 
                   if (filteredEmployees.isEmpty) {
+                    final searchQuery = _searchController.text.trim();
                     return Container(
                       width: double.infinity,
                       padding: const EdgeInsets.symmetric(
@@ -465,8 +435,8 @@ class _LocationEmployeesPageState extends State<LocationEmployeesPage> {
                           ),
                           const SizedBox(height: 12),
                           Text(
-                            _searchQuery.isNotEmpty
-                                ? 'No employees matching "$_searchQuery"'
+                            searchQuery.isNotEmpty
+                                ? 'No employees matching "$searchQuery"'
                                 : 'No employees assigned to this location',
                             textAlign: TextAlign.center,
                             style: const TextStyle(
@@ -503,6 +473,74 @@ class _LocationEmployeesPageState extends State<LocationEmployeesPage> {
           ),
         ),
       ),
+    );
+  }
+
+  Widget _buildSearchBar(Color primaryNavy) {
+    return Column(
+      crossAxisAlignment: CrossAxisAlignment.stretch,
+      children: [
+        Container(
+          decoration: BoxDecoration(
+            color: Colors.white,
+            borderRadius: BorderRadius.circular(12),
+            border: Border.all(color: AppColors.borderGrey),
+          ),
+          child: TextField(
+            controller: _searchController,
+            onChanged: (val) => setState(() {}),
+            onSubmitted: (_) => _performSearch(),
+            textInputAction: TextInputAction.search,
+            decoration: InputDecoration(
+              hintText: 'Search employee name...',
+              hintStyle: const TextStyle(
+                color: AppColors.textLight,
+                fontSize: 13,
+              ),
+              prefixIcon: const Icon(
+                Icons.search_rounded,
+                color: AppColors.textMuted,
+                size: 20,
+              ),
+              suffixIcon: _searchController.text.isNotEmpty
+                  ? IconButton(
+                      icon: const Icon(Icons.clear_rounded, size: 18),
+                      onPressed: _clearSearch,
+                    )
+                  : null,
+              border: InputBorder.none,
+              contentPadding: const EdgeInsets.symmetric(
+                vertical: 12,
+                horizontal: 14,
+              ),
+            ),
+          ),
+        ),
+        const SizedBox(height: 10),
+        SizedBox(
+          width: double.infinity,
+          height: 42,
+          child: ElevatedButton.icon(
+            onPressed: _performSearch,
+            icon: const Icon(Icons.search_rounded, size: 18, color: Colors.white),
+            label: const Text(
+              'Search',
+              style: TextStyle(
+                color: Colors.white,
+                fontWeight: FontWeight.bold,
+                fontSize: 14,
+              ),
+            ),
+            style: ElevatedButton.styleFrom(
+              backgroundColor: primaryNavy,
+              elevation: 0,
+              shape: RoundedRectangleBorder(
+                borderRadius: BorderRadius.circular(8),
+              ),
+            ),
+          ),
+        ),
+      ],
     );
   }
 

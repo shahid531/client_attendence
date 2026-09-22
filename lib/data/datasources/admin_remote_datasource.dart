@@ -20,7 +20,7 @@ abstract class AdminRemoteDataSource {
     String? reportingManagerEmployeeId,
   });
 
-  Future<List<CreatedEmployeeModel>> getEmployees();
+  Future<List<CreatedEmployeeModel>> getEmployees({String? name});
 
   Future<List<ClientLocationModel>> getLocations();
 
@@ -88,7 +88,7 @@ class AdminRemoteDataSourceImpl implements AdminRemoteDataSource {
   }
 
   @override
-  Future<List<CreatedEmployeeModel>> getEmployees() async {
+  Future<List<CreatedEmployeeModel>> getEmployees({String? name}) async {
     try {
       final cachedToken = sharedPreferences.getString('auth_bearer_token');
 
@@ -101,8 +101,14 @@ class AdminRemoteDataSourceImpl implements AdminRemoteDataSource {
         headers['Authorization'] = 'Bearer $cachedToken';
       }
 
+      final queryParams = <String, dynamic>{};
+      if (name != null && name.trim().isNotEmpty) {
+        queryParams['name'] = name.trim();
+      }
+
       final response = await dio.get(
         ApiConstants.adminEmployees,
+        queryParameters: queryParams.isNotEmpty ? queryParams : null,
         options: Options(headers: headers),
       );
 

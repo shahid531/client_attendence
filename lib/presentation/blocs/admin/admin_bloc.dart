@@ -38,7 +38,9 @@ class AdminBloc extends Bloc<AdminEvent, AdminState> {
       locationsError: state.locationsError,
     ));
 
-    final result = await getEmployeesUseCase(NoParams());
+    final result = await getEmployeesUseCase(
+      GetEmployeesParams(name: event.name),
+    );
 
     result.fold(
       (failure) => emit(
