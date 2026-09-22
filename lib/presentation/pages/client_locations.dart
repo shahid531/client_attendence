@@ -6,6 +6,7 @@ import '../../domain/entities/client_location.dart';
 import '../blocs/admin/admin_bloc.dart';
 import '../blocs/admin/admin_event.dart';
 import '../blocs/admin/admin_state.dart';
+import '../widgets/location_picker_dialog.dart';
 import 'location_employees_page.dart';
 
 class ClientLocationsPage extends StatefulWidget {
@@ -18,6 +19,20 @@ class ClientLocationsPage extends StatefulWidget {
 class _ClientLocationsPageState extends State<ClientLocationsPage> {
   final TextEditingController _searchController = TextEditingController();
   ClientLocation? _selectedLocation;
+
+  Future<void> _openAddLocationPicker() async {
+    final result = await LocationPickerDialog.show(context);
+
+    if (result != null && mounted) {
+      context.read<AdminBloc>().add(const LoadLocationsEvent(isRefresh: true));
+      if (result.createdLocation != null) {
+        SnackbarHelper.showSuccess(
+          context,
+          'Location "${result.createdLocation!.locationName}" added successfully!',
+        );
+      }
+    }
+  }
 
   @override
   void initState() {
@@ -150,21 +165,43 @@ class _ClientLocationsPageState extends State<ClientLocationsPage> {
                       ],
                     ),
                   ),
-                  Container(
-                    padding: const EdgeInsets.symmetric(
-                      horizontal: 12,
-                      vertical: 6,
-                    ),
-                    decoration: BoxDecoration(
-                      color: const Color(0xFFE2E8F0),
-                      borderRadius: BorderRadius.circular(20),
-                    ),
-                    child: const Text(
-                      'Admin',
-                      style: TextStyle(
-                        fontSize: 12,
-                        color: Color(0xFF334155),
-                        fontWeight: FontWeight.w600,
+                  InkWell(
+                    onTap: _openAddLocationPicker,
+                    borderRadius: BorderRadius.circular(20),
+                    child: Container(
+                      padding: const EdgeInsets.symmetric(
+                        horizontal: 14,
+                        vertical: 8,
+                      ),
+                      decoration: BoxDecoration(
+                        color: AppColors.primaryNavy,
+                        borderRadius: BorderRadius.circular(20),
+                        boxShadow: [
+                          BoxShadow(
+                            color: AppColors.primaryNavy.withValues(alpha: 0.25),
+                            blurRadius: 6,
+                            offset: const Offset(0, 2),
+                          ),
+                        ],
+                      ),
+                      child: const Row(
+                        mainAxisSize: MainAxisSize.min,
+                        children: [
+                          Icon(
+                            Icons.add_location_alt_outlined,
+                            color: Colors.white,
+                            size: 16,
+                          ),
+                          SizedBox(width: 6),
+                          Text(
+                            'Add Location',
+                            style: TextStyle(
+                              fontSize: 12.5,
+                              color: Colors.white,
+                              fontWeight: FontWeight.bold,
+                            ),
+                          ),
+                        ],
                       ),
                     ),
                   ),
