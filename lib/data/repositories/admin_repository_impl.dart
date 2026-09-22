@@ -1,4 +1,6 @@
+import 'dart:io';
 import 'package:dartz/dartz.dart';
+import 'package:path_provider/path_provider.dart';
 import '../../core/errors/exceptions.dart';
 import '../../core/errors/failures.dart';
 import '../../domain/entities/client_location.dart';
@@ -88,6 +90,58 @@ class AdminRepositoryImpl implements AdminRepository {
         latitude: latitude,
         longitude: longitude,
         allowedRadius: allowedRadius,
+      );
+      return Right(result);
+    } on ServerException catch (e) {
+      return Left(ServerFailure(e.message));
+    } catch (e) {
+      return Left(ServerFailure(e.toString()));
+    }
+  }
+
+  @override
+  Future<Either<Failure, String>> downloadBulkUploadSample() async {
+    try {
+      final bytes = await remoteDataSource.downloadBulkUploadSample();
+
+      Directory? targetDir;
+      if (Platform.isAndroid) {
+        final androidDownload = Directory('/storage/emulated/0/Download');
+        if (await androidDownload.exists()) {
+          targetDir = androidDownload;
+        } else {
+          targetDir = await getExternalStorageDirectory();
+        }
+      } else if (Platform.isIOS) {
+        targetDir = await getApplicationDocumentsDirectory();
+      } else {
+        targetDir = await getDownloadsDirectory() ??
+            await getApplicationDocumentsDirectory();
+      }
+      targetDir ??= await getApplicationDocumentsDirectory();
+
+      final filePath = '${targetDir.path}/employees_sample_template.xlsx';
+      final file = File(filePath);
+      await file.writeAsBytes(bytes, flush: true);
+      return Right(filePath);
+    } on ServerException catch (e) {
+      return Left(ServerFailure(e.message));
+    } catch (e) {
+      return Left(ServerFailure(e.toString()));
+    }
+  }
+
+  @override
+  Future<Either<Failure, Map<String, dynamic>>> bulkUploadEmployees({
+    required String filePath,
+    required String fileName,
+    List<int>? fileBytes,
+  }) async {
+    try {
+      final result = await remoteDataSource.bulkUploadEmployees(
+        filePath: filePath,
+        fileName: fileName,
+        fileBytes: fileBytes,
       );
       return Right(result);
     } on ServerException catch (e) {

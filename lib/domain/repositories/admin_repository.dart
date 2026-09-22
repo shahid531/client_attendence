@@ -30,5 +30,13 @@ abstract class AdminRepository {
     required double longitude,
     required double allowedRadius,
   });
+
+  Future<Either<Failure, String>> downloadBulkUploadSample();
+
+  Future<Either<Failure, Map<String, dynamic>>> bulkUploadEmployees({
+    required String filePath,
+    required String fileName,
+    List<int>? fileBytes,
+  });
 }
 

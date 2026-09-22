@@ -261,3 +261,132 @@ class CreateLocationFailureState extends AdminState {
       ];
 }
 
+class BulkSampleDownloadLoadingState extends AdminState {
+  const BulkSampleDownloadLoadingState({
+    super.employees,
+    super.isLoadingEmployees,
+    super.employeesError,
+    super.locations,
+    super.isLoadingLocations,
+    super.locationsError,
+  });
+}
+
+class BulkSampleDownloadSuccessState extends AdminState {
+  final String filePath;
+  final String message;
+
+  const BulkSampleDownloadSuccessState({
+    required this.filePath,
+    this.message = 'Sample file downloaded successfully',
+    super.employees,
+    super.isLoadingEmployees,
+    super.employeesError,
+    super.locations,
+    super.isLoadingLocations,
+    super.locationsError,
+  });
+
+  @override
+  List<Object?> get props => [
+        filePath,
+        message,
+        employees,
+        isLoadingEmployees,
+        employeesError,
+        locations,
+        isLoadingLocations,
+        locationsError,
+      ];
+}
+
+class BulkSampleDownloadFailureState extends AdminState {
+  final String message;
+
+  const BulkSampleDownloadFailureState(
+    this.message, {
+    super.employees,
+    super.isLoadingEmployees,
+    super.employeesError,
+    super.locations,
+    super.isLoadingLocations,
+    super.locationsError,
+  });
+
+  @override
+  List<Object?> get props => [
+        message,
+        employees,
+        isLoadingEmployees,
+        employeesError,
+        locations,
+        isLoadingLocations,
+        locationsError,
+      ];
+}
+
+class BulkUploadLoadingState extends AdminState {
+  const BulkUploadLoadingState({
+    super.employees,
+    super.isLoadingEmployees,
+    super.employeesError,
+    super.locations,
+    super.isLoadingLocations,
+    super.locationsError,
+  });
+}
+
+class BulkUploadSuccessState extends AdminState {
+  final String message;
+  final Map<String, dynamic>? data;
+
+  const BulkUploadSuccessState({
+    this.message = 'Employees uploaded successfully',
+    this.data,
+    super.employees,
+    super.isLoadingEmployees,
+    super.employeesError,
+    super.locations,
+    super.isLoadingLocations,
+    super.locationsError,
+  });
+
+  @override
+  List<Object?> get props => [
+        message,
+        data,
+        employees,
+        isLoadingEmployees,
+        employeesError,
+        locations,
+        isLoadingLocations,
+        locationsError,
+      ];
+}
+
+class BulkUploadFailureState extends AdminState {
+  final String message;
+
+  const BulkUploadFailureState(
+    this.message, {
+    super.employees,
+    super.isLoadingEmployees,
+    super.employeesError,
+    super.locations,
+    super.isLoadingLocations,
+    super.locationsError,
+  });
+
+  @override
+  List<Object?> get props => [
+        message,
+        employees,
+        isLoadingEmployees,
+        employeesError,
+        locations,
+        isLoadingLocations,
+        locationsError,
+      ];
+}
+
+

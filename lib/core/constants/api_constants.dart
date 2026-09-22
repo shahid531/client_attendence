@@ -33,6 +33,8 @@ class ApiConstants {
 
   // Admin Endpoints
   static const String adminEmployees = '$baseUrl/admin/employees';
+  static const String adminBulkUpload = '$baseUrl/admin/employees/bulk-upload';
+  static const String adminBulkUploadSample = '$baseUrl/admin/employees/bulk-upload/sample';
   static const String adminLocations = '$baseUrl/admin/locations';
 
   // App Version / Force Update Endpoints

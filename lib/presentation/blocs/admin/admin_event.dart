@@ -98,3 +98,26 @@ class CreateLocationSubmittedEvent extends AdminEvent {
       ];
 }
 
+class DownloadBulkSampleEvent extends AdminEvent {
+  const DownloadBulkSampleEvent();
+}
+
+class BulkUploadEmployeesEvent extends AdminEvent {
+  final String filePath;
+  final String fileName;
+  final List<int>? fileBytes;
+
+  const BulkUploadEmployeesEvent({
+    required this.filePath,
+    required this.fileName,
+    this.fileBytes,
+  });
+
+  @override
+  List<Object?> get props => [filePath, fileName, fileBytes];
+}
+
+class ResetBulkUploadStateEvent extends AdminEvent {
+  const ResetBulkUploadStateEvent();
+}
+

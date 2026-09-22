@@ -19,8 +19,10 @@ import '../../domain/repositories/attendance_repository.dart';
 import '../../domain/repositories/auth_repository.dart';
 import '../../domain/repositories/dashboard_repository.dart';
 import '../../domain/repositories/leave_repository.dart';
+import '../../domain/usecases/admin/bulk_upload_employees_usecase.dart';
 import '../../domain/usecases/admin/create_employee_usecase.dart';
 import '../../domain/usecases/admin/create_location_usecase.dart';
+import '../../domain/usecases/admin/download_bulk_upload_sample_usecase.dart';
 import '../../domain/usecases/admin/get_employees_usecase.dart';
 import '../../domain/usecases/admin/get_locations_usecase.dart';
 import '../../domain/usecases/app_config/check_app_version_usecase.dart';
@@ -166,6 +168,8 @@ Future<void> initServiceLocator() async {
   sl.registerLazySingleton(() => CreateLocationUseCase(sl()));
   sl.registerLazySingleton(() => GetEmployeesUseCase(sl()));
   sl.registerLazySingleton(() => GetLocationsUseCase(sl()));
+  sl.registerLazySingleton(() => DownloadBulkUploadSampleUseCase(sl()));
+  sl.registerLazySingleton(() => BulkUploadEmployeesUseCase(sl()));
   sl.registerLazySingleton(() => CheckAppVersionUseCase(sl()));
 
   //! Blocs
@@ -209,6 +213,8 @@ Future<void> initServiceLocator() async {
       createLocationUseCase: sl(),
       getEmployeesUseCase: sl(),
       getLocationsUseCase: sl(),
+      downloadBulkUploadSampleUseCase: sl(),
+      bulkUploadEmployeesUseCase: sl(),
     ),
   );
   sl.registerFactory(

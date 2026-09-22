@@ -33,6 +33,14 @@ abstract class AdminRemoteDataSource {
     required double longitude,
     required double allowedRadius,
   });
+
+  Future<List<int>> downloadBulkUploadSample();
+
+  Future<Map<String, dynamic>> bulkUploadEmployees({
+    required String filePath,
+    required String fileName,
+    List<int>? fileBytes,
+  });
 }
 
 class AdminRemoteDataSourceImpl implements AdminRemoteDataSource {
@@ -259,6 +267,106 @@ class AdminRemoteDataSourceImpl implements AdminRemoteDataSource {
       throw const ServerException('Invalid response format from server');
     } on DioException catch (e) {
       throw ErrorHandler.handleDioError(e, fallbackMessage: 'Failed to create location. Please try again.');
+    } catch (e) {
+      if (e is ServerException) rethrow;
+      throw ServerException(e.toString());
+    }
+  }
+
+  @override
+  Future<List<int>> downloadBulkUploadSample() async {
+    try {
+      final cachedToken = sharedPreferences.getString('auth_bearer_token');
+
+      final headers = <String, String>{
+        'Accept': '*/*',
+        'ngrok-skip-browser-warning': 'true',
+      };
+      if (cachedToken != null && cachedToken.isNotEmpty) {
+        headers['Authorization'] = 'Bearer $cachedToken';
+      }
+
+      final response = await dio.get<List<int>>(
+        ApiConstants.adminBulkUploadSample,
+        options: Options(
+          headers: headers,
+          responseType: ResponseType.bytes,
+        ),
+      );
+
+      if (response.data != null) {
+        return response.data!;
+      }
+
+      throw const ServerException('Failed to download sample file: empty response');
+    } on DioException catch (e) {
+      throw ErrorHandler.handleDioError(
+        e,
+        fallbackMessage: 'Failed to download sample file. Please try again.',
+      );
+    } catch (e) {
+      if (e is ServerException) rethrow;
+      throw ServerException(e.toString());
+    }
+  }
+
+  @override
+  Future<Map<String, dynamic>> bulkUploadEmployees({
+    required String filePath,
+    required String fileName,
+    List<int>? fileBytes,
+  }) async {
+    try {
+      final cachedToken = sharedPreferences.getString('auth_bearer_token');
+
+      final headers = <String, String>{
+        'Accept': '*/*',
+        'ngrok-skip-browser-warning': 'true',
+      };
+      if (cachedToken != null && cachedToken.isNotEmpty) {
+        headers['Authorization'] = 'Bearer $cachedToken';
+      }
+
+      MultipartFile multipartFile;
+      if (fileBytes != null && fileBytes.isNotEmpty) {
+        multipartFile = MultipartFile.fromBytes(
+          fileBytes,
+          filename: fileName,
+        );
+      } else {
+        multipartFile = await MultipartFile.fromFile(
+          filePath,
+          filename: fileName,
+        );
+      }
+
+      final formData = FormData.fromMap({
+        'file': multipartFile,
+      });
+
+      final response = await dio.post(
+        ApiConstants.adminBulkUpload,
+        data: formData,
+        options: Options(
+          headers: headers,
+          contentType: 'multipart/form-data',
+        ),
+      );
+
+      final data = response.data;
+      if (data is Map<String, dynamic>) {
+        if (data['success'] == false) {
+          throw ServerException(data['message'] ?? 'Bulk upload failed');
+        }
+        return data;
+      }
+
+      return {'success': true, 'message': 'Employees uploaded successfully'};
+    } on DioException catch (e) {
+      throw ErrorHandler.handleDioError(
+        e,
+        fallbackMessage: 'Failed to upload employees file. Please try again.',
+      );
     } catch (e) {
       if (e is ServerException) rethrow;
       throw ServerException(e.toString());
