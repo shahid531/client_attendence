@@ -11,10 +11,12 @@ import '../blocs/auth/auth_state.dart';
 
 class LocationEmployeesPage extends StatefulWidget {
   final ClientLocation location;
+  final VoidCallback? onBack;
 
   const LocationEmployeesPage({
     super.key,
     required this.location,
+    this.onBack,
   });
 
   @override
@@ -252,70 +254,62 @@ class _LocationEmployeesPageState extends State<LocationEmployeesPage> {
         ? widget.location.clientName!
         : widget.location.locationName;
 
-    return Scaffold(
-      backgroundColor: AppColors.backgroundLight,
-      appBar: AppBar(
-        backgroundColor: AppColors.primaryNavy,
-        elevation: 0,
-        scrolledUnderElevation: 1,
-        centerTitle: false,
-        titleSpacing: 0,
-        leading: IconButton(
-          icon: const Icon(
-            Icons.arrow_back_ios_new_rounded,
-            color: Colors.white,
-            size: 20,
-          ),
-          onPressed: () => Navigator.of(context).pop(),
-        ),
-        title: Image.asset(
-          'assets/images/idealake_logo.png',
-          height: 28,
-          fit: BoxFit.contain,
-          color: Colors.white,
-          colorBlendMode: BlendMode.srcIn,
-        ),
-        actions: [
-          BlocBuilder<AuthBloc, AuthState>(
-            buildWhen: (previous, current) => current is AuthenticatedState,
-            builder: (context, authState) {
-              final user =
-                  (authState is AuthenticatedState) ? authState.user : null;
-              final userName = user?.name.trim() ?? 'User';
-              return Padding(
-                padding: const EdgeInsets.only(right: 16.0),
-                child: Center(
-                  child: Text(
-                    'Hi, $userName',
-                    style: const TextStyle(
-                      color: Colors.white,
-                      fontSize: 14,
-                      fontWeight: FontWeight.w600,
-                    ),
+    Widget content = RefreshIndicator(
+      onRefresh: () async {
+        final query = _searchController.text.trim();
+        context.read<AdminBloc>().add(
+              LoadEmployeesEvent(
+                isRefresh: true,
+                name: query.isNotEmpty ? query : null,
+              ),
+            );
+      },
+      child: SingleChildScrollView(
+        physics: const AlwaysScrollableScrollPhysics(),
+        padding: const EdgeInsets.all(16.0),
+        child: Column(
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: [
+            // Back Button Row (when embedded inside tab)
+            if (widget.onBack != null) ...[
+              InkWell(
+                onTap: widget.onBack,
+                borderRadius: BorderRadius.circular(8),
+                child: Container(
+                  padding: const EdgeInsets.symmetric(
+                    horizontal: 10,
+                    vertical: 6,
+                  ),
+                  decoration: BoxDecoration(
+                    color: Colors.white,
+                    borderRadius: BorderRadius.circular(8),
+                    border: Border.all(color: const Color(0xFFCBD5E1)),
+                  ),
+                  child: Row(
+                    mainAxisSize: MainAxisSize.min,
+                    children: const [
+                      Icon(
+                        Icons.arrow_back_ios_new_rounded,
+                        size: 13,
+                        color: AppColors.primaryNavy,
+                      ),
+                      SizedBox(width: 6),
+                      Text(
+                        'Back to Locations',
+                        style: TextStyle(
+                          color: AppColors.primaryNavy,
+                          fontWeight: FontWeight.bold,
+                          fontSize: 13,
+                        ),
+                      ),
+                    ],
                   ),
                 ),
-              );
-            },
-          ),
-        ],
-      ),
-      body: RefreshIndicator(
-        onRefresh: () async {
-          final query = _searchController.text.trim();
-          context.read<AdminBloc>().add(
-                LoadEmployeesEvent(
-                  isRefresh: true,
-                  name: query.isNotEmpty ? query : null,
-                ),
-              );
-        },
-        child: SingleChildScrollView(
-          physics: const AlwaysScrollableScrollPhysics(),
-          padding: const EdgeInsets.all(16.0),
-          child: Column(
-            crossAxisAlignment: CrossAxisAlignment.start,
-            children: [
-              // Location Info Summary Header
+              ),
+              const SizedBox(height: 14),
+            ],
+
+            // Location Info Summary Header
               Container(
                 width: double.infinity,
                 padding: const EdgeInsets.all(16),
@@ -472,7 +466,60 @@ class _LocationEmployeesPageState extends State<LocationEmployeesPage> {
             ],
           ),
         ),
+      );
+
+    if (widget.onBack != null) {
+      return content;
+    }
+
+    return Scaffold(
+      backgroundColor: AppColors.backgroundLight,
+      appBar: AppBar(
+        backgroundColor: AppColors.primaryNavy,
+        elevation: 0,
+        scrolledUnderElevation: 1,
+        centerTitle: false,
+        titleSpacing: 0,
+        leading: IconButton(
+          icon: const Icon(
+            Icons.arrow_back_ios_new_rounded,
+            color: Colors.white,
+            size: 20,
+          ),
+          onPressed: () => Navigator.of(context).pop(),
+        ),
+        title: Image.asset(
+          'assets/images/idealake_logo.png',
+          height: 28,
+          fit: BoxFit.contain,
+          color: Colors.white,
+          colorBlendMode: BlendMode.srcIn,
+        ),
+        actions: [
+          BlocBuilder<AuthBloc, AuthState>(
+            buildWhen: (previous, current) => current is AuthenticatedState,
+            builder: (context, authState) {
+              final user =
+                  (authState is AuthenticatedState) ? authState.user : null;
+              final userName = user?.name.trim() ?? 'User';
+              return Padding(
+                padding: const EdgeInsets.only(right: 16.0),
+                child: Center(
+                  child: Text(
+                    'Hi, $userName',
+                    style: const TextStyle(
+                      color: Colors.white,
+                      fontSize: 14,
+                      fontWeight: FontWeight.w600,
+                    ),
+                  ),
+                ),
+              );
+            },
+          ),
+        ],
       ),
+      body: content,
     );
   }
 

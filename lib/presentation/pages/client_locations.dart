@@ -17,6 +17,7 @@ class ClientLocationsPage extends StatefulWidget {
 
 class _ClientLocationsPageState extends State<ClientLocationsPage> {
   final TextEditingController _searchController = TextEditingController();
+  ClientLocation? _selectedLocation;
 
   @override
   void initState() {
@@ -71,16 +72,34 @@ class _ClientLocationsPageState extends State<ClientLocationsPage> {
   }
 
   void _navigateToLocationEmployees(ClientLocation loc) {
-    Navigator.push(
-      context,
-      MaterialPageRoute(
-        builder: (_) => LocationEmployeesPage(location: loc),
-      ),
-    );
+    setState(() {
+      _selectedLocation = loc;
+    });
   }
 
   @override
   Widget build(BuildContext context) {
+    if (_selectedLocation != null) {
+      return PopScope(
+        canPop: false,
+        onPopInvokedWithResult: (didPop, result) {
+          if (!didPop) {
+            setState(() {
+              _selectedLocation = null;
+            });
+          }
+        },
+        child: LocationEmployeesPage(
+          location: _selectedLocation!,
+          onBack: () {
+            setState(() {
+              _selectedLocation = null;
+            });
+          },
+        ),
+      );
+    }
+
     const primaryNavy = AppColors.primaryNavy;
 
     return Scaffold(
