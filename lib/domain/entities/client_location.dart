@@ -7,7 +7,6 @@ class ClientLocation extends Equatable {
   final String? city;
   final String locationName;
   final String? address;
-  final String? city;
   final double? latitude;
   final double? longitude;
   final double? allowedRadius;
@@ -22,7 +21,6 @@ class ClientLocation extends Equatable {
     this.city,
     required this.locationName,
     this.address,
-    this.city,
     this.latitude,
     this.longitude,
     this.allowedRadius,
