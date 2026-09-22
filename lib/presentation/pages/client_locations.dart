@@ -17,7 +17,6 @@ class ClientLocationsPage extends StatefulWidget {
 
 class _ClientLocationsPageState extends State<ClientLocationsPage> {
   final TextEditingController _searchController = TextEditingController();
-  String _searchQuery = '';
 
   @override
   void initState() {
@@ -34,35 +33,21 @@ class _ClientLocationsPageState extends State<ClientLocationsPage> {
     super.dispose();
   }
 
-  void _onSearchChanged(String query) {
-    setState(() {
-      _searchQuery = query.trim().toLowerCase();
-    });
+  void _performSearch() {
+    FocusScope.of(context).unfocus();
+    final query = _searchController.text.trim();
+    context.read<AdminBloc>().add(
+          LoadLocationsEvent(
+            clientName: query.isNotEmpty ? query : null,
+          ),
+        );
   }
 
   void _clearSearch() {
     _searchController.clear();
-    setState(() {
-      _searchQuery = '';
-    });
-  }
-
-  List<ClientLocation> _filterLocations(List<ClientLocation> locations) {
-    if (_searchQuery.isEmpty) return locations;
-
-    return locations.where((loc) {
-      final clientName = (loc.clientName ?? '').toLowerCase();
-      final city = (loc.city ?? '').toLowerCase();
-      final locationName = loc.locationName.toLowerCase();
-      final address = (loc.address ?? '').toLowerCase();
-      final locationId = loc.locationId.toLowerCase();
-
-      return clientName.contains(_searchQuery) ||
-          city.contains(_searchQuery) ||
-          locationName.contains(_searchQuery) ||
-          address.contains(_searchQuery) ||
-          locationId.contains(_searchQuery);
-    }).toList();
+    FocusScope.of(context).unfocus();
+    setState(() {});
+    context.read<AdminBloc>().add(const LoadLocationsEvent());
   }
 
   String _getCityDisplay(ClientLocation loc) {
@@ -102,7 +87,13 @@ class _ClientLocationsPageState extends State<ClientLocationsPage> {
       backgroundColor: AppColors.backgroundLight,
       body: RefreshIndicator(
         onRefresh: () async {
-          context.read<AdminBloc>().add(const LoadLocationsEvent(isRefresh: true));
+          final query = _searchController.text.trim();
+          context.read<AdminBloc>().add(
+                LoadLocationsEvent(
+                  isRefresh: true,
+                  clientName: query.isNotEmpty ? query : null,
+                ),
+              );
           context.read<AdminBloc>().add(const LoadEmployeesEvent(isRefresh: true));
         },
         child: SingleChildScrollView(
@@ -162,8 +153,8 @@ class _ClientLocationsPageState extends State<ClientLocationsPage> {
               ),
               const SizedBox(height: 16),
 
-              // Search Bar
-              _buildSearchBar(),
+              // Search Bar & Search Button
+              _buildSearchBar(primaryNavy),
               const SizedBox(height: 16),
 
               // BLoC Consumer for Locations List
@@ -228,9 +219,13 @@ class _ClientLocationsPageState extends State<ClientLocationsPage> {
                             alignment: Alignment.centerRight,
                             child: TextButton(
                               onPressed: () {
-                                context
-                                    .read<AdminBloc>()
-                                    .add(const LoadLocationsEvent(isRefresh: true));
+                                final query = _searchController.text.trim();
+                                context.read<AdminBloc>().add(
+                                      LoadLocationsEvent(
+                                        isRefresh: true,
+                                        clientName: query.isNotEmpty ? query : null,
+                                      ),
+                                    );
                               },
                               child: const Text(
                                 'Retry',
@@ -246,9 +241,10 @@ class _ClientLocationsPageState extends State<ClientLocationsPage> {
                     );
                   }
 
-                  final filtered = _filterLocations(state.locations);
+                  final locations = state.locations;
 
-                  if (filtered.isEmpty) {
+                  if (locations.isEmpty) {
+                    final searchQuery = _searchController.text.trim();
                     return Container(
                       width: double.infinity,
                       padding: const EdgeInsets.symmetric(
@@ -268,8 +264,8 @@ class _ClientLocationsPageState extends State<ClientLocationsPage> {
                           ),
                           const SizedBox(height: 12),
                           Text(
-                            _searchQuery.isNotEmpty
-                                ? 'No locations matching "$_searchQuery"'
+                            searchQuery.isNotEmpty
+                                ? 'No locations matching "$searchQuery"'
                                 : 'No client locations found',
                             textAlign: TextAlign.center,
                             style: const TextStyle(
@@ -280,7 +276,7 @@ class _ClientLocationsPageState extends State<ClientLocationsPage> {
                           ),
                           const SizedBox(height: 6),
                           Text(
-                            _searchQuery.isNotEmpty
+                            searchQuery.isNotEmpty
                                 ? 'Try searching by a different client name or city'
                                 : 'Tap "Add Location" to register a new client site.',
                             textAlign: TextAlign.center,
@@ -304,7 +300,7 @@ class _ClientLocationsPageState extends State<ClientLocationsPage> {
                           mainAxisAlignment: MainAxisAlignment.spaceBetween,
                           children: [
                             Text(
-                              'Showing ${filtered.length} ${filtered.length == 1 ? "Location" : "Locations"}',
+                              'Showing ${locations.length} ${locations.length == 1 ? "Location" : "Locations"}',
                               style: const TextStyle(
                                 fontSize: 13,
                                 fontWeight: FontWeight.w600,
@@ -327,7 +323,7 @@ class _ClientLocationsPageState extends State<ClientLocationsPage> {
                       ),
 
                       // Location Cards List
-                      ...filtered.map((loc) => _buildLocationCard(loc, primaryNavy)),
+                      ...locations.map((loc) => _buildLocationCard(loc, primaryNavy)),
                       const SizedBox(height: 60), // Spacing for FAB
                     ],
                   );
@@ -340,47 +336,78 @@ class _ClientLocationsPageState extends State<ClientLocationsPage> {
     );
   }
 
-  Widget _buildSearchBar() {
-    return Container(
-      decoration: BoxDecoration(
-        color: Colors.white,
-        borderRadius: BorderRadius.circular(12),
-        border: Border.all(color: AppColors.borderGrey),
-        boxShadow: [
-          BoxShadow(
-            color: Colors.black.withValues(alpha: 0.02),
-            blurRadius: 6,
-            offset: const Offset(0, 2),
+  Widget _buildSearchBar(Color primaryNavy) {
+    return Column(
+      crossAxisAlignment: CrossAxisAlignment.stretch,
+      children: [
+        Container(
+          decoration: BoxDecoration(
+            color: Colors.white,
+            borderRadius: BorderRadius.circular(12),
+            border: Border.all(color: AppColors.borderGrey),
+            boxShadow: [
+              BoxShadow(
+                color: Colors.black.withValues(alpha: 0.02),
+                blurRadius: 6,
+                offset: const Offset(0, 2),
+              ),
+            ],
           ),
-        ],
-      ),
-      child: TextField(
-        controller: _searchController,
-        onChanged: _onSearchChanged,
-        decoration: InputDecoration(
-          hintText: 'Search by Client Name or City...',
-          hintStyle: const TextStyle(
-            color: AppColors.textLight,
-            fontSize: 13,
-          ),
-          prefixIcon: const Icon(
-            Icons.search_rounded,
-            color: AppColors.textMuted,
-            size: 20,
-          ),
-          suffixIcon: _searchController.text.isNotEmpty
-              ? IconButton(
-                  icon: const Icon(Icons.clear_rounded, size: 18),
-                  onPressed: _clearSearch,
-                )
-              : null,
-          border: InputBorder.none,
-          contentPadding: const EdgeInsets.symmetric(
-            vertical: 12,
-            horizontal: 14,
+          child: TextField(
+            controller: _searchController,
+            onChanged: (val) => setState(() {}),
+            onSubmitted: (_) => _performSearch(),
+            textInputAction: TextInputAction.search,
+            decoration: InputDecoration(
+              hintText: 'Search by Client Name or City...',
+              hintStyle: const TextStyle(
+                color: AppColors.textLight,
+                fontSize: 13,
+              ),
+              prefixIcon: const Icon(
+                Icons.search_rounded,
+                color: AppColors.textMuted,
+                size: 20,
+              ),
+              suffixIcon: _searchController.text.isNotEmpty
+                  ? IconButton(
+                      icon: const Icon(Icons.clear_rounded, size: 18),
+                      onPressed: _clearSearch,
+                    )
+                  : null,
+              border: InputBorder.none,
+              contentPadding: const EdgeInsets.symmetric(
+                vertical: 12,
+                horizontal: 14,
+              ),
+            ),
           ),
         ),
-      ),
+        const SizedBox(height: 10),
+        SizedBox(
+          width: double.infinity,
+          height: 42,
+          child: ElevatedButton.icon(
+            onPressed: _performSearch,
+            icon: const Icon(Icons.search_rounded, size: 18, color: Colors.white),
+            label: const Text(
+              'Search',
+              style: TextStyle(
+                color: Colors.white,
+                fontWeight: FontWeight.bold,
+                fontSize: 14,
+              ),
+            ),
+            style: ElevatedButton.styleFrom(
+              backgroundColor: primaryNavy,
+              elevation: 0,
+              shape: RoundedRectangleBorder(
+                borderRadius: BorderRadius.circular(8),
+              ),
+            ),
+          ),
+        ),
+      ],
     );
   }
 

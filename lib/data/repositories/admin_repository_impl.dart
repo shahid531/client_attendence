@@ -58,9 +58,15 @@ class AdminRepositoryImpl implements AdminRepository {
   }
 
   @override
-  Future<Either<Failure, List<ClientLocation>>> getLocations() async {
+  Future<Either<Failure, List<ClientLocation>>> getLocations({
+    String? clientName,
+    String? city,
+  }) async {
     try {
-      final result = await remoteDataSource.getLocations();
+      final result = await remoteDataSource.getLocations(
+        clientName: clientName,
+        city: city,
+      );
       return Right(result);
     } on ServerException catch (e) {
       return Left(ServerFailure(e.message));

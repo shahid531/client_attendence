@@ -74,7 +74,12 @@ class AdminBloc extends Bloc<AdminEvent, AdminState> {
       locations: state.locations,
     ));
 
-    final result = await getLocationsUseCase(NoParams());
+    final result = await getLocationsUseCase(
+      GetLocationsParams(
+        clientName: event.clientName,
+        city: event.city,
+      ),
+    );
 
     result.fold(
       (failure) => emit(
