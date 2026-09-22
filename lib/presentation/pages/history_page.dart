@@ -1339,6 +1339,22 @@ class _HistoryPageState extends State<HistoryPage> {
             ),
           ],
         );
+      } else if (_isAdmin) {
+        // For Admin viewing employee records, regularization is disabled
+        customOutWidget = const Row(
+          children: [
+            Icon(Icons.logout_rounded, size: 16, color: Color(0xFF64748B)),
+            SizedBox(width: 4),
+            Text(
+              '--:--',
+              style: TextStyle(
+                fontSize: 13,
+                fontWeight: FontWeight.w500,
+                color: Color(0xFF1E293B),
+              ),
+            ),
+          ],
+        );
       } else {
         // Check if within 48 working hours (excluding Sat & Sun)
         final isEligible = _isEligibleForRegularization(record.date);
@@ -1687,6 +1703,8 @@ class _HistoryPageState extends State<HistoryPage> {
   }
 
   bool _isEligibleForRegularization(DateTime recordDate) {
+    if (_isAdmin) return false;
+
     final now = DateTime.now();
     // If record date is today or in future, no regularization needed
     final today = DateTime(now.year, now.month, now.day);
@@ -1718,6 +1736,8 @@ class _HistoryPageState extends State<HistoryPage> {
 
   void _showRegularizationModal(
       BuildContext parentContext, AttendanceRecord record) {
+    if (_isAdmin) return;
+
     final dateStr = DateFormat('MMM dd, yyyy').format(record.date);
     TimeOfDay? selectedOutTime;
     String? selectedReasonOption;
