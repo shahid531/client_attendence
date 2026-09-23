@@ -21,6 +21,8 @@ class MainNavigationPage extends StatefulWidget {
 class _MainNavigationPageState extends State<MainNavigationPage> {
   int _currentIndex = 0;
   final Set<int> _loadedIndices = {0};
+  final GlobalKey<ClientLocationsPageState> _clientLocationsPageKey =
+      GlobalKey<ClientLocationsPageState>();
   final GlobalKey<ApprovalsScreenState> _approvalsScreenKey =
       GlobalKey<ApprovalsScreenState>();
   final GlobalKey<RequestPageState> _requestPageKey =
@@ -48,12 +50,15 @@ class _MainNavigationPageState extends State<MainNavigationPage> {
           ),
           if (isAdmin)
             _NavTabItem(
-              page: const ClientLocationsPage(),
+              page: ClientLocationsPage(key: _clientLocationsPageKey),
               barItem: const BottomNavigationBarItem(
                 icon: Icon(Icons.location_on_outlined),
                 activeIcon: Icon(Icons.location_on),
                 label: 'Location',
               ),
+              onSelected: () {
+                _clientLocationsPageKey.currentState?.resetToLocationsList();
+              },
             ),
           if (isRM || isAdmin)
             _NavTabItem(
