@@ -125,22 +125,26 @@ class _LocationEmployeesPageState extends State<LocationEmployeesPage> {
   Widget build(BuildContext context) {
     const primaryNavy = AppColors.primaryNavy;
 
-    Widget content = RefreshIndicator(
-      onRefresh: () async {
-        final query = _searchController.text.trim();
-        context.read<AdminBloc>().add(
-              LoadEmployeesEvent(
-                isRefresh: true,
-                name: query.isNotEmpty ? query : null,
-              ),
-            );
-      },
-      child: SingleChildScrollView(
-        physics: const AlwaysScrollableScrollPhysics(),
-        padding: const EdgeInsets.all(16.0),
-        child: Column(
-          crossAxisAlignment: CrossAxisAlignment.start,
-          children: [
+    Widget content = GestureDetector(
+      behavior: HitTestBehavior.opaque,
+      onTap: () => FocusScope.of(context).unfocus(),
+      child: RefreshIndicator(
+        onRefresh: () async {
+          final query = _searchController.text.trim();
+          context.read<AdminBloc>().add(
+                LoadEmployeesEvent(
+                  isRefresh: true,
+                  name: query.isNotEmpty ? query : null,
+                ),
+              );
+        },
+        child: SingleChildScrollView(
+          physics: const AlwaysScrollableScrollPhysics(),
+          keyboardDismissBehavior: ScrollViewKeyboardDismissBehavior.onDrag,
+          padding: const EdgeInsets.all(16.0),
+          child: Column(
+            crossAxisAlignment: CrossAxisAlignment.start,
+            children: [
             // Back Button Row (when embedded inside tab)
             if (widget.onBack != null) ...[
               InkWell(
@@ -394,7 +398,8 @@ class _LocationEmployeesPageState extends State<LocationEmployeesPage> {
             ],
           ),
         ),
-      );
+      ),
+    );
 
     if (widget.onBack != null) {
       return content;
@@ -836,13 +841,18 @@ class _UpdateLocationSheetState extends State<_UpdateLocationSheet> {
 
                   // Scrollable Form Body
                   Expanded(
-                    child: SingleChildScrollView(
-                      padding: const EdgeInsets.all(20.0),
-                      child: Form(
-                        key: _formKey,
-                        child: Column(
-                          crossAxisAlignment: CrossAxisAlignment.start,
-                          children: [
+                    child: GestureDetector(
+                      behavior: HitTestBehavior.opaque,
+                      onTap: () => FocusScope.of(context).unfocus(),
+                      child: SingleChildScrollView(
+                        keyboardDismissBehavior:
+                            ScrollViewKeyboardDismissBehavior.onDrag,
+                        padding: const EdgeInsets.all(20.0),
+                        child: Form(
+                          key: _formKey,
+                          child: Column(
+                            crossAxisAlignment: CrossAxisAlignment.start,
+                            children: [
                             // Pick on Google Map Action Banner
                             InkWell(
                               onTap: isLoading ? null : _pickOnGoogleMap,
@@ -1098,6 +1108,7 @@ class _UpdateLocationSheetState extends State<_UpdateLocationSheet> {
                       ),
                     ),
                   ),
+                ),
 
                   // Bottom Action Button
                   SafeArea(
@@ -1527,117 +1538,122 @@ class _UpdateEmployeeDialogState extends State<_UpdateEmployeeDialog> {
             final isSaving = state is UpdateEmployeeLoadingState;
             final isFieldEnabled = _isEditing && !isSaving;
 
-            return Column(
-              mainAxisSize: MainAxisSize.min,
-              children: [
-                // Dialog Header
-                Container(
-                  padding: const EdgeInsets.fromLTRB(20, 18, 14, 16),
-                  decoration: const BoxDecoration(
-                    color: Colors.white,
-                    border: Border(
-                      bottom: BorderSide(color: Color(0xFFE2E8F0)),
-                    ),
-                  ),
-                  child: Row(
-                    children: [
-                      CircleAvatar(
-                        radius: 20,
-                        backgroundColor:
-                            AppColors.primaryNavy.withValues(alpha: 0.1),
-                        child: Text(
-                          widget.employee.fullName.isNotEmpty
-                              ? widget.employee.fullName
-                                  .substring(0, 1)
-                                  .toUpperCase()
-                              : 'E',
-                          style: const TextStyle(
-                            color: AppColors.primaryNavy,
-                            fontWeight: FontWeight.bold,
-                            fontSize: 16,
-                          ),
-                        ),
-                      ),
-                      const SizedBox(width: 12),
-                      Expanded(
-                        child: Column(
-                          crossAxisAlignment: CrossAxisAlignment.start,
-                          children: [
-                            Text(
-                              _isEditing
-                                  ? 'Edit Employee Details'
-                                  : 'Employee Details',
-                              style: const TextStyle(
-                                fontSize: 16,
-                                fontWeight: FontWeight.bold,
-                                color: Color(0xFF0F172A),
-                              ),
-                            ),
-                            const SizedBox(height: 2),
-                            Text(
-                              'ID: ${widget.employee.employeeId}',
-                              style: const TextStyle(
-                                fontSize: 12,
-                                color: Color(0xFF64748B),
-                                fontWeight: FontWeight.w500,
-                              ),
-                            ),
-                          ],
-                        ),
-                      ),
-                      IconButton(
-                        onPressed: () => Navigator.of(context).pop(),
-                        icon: const Icon(
-                          Icons.close_rounded,
-                          color: Color(0xFF64748B),
-                          size: 22,
-                        ),
-                        splashRadius: 20,
-                      ),
-                    ],
-                  ),
-                ),
-
-                // Inline Error Banner (Visible when API fails)
-                if (_errorMessage != null && _errorMessage!.isNotEmpty)
+            return GestureDetector(
+              behavior: HitTestBehavior.opaque,
+              onTap: () => FocusScope.of(context).unfocus(),
+              child: Column(
+                mainAxisSize: MainAxisSize.min,
+                children: [
+                  // Dialog Header
                   Container(
-                    margin: const EdgeInsets.fromLTRB(20, 14, 20, 0),
-                    padding: const EdgeInsets.symmetric(
-                      horizontal: 14,
-                      vertical: 10,
-                    ),
-                    decoration: BoxDecoration(
-                      color: const Color(0xFFFEF2F2),
-                      borderRadius: BorderRadius.circular(10),
-                      border: Border.all(color: const Color(0xFFFECACA)),
+                    padding: const EdgeInsets.fromLTRB(20, 18, 14, 16),
+                    decoration: const BoxDecoration(
+                      color: Colors.white,
+                      border: Border(
+                        bottom: BorderSide(color: Color(0xFFE2E8F0)),
+                      ),
                     ),
                     child: Row(
-                      crossAxisAlignment: CrossAxisAlignment.start,
                       children: [
-                        const Icon(
-                          Icons.error_outline_rounded,
-                          color: AppColors.dangerRose,
-                          size: 18,
-                        ),
-                        const SizedBox(width: 8),
-                        Expanded(
+                        CircleAvatar(
+                          radius: 20,
+                          backgroundColor:
+                              AppColors.primaryNavy.withValues(alpha: 0.1),
                           child: Text(
-                            _errorMessage!,
+                            widget.employee.fullName.isNotEmpty
+                                ? widget.employee.fullName
+                                    .substring(0, 1)
+                                    .toUpperCase()
+                                : 'E',
                             style: const TextStyle(
-                              color: Color(0xFF991B1B),
-                              fontSize: 12.5,
-                              fontWeight: FontWeight.w600,
+                              color: AppColors.primaryNavy,
+                              fontWeight: FontWeight.bold,
+                              fontSize: 16,
                             ),
                           ),
+                        ),
+                        const SizedBox(width: 12),
+                        Expanded(
+                          child: Column(
+                            crossAxisAlignment: CrossAxisAlignment.start,
+                            children: [
+                              Text(
+                                _isEditing
+                                    ? 'Edit Employee Details'
+                                    : 'Employee Details',
+                                style: const TextStyle(
+                                  fontSize: 16,
+                                  fontWeight: FontWeight.bold,
+                                  color: Color(0xFF0F172A),
+                                ),
+                              ),
+                              const SizedBox(height: 2),
+                              Text(
+                                'ID: ${widget.employee.employeeId}',
+                                style: const TextStyle(
+                                  fontSize: 12,
+                                  color: Color(0xFF64748B),
+                                  fontWeight: FontWeight.w500,
+                                ),
+                              ),
+                            ],
+                          ),
+                        ),
+                        IconButton(
+                          onPressed: () => Navigator.of(context).pop(),
+                          icon: const Icon(
+                            Icons.close_rounded,
+                            color: Color(0xFF64748B),
+                            size: 22,
+                          ),
+                          splashRadius: 20,
                         ),
                       ],
                     ),
                   ),
 
-                // Scrollable Form Content
-                Flexible(
-                  child: SingleChildScrollView(
-                    padding: const EdgeInsets.all(20),
+                  // Inline Error Banner (Visible when API fails)
+                  if (_errorMessage != null && _errorMessage!.isNotEmpty)
+                    Container(
+                      margin: const EdgeInsets.fromLTRB(20, 14, 20, 0),
+                      padding: const EdgeInsets.symmetric(
+                        horizontal: 14,
+                        vertical: 10,
+                      ),
+                      decoration: BoxDecoration(
+                        color: const Color(0xFFFEF2F2),
+                        borderRadius: BorderRadius.circular(10),
+                        border: Border.all(color: const Color(0xFFFECACA)),
+                      ),
+                      child: Row(
+                        crossAxisAlignment: CrossAxisAlignment.start,
+                        children: [
+                          const Icon(
+                            Icons.error_outline_rounded,
+                            color: AppColors.dangerRose,
+                            size: 18,
+                          ),
+                          const SizedBox(width: 8),
+                          Expanded(
+                            child: Text(
+                              _errorMessage!,
+                              style: const TextStyle(
+                                color: Color(0xFF991B1B),
+                                fontSize: 12.5,
+                                fontWeight: FontWeight.w600,
+                              ),
+                            ),
+                          ),
+                        ],
+                      ),
+                    ),
+
+                  // Scrollable Form Content
+                  Flexible(
+                    child: SingleChildScrollView(
+                      keyboardDismissBehavior:
+                          ScrollViewKeyboardDismissBehavior.onDrag,
+                      padding: const EdgeInsets.all(20),
                     child: Form(
                       key: _formKey,
                       child: Column(
@@ -1940,8 +1956,9 @@ class _UpdateEmployeeDialogState extends State<_UpdateEmployeeDialog> {
                   ),
                 ),
               ],
-            );
-          },
+            ),
+          );
+        },
         ),
       ),
     );

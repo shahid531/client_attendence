@@ -127,23 +127,27 @@ class ClientLocationsPageState extends State<ClientLocationsPage> {
 
     return Scaffold(
       backgroundColor: AppColors.backgroundLight,
-      body: RefreshIndicator(
-        onRefresh: () async {
-          final query = _searchController.text.trim();
-          context.read<AdminBloc>().add(
-                LoadLocationsEvent(
-                  isRefresh: true,
-                  clientName: query.isNotEmpty ? query : null,
-                ),
-              );
-          context.read<AdminBloc>().add(const LoadEmployeesEvent(isRefresh: true));
-        },
-        child: SingleChildScrollView(
-          physics: const AlwaysScrollableScrollPhysics(),
-          padding: const EdgeInsets.all(16.0),
-          child: Column(
-            crossAxisAlignment: CrossAxisAlignment.start,
-            children: [
+      body: GestureDetector(
+        behavior: HitTestBehavior.opaque,
+        onTap: () => FocusScope.of(context).unfocus(),
+        child: RefreshIndicator(
+          onRefresh: () async {
+            final query = _searchController.text.trim();
+            context.read<AdminBloc>().add(
+                  LoadLocationsEvent(
+                    isRefresh: true,
+                    clientName: query.isNotEmpty ? query : null,
+                  ),
+                );
+            context.read<AdminBloc>().add(const LoadEmployeesEvent(isRefresh: true));
+          },
+          child: SingleChildScrollView(
+            physics: const AlwaysScrollableScrollPhysics(),
+            keyboardDismissBehavior: ScrollViewKeyboardDismissBehavior.onDrag,
+            padding: const EdgeInsets.all(16.0),
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
               // Header Row: Title & Subtitle
               Row(
                 mainAxisAlignment: MainAxisAlignment.spaceBetween,
@@ -397,7 +401,8 @@ class ClientLocationsPageState extends State<ClientLocationsPage> {
           ),
         ),
       ),
-    );
+    ),
+  );
   }
 
   Widget _buildSearchBar(Color primaryNavy) {

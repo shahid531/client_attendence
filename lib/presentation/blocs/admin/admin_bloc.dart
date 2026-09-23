@@ -56,7 +56,10 @@ class AdminBloc extends Bloc<AdminEvent, AdminState> {
     ));
 
     final result = await getEmployeesUseCase(
-      GetEmployeesParams(name: event.name),
+      GetEmployeesParams(
+        name: event.name,
+        reportingManagerId: event.reportingManagerId,
+      ),
     );
 
     result.fold(

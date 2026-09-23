@@ -499,6 +499,9 @@ class AttendanceRemoteDataSourceImpl implements AttendanceRemoteDataSource {
           int resPageSize = size;
           int resTotalElements = 0;
           int resTotalPages = 1;
+          int resTotalPresent = 0;
+          int resTotalWFH = 0;
+          int resTotalOffice = 0;
           bool resHasNext = false;
           bool resHasPrevious = false;
 
@@ -507,6 +510,9 @@ class AttendanceRemoteDataSourceImpl implements AttendanceRemoteDataSource {
             resPageSize = (resData['pageSize'] as num?)?.toInt() ?? size;
             resTotalElements = (resData['totalElements'] as num?)?.toInt() ?? 0;
             resTotalPages = (resData['totalPages'] as num?)?.toInt() ?? 1;
+            resTotalPresent = (resData['totalPresent'] as num?)?.toInt() ?? 0;
+            resTotalWFH = (resData['totalWFH'] as num?)?.toInt() ?? 0;
+            resTotalOffice = (resData['totalOffice'] as num?)?.toInt() ?? 0;
             resHasNext = resData['hasNext'] == true;
             resHasPrevious = resData['hasPrevious'] == true;
 
@@ -529,6 +535,9 @@ class AttendanceRemoteDataSourceImpl implements AttendanceRemoteDataSource {
             pageSize: resPageSize,
             totalElements: resTotalElements,
             totalPages: resTotalPages,
+            totalPresent: resTotalPresent,
+            totalWFH: resTotalWFH,
+            totalOffice: resTotalOffice,
             hasNext: resHasNext,
             hasPrevious: resHasPrevious,
           );

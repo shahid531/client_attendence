@@ -78,9 +78,15 @@ class AdminRepositoryImpl implements AdminRepository {
   }
 
   @override
-  Future<Either<Failure, List<CreatedEmployee>>> getEmployees({String? name}) async {
+  Future<Either<Failure, List<CreatedEmployee>>> getEmployees({
+    String? name,
+    String? reportingManagerId,
+  }) async {
     try {
-      final result = await remoteDataSource.getEmployees(name: name);
+      final result = await remoteDataSource.getEmployees(
+        name: name,
+        reportingManagerId: reportingManagerId,
+      );
       return Right(result);
     } on ServerException catch (e) {
       return Left(ServerFailure(e.message));

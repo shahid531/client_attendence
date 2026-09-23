@@ -5,6 +5,10 @@ import '../../core/constants/app_colors.dart';
 import '../../core/utils/snackbar_helper.dart';
 import '../../core/utils/excel_exporter.dart';
 import '../../domain/entities/attendance_record.dart';
+import '../../domain/entities/created_employee.dart';
+import '../blocs/admin/admin_bloc.dart';
+import '../blocs/admin/admin_event.dart';
+import '../blocs/admin/admin_state.dart';
 import '../blocs/attendance/attendance_bloc.dart';
 import '../blocs/attendance/attendance_event.dart';
 import '../blocs/attendance/attendance_state.dart';
@@ -20,8 +24,8 @@ class HistoryPage extends StatefulWidget {
 
 class _HistoryPageState extends State<HistoryPage> {
   // Dropdown State
-  String _selectedPeriod = 'This Month';
-  final List<String> _periodOptions = ['This Month', 'Last Month', 'Custom'];
+  String _selectedPeriod = 'Today';
+  final List<String> _periodOptions = ['Today', 'This Month', 'Last Month', 'Custom'];
 
   // Date Pickers State
   DateTime? _customFromDate;
@@ -32,8 +36,8 @@ class _HistoryPageState extends State<HistoryPage> {
   static const int _pageSize = 10;
   final ScrollController _scrollController = ScrollController();
 
-  // Search State (Admin only)
-  final TextEditingController _searchController = TextEditingController();
+  // Selected Employee filter (Admin only)
+  CreatedEmployee? _selectedEmployee;
 
   bool get _isAdmin {
     final authState = context.read<AuthBloc>().state;
@@ -48,14 +52,16 @@ class _HistoryPageState extends State<HistoryPage> {
     super.initState();
     _scrollController.addListener(_onScroll);
     WidgetsBinding.instance.addPostFrameCallback((_) {
-      _applyPeriod('This Month');
+      if (_isAdmin) {
+        context.read<AdminBloc>().add(const LoadEmployeesEvent());
+      }
+      _applyPeriod('Today');
     });
   }
 
   @override
   void dispose() {
     _scrollController.dispose();
-    _searchController.dispose();
     super.dispose();
   }
 
@@ -81,7 +87,16 @@ class _HistoryPageState extends State<HistoryPage> {
     String? startParam;
     String? endParam;
 
-    if (period == 'This Month') {
+    if (period == 'Today') {
+      final today = DateTime(now.year, now.month, now.day);
+      startParam = DateFormat('yyyy-MM-dd').format(today);
+      endParam = DateFormat('yyyy-MM-dd').format(today);
+      if (!isLoadMore) {
+        setState(() {
+          _displayRangeStr = DateFormat('dd/MM/yyyy').format(today);
+        });
+      }
+    } else if (period == 'This Month') {
       final start = DateTime(now.year, now.month, 1);
       final end = DateTime(now.year, now.month + 1, 0);
       startParam = DateFormat('yyyy-MM-dd').format(start);
@@ -132,13 +147,9 @@ class _HistoryPageState extends State<HistoryPage> {
     String? employeeId;
     String? employeeName;
     if (_isAdmin) {
-      final query = _searchController.text.trim();
-      if (query.isNotEmpty) {
-        if (RegExp(r'^[0-9]+$').hasMatch(query)) {
-          employeeId = query;
-        } else {
-          employeeName = query;
-        }
+      if (_selectedEmployee != null) {
+        employeeId = _selectedEmployee!.employeeId;
+        employeeName = _selectedEmployee!.fullName;
       }
     }
 
@@ -190,6 +201,7 @@ class _HistoryPageState extends State<HistoryPage> {
           }
         }
       });
+      _applyPeriod('Custom', page: 0);
     }
   }
 
@@ -199,7 +211,11 @@ class _HistoryPageState extends State<HistoryPage> {
 
   (String, String) _getExportDateParams() {
     final now = DateTime.now();
-    if (_selectedPeriod == 'This Month') {
+    if (_selectedPeriod == 'Today') {
+      final today = DateTime(now.year, now.month, now.day);
+      final todayStr = DateFormat('yyyy-MM-dd').format(today);
+      return (todayStr, todayStr);
+    } else if (_selectedPeriod == 'This Month') {
       final start = DateTime(now.year, now.month, 1);
       final end = DateTime(now.year, now.month + 1, 0);
       return (
@@ -226,13 +242,8 @@ class _HistoryPageState extends State<HistoryPage> {
 
   (String?, String?) _getExportSearchParams() {
     if (_isAdmin) {
-      final query = _searchController.text.trim();
-      if (query.isNotEmpty) {
-        if (RegExp(r'^[0-9]+$').hasMatch(query)) {
-          return (query, null);
-        } else {
-          return (null, query);
-        }
+      if (_selectedEmployee != null) {
+        return (_selectedEmployee!.employeeId, _selectedEmployee!.fullName);
       }
       return (null, null);
     }
@@ -500,7 +511,7 @@ class _HistoryPageState extends State<HistoryPage> {
         child: Column(
           crossAxisAlignment: CrossAxisAlignment.start,
           children: [
-            // Header Row: Title & Export Button (only in header for non-admin)
+            // Header Row: Title & Export Button
             Row(
               mainAxisAlignment: MainAxisAlignment.spaceBetween,
               children: [
@@ -512,11 +523,10 @@ class _HistoryPageState extends State<HistoryPage> {
                     color: Color(0xFF1E293B),
                   ),
                 ),
-                if (!_isAdmin)
-                  _buildExportButton(
-                    isExporting: isExporting,
-                    primaryNavy: primaryNavy,
-                  ),
+                _buildExportButton(
+                  isExporting: isExporting,
+                  primaryNavy: primaryNavy,
+                ),
               ],
             ),
             const SizedBox(height: 12),
@@ -699,6 +709,7 @@ class _HistoryPageState extends State<HistoryPage> {
                                             setState(() {
                                               _customFromDate = null;
                                             });
+                                            _applyPeriod('Custom', page: 0);
                                           },
                                           child: const Icon(Icons.close_rounded,
                                               size: 16, color: Color(0xFF64748B)),
@@ -766,6 +777,7 @@ class _HistoryPageState extends State<HistoryPage> {
                                             setState(() {
                                               _customToDate = null;
                                             });
+                                            _applyPeriod('Custom', page: 0);
                                           },
                                           child: const Icon(Icons.close_rounded,
                                               size: 16, color: Color(0xFF64748B)),
@@ -784,89 +796,17 @@ class _HistoryPageState extends State<HistoryPage> {
                     ),
                     if (_isAdmin) ...[
                       const SizedBox(height: 14),
-                      _buildSearchInputField(),
+                      _buildEmployeeSelector(context),
                     ],
-                    const SizedBox(height: 16),
-                    if (_isAdmin)
-                      Row(
-                        children: [
-                          Expanded(
-                            child: SizedBox(
-                              height: 42,
-                              child: ElevatedButton.icon(
-                                onPressed: () {
-                                  FocusScope.of(context).unfocus();
-                                  _applyPeriod('Custom', page: 0);
-                                },
-                                icon: const Icon(Icons.search_rounded,
-                                    size: 18, color: Colors.white),
-                                style: ElevatedButton.styleFrom(
-                                  backgroundColor: primaryNavy,
-                                  shape: RoundedRectangleBorder(
-                                    borderRadius: BorderRadius.circular(8),
-                                  ),
-                                  elevation: 0,
-                                ),
-                                label: const Text(
-                                  'Search',
-                                  style: TextStyle(
-                                    color: Colors.white,
-                                    fontWeight: FontWeight.bold,
-                                    fontSize: 14,
-                                  ),
-                                ),
-                              ),
-                            ),
-                          ),
-                          const SizedBox(width: 10),
-                          Expanded(
-                            child: SizedBox(
-                              height: 42,
-                              child: _buildExportButton(
-                                isExporting: isExporting,
-                                primaryNavy: primaryNavy,
-                              ),
-                            ),
-                          ),
-                        ],
-                      )
-                    else
-                      SizedBox(
-                        width: double.infinity,
-                        height: 42,
-                        child: ElevatedButton.icon(
-                          onPressed: () {
-                            FocusScope.of(context).unfocus();
-                            _applyPeriod('Custom', page: 0);
-                          },
-                          icon: const Icon(Icons.search_rounded,
-                              size: 18, color: Colors.white),
-                          style: ElevatedButton.styleFrom(
-                            backgroundColor: primaryNavy,
-                            shape: RoundedRectangleBorder(
-                              borderRadius: BorderRadius.circular(8),
-                            ),
-                            elevation: 0,
-                          ),
-                          label: const Text(
-                            'Search',
-                            style: TextStyle(
-                              color: Colors.white,
-                              fontWeight: FontWeight.bold,
-                              fontSize: 14,
-                            ),
-                          ),
-                        ),
-                      ),
                   ],
                 ),
               ),
               const SizedBox(height: 16),
             ],
 
-            // Search Bar (Only visible to admin when NOT in Custom period)
+            // Employee Selector (Only visible to admin when NOT in Custom period)
             if (_isAdmin && _selectedPeriod != 'Custom') ...[
-              _buildSearchBar(isExporting, primaryNavy),
+              _buildEmployeeSelector(context),
               const SizedBox(height: 16),
             ],
 
@@ -903,55 +843,45 @@ class _HistoryPageState extends State<HistoryPage> {
                 }
               },
               builder: (context, state) {
-                List<AttendanceRecord> records = [];
+                int presentCount = 0;
+                int wfhCount = 0;
+                int officeCount = 0;
+                final displayedRecords = state is AttendanceLoadedState
+                    ? state.history
+                    : const <AttendanceRecord>[];
+
                 if (state is AttendanceLoadedState) {
-                  records = state.history;
+                  presentCount = state.totalPresent;
+                  wfhCount = state.totalWFH;
+                  officeCount = state.totalOffice;
                 }
-
-                final displayedRecords = records;
-
-                int presentCount = displayedRecords.where((r) {
-                  final s = r.status.toLowerCase();
-                  return s == 'present' ||
-                      s == 'half day' ||
-                      (!s.contains('absent') &&
-                          !s.contains('leave') &&
-                          !s.contains('incomplete'));
-                }).length;
-
-                int wfhCount = displayedRecords.where((r) {
-                  return r.workType.toUpperCase() == 'WFH';
-                }).length;
-
-                int absentCount = displayedRecords.where((r) {
-                  final s = r.status.toLowerCase();
-                  return s.contains('absent') || s.contains('leave');
-                }).length;
 
                 return Column(
                   crossAxisAlignment: CrossAxisAlignment.start,
                   children: [
-                    // Summary Stats Card
-                    Container(
-                      padding: const EdgeInsets.symmetric(vertical: 16),
-                      decoration: BoxDecoration(
-                        color: const Color(0xFFEEF2FF),
-                        borderRadius: BorderRadius.circular(16),
+                    // Summary Stats Card (Visible ONLY when 'Today' is selected)
+                    if (_selectedPeriod == 'Today') ...[
+                      Container(
+                        padding: const EdgeInsets.symmetric(vertical: 16),
+                        decoration: BoxDecoration(
+                          color: const Color(0xFFEEF2FF),
+                          borderRadius: BorderRadius.circular(16),
+                        ),
+                        child: Row(
+                          children: [
+                            _buildStatItem('$presentCount', 'Present',
+                                const Color(0xFF2563EB)),
+                            _buildDivider(),
+                            _buildStatItem(
+                                '$wfhCount', 'WFH', const Color(0xFF1E293B)),
+                            _buildDivider(),
+                            _buildStatItem('$officeCount', 'Office',
+                                const Color(0xFF16A34A)),
+                          ],
+                        ),
                       ),
-                      child: Row(
-                        children: [
-                          _buildStatItem('$presentCount', 'Present',
-                              const Color(0xFF2563EB)),
-                          _buildDivider(),
-                          _buildStatItem(
-                              '$wfhCount', 'WFH', const Color(0xFF1E293B)),
-                          _buildDivider(),
-                          _buildStatItem('$absentCount', 'Absent',
-                              const Color(0xFFDC2626)),
-                        ],
-                      ),
-                    ),
-                    const SizedBox(height: 16),
+                      const SizedBox(height: 16),
+                    ],
 
                     if (state is AttendanceLoadingState) ...[
                       const Padding(
@@ -1033,8 +963,8 @@ class _HistoryPageState extends State<HistoryPage> {
                                 size: 48, color: Color(0xFF94A3B8)),
                             const SizedBox(height: 12),
                             Text(
-                              _searchController.text.trim().isNotEmpty
-                                  ? 'No matching records found'
+                              _selectedEmployee != null
+                                  ? 'No records found for ${_selectedEmployee!.fullName}'
                                   : 'No attendance records found',
                               style: const TextStyle(
                                 fontSize: 16,
@@ -1065,50 +995,152 @@ class _HistoryPageState extends State<HistoryPage> {
     );
   }
 
-  Widget _buildSearchInputField() {
-    return Container(
-      decoration: BoxDecoration(
-        color: Colors.white,
-        borderRadius: BorderRadius.circular(12),
-        border: Border.all(color: AppColors.borderGrey),
+  Widget _buildEmployeeSelector(BuildContext context) {
+    final adminState = context.watch<AdminBloc>().state;
+    final hasSelection = _selectedEmployee != null;
+
+    return InkWell(
+      onTap: () => _openEmployeePicker(
+        adminState.employees,
+        adminState.isLoadingEmployees,
+        adminState.employeesError,
       ),
-      child: TextField(
-        controller: _searchController,
-        onChanged: (val) => setState(() {}),
-        onSubmitted: (_) {
-          FocusScope.of(context).unfocus();
-          _applyPeriod(_selectedPeriod, page: 0);
-        },
-        decoration: InputDecoration(
-          hintText: 'Type Employee name or ID',
-          hintStyle: const TextStyle(
-            color: AppColors.textLight,
-            fontSize: 13,
+      borderRadius: BorderRadius.circular(12),
+      child: Container(
+        padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 12),
+        decoration: BoxDecoration(
+          color: Colors.white,
+          borderRadius: BorderRadius.circular(12),
+          border: Border.all(
+            color: hasSelection
+                ? AppColors.primaryNavy.withValues(alpha: 0.5)
+                : AppColors.borderGrey,
           ),
-          prefixIcon: const Icon(
-            Icons.search_rounded,
-            color: AppColors.textMuted,
-            size: 20,
-          ),
-          suffixIcon: _searchController.text.isNotEmpty
-              ? IconButton(
-                  icon: const Icon(Icons.clear_rounded, size: 18),
-                  onPressed: () {
-                    _searchController.clear();
-                    FocusScope.of(context).unfocus();
-                    setState(() {});
-                    _applyPeriod(_selectedPeriod, page: 0);
-                  },
-                )
-              : null,
-          border: InputBorder.none,
-          contentPadding: const EdgeInsets.symmetric(
-            vertical: 12,
-            horizontal: 14,
-          ),
+        ),
+        child: Row(
+          children: [
+            const Icon(
+              Icons.groups_outlined,
+              color: Color(0xFF64748B),
+              size: 20,
+            ),
+            const SizedBox(width: 12),
+            Expanded(
+              child: hasSelection
+                  ? Row(
+                      children: [
+                        Flexible(
+                          child: Text(
+                            _selectedEmployee!.fullName,
+                            style: const TextStyle(
+                              fontSize: 14,
+                              color: Color(0xFF0F172A),
+                              fontWeight: FontWeight.w600,
+                            ),
+                            overflow: TextOverflow.ellipsis,
+                          ),
+                        ),
+                        const SizedBox(width: 8),
+                        Container(
+                          padding: const EdgeInsets.symmetric(
+                            horizontal: 6,
+                            vertical: 2,
+                          ),
+                          decoration: BoxDecoration(
+                            color: const Color(0xFFEEF2FF),
+                            borderRadius: BorderRadius.circular(6),
+                          ),
+                          child: Text(
+                            'ID: ${_selectedEmployee!.employeeId}',
+                            style: const TextStyle(
+                              fontSize: 11,
+                              color: AppColors.primaryNavy,
+                              fontWeight: FontWeight.w600,
+                            ),
+                          ),
+                        ),
+                      ],
+                    )
+                  : const Text(
+                      'Search / Select Employee',
+                      style: TextStyle(
+                        color: Color(0xFF94A3B8),
+                        fontSize: 13,
+                      ),
+                    ),
+            ),
+            if (hasSelection)
+              GestureDetector(
+                behavior: HitTestBehavior.opaque,
+                onTap: () {
+                  setState(() {
+                    _selectedEmployee = null;
+                  });
+                  _applyPeriod(_selectedPeriod, page: 0);
+                },
+                child: const Padding(
+                  padding: EdgeInsets.symmetric(horizontal: 4.0),
+                  child: Icon(
+                    Icons.cancel_rounded,
+                    color: Color(0xFF94A3B8),
+                    size: 18,
+                  ),
+                ),
+              )
+            else
+              const Icon(
+                Icons.keyboard_arrow_down_rounded,
+                color: Color(0xFF64748B),
+                size: 20,
+              ),
+          ],
         ),
       ),
     );
+  }
+
+  Future<void> _openEmployeePicker(
+    List<CreatedEmployee> employees,
+    bool isLoadingEmployees,
+    String? employeesError,
+  ) async {
+    if (employees.isEmpty && !isLoadingEmployees) {
+      context.read<AdminBloc>().add(const LoadEmployeesEvent());
+    }
+
+    final result = await showModalBottomSheet<_HistoryEmployeeSelectionResult>(
+      context: context,
+      isScrollControlled: true,
+      backgroundColor: Colors.transparent,
+      builder: (modalCtx) {
+        return BlocBuilder<AdminBloc, AdminState>(
+          builder: (context, state) {
+            return _HistoryEmployeeSearchModal(
+              initialSelected: _selectedEmployee,
+              employees: state.employees,
+              isLoading: state.isLoadingEmployees,
+              error: state.employeesError,
+              onRetry: () {
+                context
+                    .read<AdminBloc>()
+                    .add(const LoadEmployeesEvent(isRefresh: true));
+              },
+            );
+          },
+        );
+      },
+    );
+
+    if (result != null) {
+      setState(() {
+        if (result.isCleared) {
+          _selectedEmployee = null;
+        } else {
+          _selectedEmployee = result.employee;
+        }
+      });
+      _applyPeriod(_selectedPeriod, page: 0);
+    }
   }
 
   Widget _buildExportButton({
@@ -1143,58 +1175,6 @@ class _HistoryPageState extends State<HistoryPage> {
         ),
         padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 8),
       ),
-    );
-  }
-
-  Widget _buildSearchBar(bool isExporting, Color primaryNavy) {
-    return Column(
-      crossAxisAlignment: CrossAxisAlignment.stretch,
-      children: [
-        _buildSearchInputField(),
-        const SizedBox(height: 8),
-        Row(
-          children: [
-            Expanded(
-              child: SizedBox(
-                height: 42,
-                child: ElevatedButton.icon(
-                  onPressed: () {
-                    FocusScope.of(context).unfocus();
-                    _applyPeriod(_selectedPeriod, page: 0);
-                  },
-                  icon:
-                      const Icon(Icons.search_rounded, size: 18, color: Colors.white),
-                  label: const Text(
-                    'Search',
-                    style: TextStyle(
-                      color: Colors.white,
-                      fontWeight: FontWeight.bold,
-                      fontSize: 14,
-                    ),
-                  ),
-                  style: ElevatedButton.styleFrom(
-                    backgroundColor: AppColors.primaryNavy,
-                    elevation: 0,
-                    shape: RoundedRectangleBorder(
-                      borderRadius: BorderRadius.circular(8),
-                    ),
-                  ),
-                ),
-              ),
-            ),
-            const SizedBox(width: 10),
-            Expanded(
-              child: SizedBox(
-                height: 42,
-                child: _buildExportButton(
-                  isExporting: isExporting,
-                  primaryNavy: primaryNavy,
-                ),
-              ),
-            ),
-          ],
-        ),
-      ],
     );
   }
 
@@ -2166,6 +2146,410 @@ class _HistoryPageState extends State<HistoryPage> {
           },
         );
       },
+    );
+  }
+}
+
+class _HistoryEmployeeSelectionResult {
+  final bool isCleared;
+  final CreatedEmployee? employee;
+
+  const _HistoryEmployeeSelectionResult({
+    this.isCleared = false,
+    this.employee,
+  });
+}
+
+class _HistoryEmployeeSearchModal extends StatefulWidget {
+  final CreatedEmployee? initialSelected;
+  final List<CreatedEmployee> employees;
+  final bool isLoading;
+  final String? error;
+  final VoidCallback onRetry;
+
+  const _HistoryEmployeeSearchModal({
+    required this.initialSelected,
+    required this.employees,
+    required this.isLoading,
+    this.error,
+    required this.onRetry,
+  });
+
+  @override
+  State<_HistoryEmployeeSearchModal> createState() =>
+      _HistoryEmployeeSearchModalState();
+}
+
+class _HistoryEmployeeSearchModalState
+    extends State<_HistoryEmployeeSearchModal> {
+  final TextEditingController _searchController = TextEditingController();
+  String _searchQuery = '';
+
+  @override
+  void dispose() {
+    _searchController.dispose();
+    super.dispose();
+  }
+
+  String _getInitials(String name) {
+    final parts = name.trim().split(' ').where((e) => e.isNotEmpty).toList();
+    if (parts.isEmpty) return 'EM';
+    if (parts.length == 1) {
+      return parts[0].substring(0, parts[0].length >= 2 ? 2 : 1).toUpperCase();
+    }
+    return '${parts[0][0]}${parts[1][0]}'.toUpperCase();
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    final query = _searchQuery.trim().toLowerCase();
+    final filteredEmployees = widget.employees.where((emp) {
+      if (query.isEmpty) return true;
+      final nameMatches = emp.fullName.toLowerCase().contains(query);
+      final idMatches = emp.employeeId.toLowerCase().contains(query);
+      final emailMatches = emp.email.toLowerCase().contains(query);
+      final roleMatches = emp.role.toLowerCase().contains(query);
+      return nameMatches || idMatches || emailMatches || roleMatches;
+    }).toList();
+
+    return Material(
+      color: Colors.white,
+      borderRadius: const BorderRadius.vertical(top: Radius.circular(24)),
+      clipBehavior: Clip.antiAlias,
+      child: SizedBox(
+        height: MediaQuery.of(context).size.height * 0.78,
+        child: Column(
+          children: [
+            // Drag Handle
+            const SizedBox(height: 12),
+            Container(
+              width: 40,
+              height: 4,
+              decoration: BoxDecoration(
+                color: const Color(0xFFCBD5E1),
+                borderRadius: BorderRadius.circular(2),
+              ),
+            ),
+            const SizedBox(height: 12),
+
+            // Header
+            Padding(
+              padding: const EdgeInsets.symmetric(horizontal: 20.0),
+              child: Row(
+                mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                children: [
+                  Column(
+                    crossAxisAlignment: CrossAxisAlignment.start,
+                    children: [
+                      const Text(
+                        'Select Employee',
+                        style: TextStyle(
+                          fontSize: 18,
+                          fontWeight: FontWeight.bold,
+                          color: Color(0xFF0F172A),
+                        ),
+                      ),
+                      // const SizedBox(height: 2),
+                      // Text(
+                      //   'Search by full name, ID, or designation',
+                      //   style: TextStyle(
+                      //     fontSize: 12,
+                      //     color: Colors.grey.shade600,
+                      //   ),
+                      // ),
+                    ],
+                  ),
+                  IconButton(
+                    onPressed: () => Navigator.of(context).pop(),
+                    icon: const Icon(
+                      Icons.close_rounded,
+                      color: Color(0xFF64748B),
+                    ),
+                  ),
+                ],
+              ),
+            ),
+            const SizedBox(height: 12),
+
+            // Search Bar
+            Padding(
+              padding: const EdgeInsets.symmetric(horizontal: 16.0),
+              child: Container(
+                decoration: BoxDecoration(
+                  color: const Color(0xFFF1F5F9),
+                  borderRadius: BorderRadius.circular(14),
+                  border: Border.all(color: const Color(0xFFE2E8F0)),
+                ),
+                child: TextField(
+                  controller: _searchController,
+                  autofocus: false,
+                  onChanged: (val) {
+                    setState(() {
+                      _searchQuery = val;
+                    });
+                  },
+                  decoration: InputDecoration(
+                    hintText: 'Type Employee Name or ID',
+                    hintStyle: const TextStyle(
+                      fontSize: 14,
+                      color: Color(0xFF94A3B8),
+                    ),
+                    prefixIcon: const Icon(
+                      Icons.search_rounded,
+                      color: AppColors.primaryNavy,
+                      size: 22,
+                    ),
+                    suffixIcon: _searchQuery.isNotEmpty
+                        ? IconButton(
+                            icon: const Icon(
+                              Icons.cancel_rounded,
+                              color: Color(0xFF94A3B8),
+                              size: 18,
+                            ),
+                            onPressed: () {
+                              _searchController.clear();
+                              setState(() {
+                                _searchQuery = '';
+                              });
+                            },
+                          )
+                        : null,
+                    border: InputBorder.none,
+                    contentPadding: const EdgeInsets.symmetric(
+                      horizontal: 16,
+                      vertical: 14,
+                    ),
+                  ),
+                ),
+              ),
+            ),
+            const SizedBox(height: 12),
+            const Divider(height: 1, color: Color(0xFFE2E8F0)),
+
+            // Body List
+            Expanded(
+              child: widget.isLoading && widget.employees.isEmpty
+                  ? const Center(
+                      child: Column(
+                        mainAxisSize: MainAxisSize.min,
+                        children: [
+                          CircularProgressIndicator(strokeWidth: 2.5),
+                          SizedBox(height: 12),
+                          Text(
+                            'Loading employees...',
+                            style: TextStyle(
+                              color: Color(0xFF64748B),
+                              fontSize: 13,
+                            ),
+                          ),
+                        ],
+                      ),
+                    )
+                  : widget.error != null && widget.employees.isEmpty
+                      ? Center(
+                          child: Padding(
+                            padding: const EdgeInsets.all(24.0),
+                            child: Column(
+                              mainAxisSize: MainAxisSize.min,
+                              children: [
+                                const Icon(
+                                  Icons.error_outline_rounded,
+                                  color: AppColors.dangerRose,
+                                  size: 40,
+                                ),
+                                const SizedBox(height: 10),
+                                Text(
+                                  widget.error!,
+                                  textAlign: TextAlign.center,
+                                  style: const TextStyle(
+                                    fontSize: 13,
+                                    color: Color(0xFF64748B),
+                                  ),
+                                ),
+                                const SizedBox(height: 14),
+                                ElevatedButton.icon(
+                                  onPressed: widget.onRetry,
+                                  icon: const Icon(Icons.refresh, size: 16),
+                                  label: const Text('Retry'),
+                                  style: ElevatedButton.styleFrom(
+                                    backgroundColor: AppColors.primaryNavy,
+                                    foregroundColor: Colors.white,
+                                  ),
+                                ),
+                              ],
+                            ),
+                          ),
+                        )
+                      : filteredEmployees.isEmpty && query.isNotEmpty
+                          ? Center(
+                              child: Padding(
+                                padding: const EdgeInsets.all(24.0),
+                                child: Column(
+                                  mainAxisSize: MainAxisSize.min,
+                                  children: [
+                                    Icon(
+                                      Icons.person_search_rounded,
+                                      size: 48,
+                                      color: Colors.grey.shade400,
+                                    ),
+                                    const SizedBox(height: 12),
+                                    Text(
+                                      'No employees found matching "$query"',
+                                      textAlign: TextAlign.center,
+                                      style: const TextStyle(
+                                        fontSize: 14,
+                                        fontWeight: FontWeight.w600,
+                                        color: Color(0xFF475569),
+                                      ),
+                                    ),
+                                    const SizedBox(height: 4),
+                                    const Text(
+                                      'Try searching with a different name or ID.',
+                                      textAlign: TextAlign.center,
+                                      style: TextStyle(
+                                        fontSize: 12,
+                                        color: Color(0xFF94A3B8),
+                                      ),
+                                    ),
+                                  ],
+                                ),
+                              ),
+                            )
+                          : ListView.separated(
+                              padding: const EdgeInsets.symmetric(
+                                horizontal: 16,
+                                vertical: 12,
+                              ),
+                              itemCount: filteredEmployees.length + 1,
+                              separatorBuilder: (_, __) => const Divider(
+                                height: 1,
+                                indent: 64,
+                                color: Color(0xFFF1F5F9),
+                              ),
+                              itemBuilder: (context, index) {
+                                if (index == 0) {
+                                  final isSelectedAll =
+                                      widget.initialSelected == null;
+                                  return ListTile(
+                                    contentPadding: const EdgeInsets.symmetric(
+                                      horizontal: 12,
+                                      vertical: 4,
+                                    ),
+                                    shape: RoundedRectangleBorder(
+                                      borderRadius: BorderRadius.circular(12),
+                                    ),
+                                    leading: Container(
+                                      width: 42,
+                                      height: 42,
+                                      decoration: BoxDecoration(
+                                        color: const Color(0xFFEEF2FF),
+                                        borderRadius: BorderRadius.circular(10),
+                                      ),
+                                      child: const Icon(
+                                        Icons.people_alt_outlined,
+                                        color: AppColors.primaryNavy,
+                                        size: 20,
+                                      ),
+                                    ),
+                                    title: const Text(
+                                      'All Employees',
+                                      style: TextStyle(
+                                        fontSize: 14,
+                                        fontWeight: FontWeight.bold,
+                                        color: Color(0xFF1E293B),
+                                      ),
+                                    ),
+                                    subtitle: const Text(
+                                      'View attendance records for all employees',
+                                      style: TextStyle(
+                                        fontSize: 12,
+                                        color: Color(0xFF64748B),
+                                      ),
+                                    ),
+                                    trailing: isSelectedAll
+                                        ? const Icon(
+                                            Icons.check_circle_rounded,
+                                            color: AppColors.primaryNavy,
+                                            size: 22,
+                                          )
+                                        : null,
+                                    onTap: () {
+                                      Navigator.of(context).pop(
+                                        const _HistoryEmployeeSelectionResult(
+                                          isCleared: true,
+                                        ),
+                                      );
+                                    },
+                                  );
+                                }
+
+                                final employee = filteredEmployees[index - 1];
+                                final isSelected =
+                                    widget.initialSelected?.employeeId ==
+                                        employee.employeeId;
+
+                                return ListTile(
+                                  contentPadding: const EdgeInsets.symmetric(
+                                    horizontal: 12,
+                                    vertical: 4,
+                                  ),
+                                  shape: RoundedRectangleBorder(
+                                    borderRadius: BorderRadius.circular(12),
+                                  ),
+                                  leading: Container(
+                                    width: 42,
+                                    height: 42,
+                                    decoration: BoxDecoration(
+                                      color: AppColors.primaryNavy
+                                          .withValues(alpha: 0.1),
+                                      borderRadius: BorderRadius.circular(10),
+                                    ),
+                                    alignment: Alignment.center,
+                                    child: Text(
+                                      _getInitials(employee.fullName),
+                                      style: const TextStyle(
+                                        fontSize: 14,
+                                        fontWeight: FontWeight.bold,
+                                        color: AppColors.primaryNavy,
+                                      ),
+                                    ),
+                                  ),
+                                  title: Text(
+                                    employee.fullName,
+                                    style: const TextStyle(
+                                      fontSize: 14.5,
+                                      fontWeight: FontWeight.bold,
+                                      color: Color(0xFF0F172A),
+                                    ),
+                                  ),
+                                  subtitle: Text(
+                                    'ID: ${employee.employeeId}  •  ${employee.role}',
+                                    style: const TextStyle(
+                                      fontSize: 12,
+                                      color: Color(0xFF64748B),
+                                    ),
+                                  ),
+                                  trailing: isSelected
+                                      ? const Icon(
+                                          Icons.check_circle_rounded,
+                                          color: AppColors.primaryNavy,
+                                          size: 22,
+                                        )
+                                      : null,
+                                  onTap: () {
+                                    Navigator.of(context).pop(
+                                      _HistoryEmployeeSelectionResult(
+                                        employee: employee,
+                                      ),
+                                    );
+                                  },
+                                );
+                              },
+                            ),
+            ),
+          ],
+        ),
+      ),
     );
   }
 }

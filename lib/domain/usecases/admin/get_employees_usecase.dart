@@ -12,15 +12,22 @@ class GetEmployeesUseCase implements UseCase<List<CreatedEmployee>, GetEmployees
 
   @override
   Future<Either<Failure, List<CreatedEmployee>>> call(GetEmployeesParams params) async {
-    return await repository.getEmployees(name: params.name);
+    return await repository.getEmployees(
+      name: params.name,
+      reportingManagerId: params.reportingManagerId,
+    );
   }
 }
 
 class GetEmployeesParams extends Equatable {
   final String? name;
+  final String? reportingManagerId;
 
-  const GetEmployeesParams({this.name});
+  const GetEmployeesParams({
+    this.name,
+    this.reportingManagerId,
+  });
 
   @override
-  List<Object?> get props => [name];
+  List<Object?> get props => [name, reportingManagerId];
 }

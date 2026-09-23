@@ -31,7 +31,10 @@ abstract class AdminRemoteDataSource {
     String? reportingManagerEmployeeId,
   });
 
-  Future<List<CreatedEmployeeModel>> getEmployees({String? name});
+  Future<List<CreatedEmployeeModel>> getEmployees({
+    String? name,
+    String? reportingManagerId,
+  });
 
   Future<List<ClientLocationModel>> getLocations({
     String? clientName,
@@ -137,7 +140,10 @@ class AdminRemoteDataSourceImpl implements AdminRemoteDataSource {
   }
 
   @override
-  Future<List<CreatedEmployeeModel>> getEmployees({String? name}) async {
+  Future<List<CreatedEmployeeModel>> getEmployees({
+    String? name,
+    String? reportingManagerId,
+  }) async {
     try {
       final cachedToken = sharedPreferences.getString('auth_bearer_token');
 
@@ -153,6 +159,9 @@ class AdminRemoteDataSourceImpl implements AdminRemoteDataSource {
       final queryParams = <String, dynamic>{};
       if (name != null && name.trim().isNotEmpty) {
         queryParams['name'] = name.trim();
+      }
+      if (reportingManagerId != null) {
+        queryParams['reportingManagerId'] = reportingManagerId;
       }
 
       final response = await dio.get(

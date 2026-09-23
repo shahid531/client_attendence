@@ -61,6 +61,9 @@ class AttendanceHistoryResult extends Equatable {
   final int pageSize;
   final int totalElements;
   final int totalPages;
+  final int totalPresent;
+  final int totalWFH;
+  final int totalOffice;
   final bool hasNext;
   final bool hasPrevious;
 
@@ -70,6 +73,9 @@ class AttendanceHistoryResult extends Equatable {
     this.pageSize = 10,
     this.totalElements = 0,
     this.totalPages = 1,
+    this.totalPresent = 0,
+    this.totalWFH = 0,
+    this.totalOffice = 0,
     this.hasNext = false,
     this.hasPrevious = false,
   });
@@ -81,6 +87,9 @@ class AttendanceHistoryResult extends Equatable {
         pageSize,
         totalElements,
         totalPages,
+        totalPresent,
+        totalWFH,
+        totalOffice,
         hasNext,
         hasPrevious,
       ];

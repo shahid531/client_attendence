@@ -86,14 +86,16 @@ class ResetAdminStateEvent extends AdminEvent {}
 class LoadEmployeesEvent extends AdminEvent {
   final bool isRefresh;
   final String? name;
+  final String? reportingManagerId;
 
   const LoadEmployeesEvent({
     this.isRefresh = false,
     this.name,
+    this.reportingManagerId,
   });
 
   @override
-  List<Object?> get props => [isRefresh, name];
+  List<Object?> get props => [isRefresh, name, reportingManagerId];
 }
 
 class LoadLocationsEvent extends AdminEvent {

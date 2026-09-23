@@ -351,74 +351,79 @@ class _CreateEmployeeScreenState extends State<CreateEmployeeScreen> {
       builder: (context, state) {
         final isLoading = state is AdminLoadingState;
 
-        return SingleChildScrollView(
-          padding: const EdgeInsets.all(16.0),
-          child: Column(
-            crossAxisAlignment: CrossAxisAlignment.start,
-            children: [
-              // Page Header with Title and Admin Badge
-              Row(
-                mainAxisAlignment: MainAxisAlignment.spaceBetween,
-                crossAxisAlignment: CrossAxisAlignment.start,
-                children: [
-                  Column(
-                    crossAxisAlignment: CrossAxisAlignment.start,
-                    children: [
-                      Text(
-                        _selectedTabIndex == 0
-                            ? 'Create Employee'
-                            : 'Bulk Upload',
-                        style: const TextStyle(
-                          fontSize: 22,
-                          fontWeight: FontWeight.bold,
-                          color: Color(0xFF0F172A),
+        return GestureDetector(
+          behavior: HitTestBehavior.opaque,
+          onTap: () => FocusScope.of(context).unfocus(),
+          child: SingleChildScrollView(
+            keyboardDismissBehavior: ScrollViewKeyboardDismissBehavior.onDrag,
+            padding: const EdgeInsets.all(16.0),
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                // Page Header with Title and Admin Badge
+                Row(
+                  mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    Column(
+                      crossAxisAlignment: CrossAxisAlignment.start,
+                      children: [
+                        Text(
+                          _selectedTabIndex == 0
+                              ? 'Create Employee'
+                              : 'Bulk Upload',
+                          style: const TextStyle(
+                            fontSize: 22,
+                            fontWeight: FontWeight.bold,
+                            color: Color(0xFF0F172A),
+                          ),
+                        ),
+                        const SizedBox(height: 4),
+                        Text(
+                          _selectedTabIndex == 0
+                              ? 'Enter employee details below to set up their\naccount.'
+                              : 'Upload an Excel or CSV file to add multiple\nemployees at once.',
+                          style: const TextStyle(
+                            fontSize: 13,
+                            color: Color(0xFF64748B),
+                            height: 1.3,
+                          ),
+                        ),
+                      ],
+                    ),
+                    Container(
+                      padding: const EdgeInsets.symmetric(
+                        horizontal: 12,
+                        vertical: 6,
+                      ),
+                      decoration: BoxDecoration(
+                        color: const Color(0xFFE2E8F0),
+                        borderRadius: BorderRadius.circular(20),
+                      ),
+                      child: const Text(
+                        'Admin',
+                        style: TextStyle(
+                          fontSize: 12,
+                          color: Color(0xFF334155),
+                          fontWeight: FontWeight.w600,
                         ),
                       ),
-                      const SizedBox(height: 4),
-                      Text(
-                        _selectedTabIndex == 0
-                            ? 'Enter employee details below to set up their\naccount.'
-                            : 'Upload an Excel or CSV file to add multiple\nemployees at once.',
-                        style: const TextStyle(
-                          fontSize: 13,
-                          color: Color(0xFF64748B),
-                          height: 1.3,
-                        ),
-                      ),
-                    ],
-                  ),
-                  Container(
-                    padding: const EdgeInsets.symmetric(
-                      horizontal: 12,
-                      vertical: 6,
                     ),
-                    decoration: BoxDecoration(
-                      color: const Color(0xFFE2E8F0),
-                      borderRadius: BorderRadius.circular(20),
-                    ),
-                    child: const Text(
-                      'Admin',
-                      style: TextStyle(
-                        fontSize: 12,
-                        color: Color(0xFF334155),
-                        fontWeight: FontWeight.w600,
-                      ),
-                    ),
-                  ),
-                ],
-              ),
-              const SizedBox(height: 16),
+                  ],
+                ),
+                const SizedBox(height: 16),
 
-              // Tab Toggle (Add Employee / Bulk Upload)
-              _buildTabToggle(),
-              const SizedBox(height: 16),
+                // Tab Toggle (Add Employee / Bulk Upload)
+                // _buildTabToggle(),
+                // const SizedBox(height: 16),
 
-              // Tab Content
-              if (_selectedTabIndex == 0)
-                _buildAddEmployeeForm(context, state, isLoading)
-              else
-                _buildBulkUploadView(context, state),
-            ],
+                // Tab Content
+                if (_selectedTabIndex == 0)
+                  _buildAddEmployeeForm(context, state, isLoading)
+                else
+                  _buildBulkUploadView(context, state),
+              ],
+            ),
           ),
         );
       },
@@ -426,6 +431,7 @@ class _CreateEmployeeScreenState extends State<CreateEmployeeScreen> {
   }
 
   // Segmented Tab Toggle (similar to ApprovalsScreen)
+  // ignore: unused_element
   Widget _buildTabToggle() {
     return Container(
       height: 44,

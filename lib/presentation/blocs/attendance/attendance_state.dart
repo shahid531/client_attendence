@@ -22,6 +22,9 @@ class AttendanceLoadedState extends AttendanceState {
   final int pageSize;
   final int totalElements;
   final int totalPages;
+  final int totalPresent;
+  final int totalWFH;
+  final int totalOffice;
   final bool hasNext;
   final bool hasPrevious;
   final bool isLoadingMore;
@@ -39,6 +42,9 @@ class AttendanceLoadedState extends AttendanceState {
     this.pageSize = 10,
     this.totalElements = 0,
     this.totalPages = 1,
+    this.totalPresent = 0,
+    this.totalWFH = 0,
+    this.totalOffice = 0,
     this.hasNext = false,
     this.hasPrevious = false,
     this.isLoadingMore = false,
@@ -57,6 +63,9 @@ class AttendanceLoadedState extends AttendanceState {
     int? pageSize,
     int? totalElements,
     int? totalPages,
+    int? totalPresent,
+    int? totalWFH,
+    int? totalOffice,
     bool? hasNext,
     bool? hasPrevious,
     bool? isLoadingMore,
@@ -74,6 +83,9 @@ class AttendanceLoadedState extends AttendanceState {
       pageSize: pageSize ?? this.pageSize,
       totalElements: totalElements ?? this.totalElements,
       totalPages: totalPages ?? this.totalPages,
+      totalPresent: totalPresent ?? this.totalPresent,
+      totalWFH: totalWFH ?? this.totalWFH,
+      totalOffice: totalOffice ?? this.totalOffice,
       hasNext: hasNext ?? this.hasNext,
       hasPrevious: hasPrevious ?? this.hasPrevious,
       isLoadingMore: isLoadingMore ?? this.isLoadingMore,
@@ -94,6 +106,9 @@ class AttendanceLoadedState extends AttendanceState {
         pageSize,
         totalElements,
         totalPages,
+        totalPresent,
+        totalWFH,
+        totalOffice,
         hasNext,
         hasPrevious,
         isLoadingMore,
