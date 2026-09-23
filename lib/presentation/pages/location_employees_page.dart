@@ -926,8 +926,8 @@ class _UpdateLocationSheetState extends State<_UpdateLocationSheet> {
                               },
                             ),
 
-                            // Address
-                            _buildFieldLabel('Address'),
+                            // Address (Disabled / Map-synced)
+                            _buildFieldLabel('Address', isReadOnly: true),
                             _buildTextInputField(
                               controller: _addressController,
                               hint: 'e.g. Building 3, Sector 5, Mindspace, Mumbai',
@@ -941,8 +941,8 @@ class _UpdateLocationSheetState extends State<_UpdateLocationSheet> {
                               },
                             ),
 
-                            // City
-                            _buildFieldLabel('City'),
+                            // City (Disabled / Map-synced)
+                            _buildFieldLabel('City', isReadOnly: true),
                             _buildTextInputField(
                               controller: _cityController,
                               hint: 'e.g. Mumbai',
@@ -950,14 +950,15 @@ class _UpdateLocationSheetState extends State<_UpdateLocationSheet> {
                               enabled: false,
                             ),
 
-                            // Latitude & Longitude
+                            // Latitude & Longitude (Disabled / Map-synced)
                             Row(
+                              crossAxisAlignment: CrossAxisAlignment.start,
                               children: [
                                 Expanded(
                                   child: Column(
                                     crossAxisAlignment: CrossAxisAlignment.start,
                                     children: [
-                                      _buildFieldLabel('Latitude'),
+                                      _buildFieldLabel('Latitude', isReadOnly: true),
                                       _buildTextInputField(
                                         controller: _latController,
                                         hint: '19.0760',
@@ -985,7 +986,7 @@ class _UpdateLocationSheetState extends State<_UpdateLocationSheet> {
                                   child: Column(
                                     crossAxisAlignment: CrossAxisAlignment.start,
                                     children: [
-                                      _buildFieldLabel('Longitude'),
+                                      _buildFieldLabel('Longitude', isReadOnly: true),
                                       _buildTextInputField(
                                         controller: _lngController,
                                         hint: '72.8777',
@@ -1013,6 +1014,7 @@ class _UpdateLocationSheetState extends State<_UpdateLocationSheet> {
 
                             // Allowed Radius & Status
                             Row(
+                              crossAxisAlignment: CrossAxisAlignment.start,
                               children: [
                                 Expanded(
                                   child: Column(
@@ -1045,67 +1047,16 @@ class _UpdateLocationSheetState extends State<_UpdateLocationSheet> {
                                     crossAxisAlignment: CrossAxisAlignment.start,
                                     children: [
                                       _buildFieldLabel('Status'),
-                                      Container(
-                                        height: 48,
-                                        padding: const EdgeInsets.symmetric(
-                                          horizontal: 12,
-                                        ),
-                                        decoration: BoxDecoration(
-                                          color: const Color(0xFFF8FAFC),
-                                          borderRadius: BorderRadius.circular(12),
-                                          border: Border.all(
-                                            color: const Color(0xFFCBD5E1),
-                                          ),
-                                        ),
-                                        child: DropdownButtonHideUnderline(
-                                          child: DropdownButton<String>(
-                                            value: _status,
-                                            isExpanded: true,
-                                            icon: const Icon(
-                                              Icons.keyboard_arrow_down_rounded,
-                                              color: Color(0xFF64748B),
-                                            ),
-                                            items: const [
-                                              DropdownMenuItem(
-                                                value: 'ACTIVE',
-                                                child: Text(
-                                                  'ACTIVE',
-                                                  style: TextStyle(
-                                                    fontSize: 13.5,
-                                                    fontWeight: FontWeight.bold,
-                                                    color: Color(0xFF15803D),
-                                                  ),
-                                                ),
-                                              ),
-                                              DropdownMenuItem(
-                                                value: 'INACTIVE',
-                                                child: Text(
-                                                  'INACTIVE',
-                                                  style: TextStyle(
-                                                    fontSize: 13.5,
-                                                    fontWeight: FontWeight.bold,
-                                                    color: Color(0xFF64748B),
-                                                  ),
-                                                ),
-                                              ),
-                                            ],
-                                            onChanged: (val) {
-                                              if (val != null) {
-                                                setState(() => _status = val);
-                                              }
-                                            },
-                                          ),
-                                        ),
-                                      ),
+                                      _buildStatusDropdown(),
                                     ],
                                   ),
                                 ),
                               ],
                             ),
-                            const SizedBox(height: 14),
 
                             // Half-Day & Full-Day Hours
                             Row(
+                              crossAxisAlignment: CrossAxisAlignment.start,
                               children: [
                                 Expanded(
                                   child: Column(
@@ -1142,7 +1093,6 @@ class _UpdateLocationSheetState extends State<_UpdateLocationSheet> {
                                 ),
                               ],
                             ),
-                            const SizedBox(height: 10),
                           ],
                         ),
                       ),
@@ -1204,15 +1154,112 @@ class _UpdateLocationSheetState extends State<_UpdateLocationSheet> {
     );
   }
 
-  Widget _buildFieldLabel(String label) {
+  Widget _buildFieldLabel(String label, {bool isReadOnly = false}) {
     return Padding(
       padding: const EdgeInsets.only(bottom: 6),
-      child: Text(
-        label,
-        style: const TextStyle(
-          fontSize: 12.5,
-          fontWeight: FontWeight.bold,
-          color: Color(0xFF1E293B),
+      child: Row(
+        mainAxisSize: MainAxisSize.min,
+        children: [
+          Text(
+            label,
+            style: const TextStyle(
+              fontSize: 12.5,
+              fontWeight: FontWeight.bold,
+              color: Color(0xFF1E293B),
+            ),
+          ),
+          if (isReadOnly) ...[
+            const SizedBox(width: 6),
+            Container(
+              padding: const EdgeInsets.symmetric(horizontal: 5, vertical: 1),
+              decoration: BoxDecoration(
+                color: const Color(0xFFE2E8F0),
+                borderRadius: BorderRadius.circular(4),
+              ),
+              child: const Text(
+                'Map-synced',
+                style: TextStyle(
+                  fontSize: 9.5,
+                  fontWeight: FontWeight.w600,
+                  color: Color(0xFF64748B),
+                ),
+              ),
+            ),
+          ],
+        ],
+      ),
+    );
+  }
+
+  Widget _buildStatusDropdown() {
+    return Padding(
+      padding: const EdgeInsets.only(bottom: 14.0),
+      child: Container(
+        height: 48,
+        padding: const EdgeInsets.symmetric(horizontal: 14),
+        decoration: BoxDecoration(
+          color: Colors.white,
+          borderRadius: BorderRadius.circular(12),
+          border: Border.all(color: const Color(0xFFCBD5E1), width: 1),
+        ),
+        child: DropdownButtonHideUnderline(
+          child: DropdownButton<String>(
+            value: _status,
+            isExpanded: true,
+            icon: const Icon(
+              Icons.keyboard_arrow_down_rounded,
+              color: Color(0xFF64748B),
+            ),
+            items: const [
+              DropdownMenuItem(
+                value: 'ACTIVE',
+                child: Row(
+                  children: [
+                    Icon(
+                      Icons.check_circle_rounded,
+                      color: Color(0xFF15803D),
+                      size: 16,
+                    ),
+                    SizedBox(width: 8),
+                    Text(
+                      'ACTIVE',
+                      style: TextStyle(
+                        fontSize: 13.5,
+                        fontWeight: FontWeight.bold,
+                        color: Color(0xFF15803D),
+                      ),
+                    ),
+                  ],
+                ),
+              ),
+              DropdownMenuItem(
+                value: 'INACTIVE',
+                child: Row(
+                  children: [
+                    Icon(
+                      Icons.cancel_rounded,
+                      color: Color(0xFF64748B),
+                      size: 16,
+                    ),
+                    SizedBox(width: 8),
+                    Text(
+                      'INACTIVE',
+                      style: TextStyle(
+                        fontSize: 13.5,
+                        fontWeight: FontWeight.bold,
+                        color: Color(0xFF64748B),
+                      ),
+                    ),
+                  ],
+                ),
+              ),
+            ],
+            onChanged: (val) {
+              if (val != null) {
+                setState(() => _status = val);
+              }
+            },
+          ),
         ),
       ),
     );
@@ -1240,7 +1287,7 @@ class _UpdateLocationSheetState extends State<_UpdateLocationSheet> {
         ),
         decoration: InputDecoration(
           filled: true,
-          fillColor: enabled ? const Color(0xFFF8FAFC) : const Color(0xFFF1F5F9),
+          fillColor: enabled ? Colors.white : const Color(0xFFF1F5F9),
           hintText: hint,
           hintStyle: const TextStyle(
             color: Color(0xFF94A3B8),
@@ -1249,7 +1296,7 @@ class _UpdateLocationSheetState extends State<_UpdateLocationSheet> {
           prefixIcon: icon != null
               ? Icon(
                   icon,
-                  color: const Color(0xFF94A3B8),
+                  color: enabled ? AppColors.primaryNavy : const Color(0xFF94A3B8),
                   size: 18,
                 )
               : null,
@@ -1267,7 +1314,7 @@ class _UpdateLocationSheetState extends State<_UpdateLocationSheet> {
           ),
           disabledBorder: OutlineInputBorder(
             borderRadius: BorderRadius.circular(12),
-            borderSide: const BorderSide(color: Color(0xFFE2E8F0), width: 1),
+            borderSide: const BorderSide(color: Color(0xFFCBD5E1), width: 1),
           ),
           focusedBorder: const OutlineInputBorder(
             borderRadius: BorderRadius.all(Radius.circular(12)),

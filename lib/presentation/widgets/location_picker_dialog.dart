@@ -447,125 +447,399 @@ class _LocationPickerDialogState extends State<LocationPickerDialog> {
   Widget build(BuildContext context) {
     final mediaQuery = MediaQuery.of(context);
     final sheetHeight = mediaQuery.size.height * 0.90;
-    final isBottomFieldFocused =
-        _clientNameFocusNode.hasFocus || _radiusFocusNode.hasFocus;
-    final bottomInset =
-        isBottomFieldFocused ? mediaQuery.viewInsets.bottom : 0.0;
+    final bottomInset = mediaQuery.viewInsets.bottom;
 
-    return Scaffold(
-      backgroundColor: Colors.transparent,
-      resizeToAvoidBottomInset: false,
-      body: Align(
-        alignment: Alignment.bottomCenter,
-        child: Container(
-          height: sheetHeight,
-          decoration: const BoxDecoration(
-            color: Colors.white,
-            borderRadius: BorderRadius.vertical(top: Radius.circular(24)),
-          ),
-          clipBehavior: Clip.antiAlias,
-          child: Stack(
-            children: [
-              // 1. Interactive Flutter Map
-              Positioned.fill(
-                child: FlutterMap(
-                  mapController: _mapController,
-                  options: MapOptions(
-                    initialCenter: _currentSelectedLocation,
-                    initialZoom: 15.0,
-                    onPositionChanged: (camera, hasGesture) {
-                      if (hasGesture) {
-                        if (!_isDraggingMap) {
-                          setState(() {
-                            _isDraggingMap = true;
-                          });
-                        }
-                        _currentSelectedLocation = camera.center;
-                        _debounceTimer?.cancel();
-                        _debounceTimer =
-                            Timer(const Duration(milliseconds: 300), () {
-                          if (mounted) {
-                            setState(() {
-                              _isDraggingMap = false;
-                            });
-                            _reverseGeocode(_currentSelectedLocation);
-                          }
-                        });
-                      }
-                    },
-                    onTap: (tapPosition, point) {
-                      _updateSelectedLocation(point, animateMap: true);
-                    },
-                  ),
-                  children: [
-                    TileLayer(
-                      urlTemplate:
-                          'https://tile.openstreetmap.org/{z}/{x}/{y}.png',
-                      userAgentPackageName: 'com.idealake.clientattendance',
-                    ),
-                  ],
-                ),
-              ),
-
-              // 2. Fixed Center Pin with Elevation & Alignment to Map Center
-              Center(
-                child: IgnorePointer(
+    return Padding(
+      padding: EdgeInsets.only(bottom: bottomInset),
+      child: Scaffold(
+        backgroundColor: Colors.transparent,
+        resizeToAvoidBottomInset: false,
+        body: Align(
+          alignment: Alignment.bottomCenter,
+          child: Container(
+            height: sheetHeight,
+            decoration: const BoxDecoration(
+              color: Colors.white,
+              borderRadius: BorderRadius.vertical(top: Radius.circular(24)),
+            ),
+            clipBehavior: Clip.antiAlias,
+            child: Column(
+              children: [
+                // 1. Interactive Map Viewport (Expanded)
+                Expanded(
                   child: Stack(
-                    alignment: Alignment.center,
-                    clipBehavior: Clip.none,
                     children: [
-                      // Ground anchor pulse & target dot (at exact center 0,0)
-                      Container(
-                        width: 10,
-                        height: 10,
-                        decoration: BoxDecoration(
-                          color: AppColors.primaryNavy,
-                          shape: BoxShape.circle,
-                          border: Border.all(color: Colors.white, width: 2),
-                          boxShadow: [
-                            BoxShadow(
-                              color:
-                                  AppColors.primaryNavy.withValues(alpha: 0.35),
-                              blurRadius: 6,
-                              spreadRadius: 2,
+                      // Interactive Flutter Map
+                      Positioned.fill(
+                        child: FlutterMap(
+                          mapController: _mapController,
+                          options: MapOptions(
+                            initialCenter: _currentSelectedLocation,
+                            initialZoom: 15.0,
+                            onPositionChanged: (camera, hasGesture) {
+                              if (hasGesture) {
+                                if (!_isDraggingMap) {
+                                  setState(() {
+                                    _isDraggingMap = true;
+                                  });
+                                }
+                                _currentSelectedLocation = camera.center;
+                                _debounceTimer?.cancel();
+                                _debounceTimer =
+                                    Timer(const Duration(milliseconds: 300), () {
+                                  if (mounted) {
+                                    setState(() {
+                                      _isDraggingMap = false;
+                                    });
+                                    _reverseGeocode(_currentSelectedLocation);
+                                  }
+                                });
+                              }
+                            },
+                            onTap: (tapPosition, point) {
+                              _updateSelectedLocation(point, animateMap: true);
+                            },
+                          ),
+                          children: [
+                            TileLayer(
+                              urlTemplate:
+                                  'https://tile.openstreetmap.org/{z}/{x}/{y}.png',
+                              userAgentPackageName: 'com.idealake.clientattendance',
                             ),
                           ],
                         ),
                       ),
-                      // Pin Marker floating with bottom tip pointing directly to the anchor dot (0,0)
-                      Transform.translate(
-                        offset: Offset(0, _isDraggingMap ? -28 : -21),
-                        child: AnimatedScale(
-                          scale: _isDraggingMap ? 1.15 : 1.0,
-                          duration: const Duration(milliseconds: 150),
-                          child: Column(
-                            mainAxisSize: MainAxisSize.min,
+
+                      // 2. Fixed Center Pin with Elevation & Alignment to Map Center
+                      Center(
+                        child: IgnorePointer(
+                          child: Stack(
+                            alignment: Alignment.center,
+                            clipBehavior: Clip.none,
                             children: [
+                              // Ground anchor pulse & target dot (at exact center 0,0)
                               Container(
-                                padding: const EdgeInsets.all(7),
+                                width: 10,
+                                height: 10,
                                 decoration: BoxDecoration(
                                   color: AppColors.primaryNavy,
                                   shape: BoxShape.circle,
+                                  border: Border.all(color: Colors.white, width: 2),
                                   boxShadow: [
                                     BoxShadow(
                                       color:
-                                          Colors.black.withValues(alpha: 0.3),
-                                      blurRadius: 8,
-                                      offset: const Offset(0, 4),
+                                          AppColors.primaryNavy.withValues(alpha: 0.35),
+                                      blurRadius: 6,
+                                      spreadRadius: 2,
                                     ),
                                   ],
                                 ),
-                                child: const Icon(
-                                  Icons.location_on,
-                                  color: Colors.white,
-                                  size: 24,
+                              ),
+                              // Pin Marker floating with bottom tip pointing directly to the anchor dot (0,0)
+                              Transform.translate(
+                                offset: Offset(0, _isDraggingMap ? -28 : -21),
+                                child: AnimatedScale(
+                                  scale: _isDraggingMap ? 1.15 : 1.0,
+                                  duration: const Duration(milliseconds: 150),
+                                  child: Column(
+                                    mainAxisSize: MainAxisSize.min,
+                                    children: [
+                                      Container(
+                                        padding: const EdgeInsets.all(7),
+                                        decoration: BoxDecoration(
+                                          color: AppColors.primaryNavy,
+                                          shape: BoxShape.circle,
+                                          boxShadow: [
+                                            BoxShadow(
+                                              color:
+                                                  Colors.black.withValues(alpha: 0.3),
+                                              blurRadius: 8,
+                                              offset: const Offset(0, 4),
+                                            ),
+                                          ],
+                                        ),
+                                        child: const Icon(
+                                          Icons.location_on,
+                                          color: Colors.white,
+                                          size: 24,
+                                        ),
+                                      ),
+                                      // Pin needle tip pointing straight down
+                                      CustomPaint(
+                                        size: const Size(10, 7),
+                                        painter: _PinNeedlePainter(
+                                          color: AppColors.primaryNavy,
+                                        ),
+                                      ),
+                                    ],
+                                  ),
                                 ),
                               ),
-                              // Pin needle tip pointing straight down
-                              CustomPaint(
-                                size: const Size(10, 7),
-                                painter: _PinNeedlePainter(
-                                  color: AppColors.primaryNavy,
+                            ],
+                          ),
+                        ),
+                      ),
+
+                      // 3. Floating Action Buttons (Current Location & Zoom)
+                      Positioned(
+                        bottom: 16,
+                        right: 16,
+                        child: Column(
+                          mainAxisSize: MainAxisSize.min,
+                          children: [
+                            // Current GPS Location Button
+                            FloatingActionButton.small(
+                              heroTag: 'btn_current_location',
+                              onPressed: _isLocatingUser ? null : _getCurrentLocation,
+                              backgroundColor: Colors.white,
+                              foregroundColor: AppColors.primaryNavy,
+                              elevation: 4,
+                              child: _isLocatingUser
+                                  ? const SizedBox(
+                                      width: 18,
+                                      height: 18,
+                                      child: CircularProgressIndicator(
+                                        strokeWidth: 2,
+                                        valueColor: AlwaysStoppedAnimation<Color>(
+                                          AppColors.primaryNavy,
+                                        ),
+                                      ),
+                                    )
+                                  : const Icon(Icons.my_location_rounded, size: 20),
+                            ),
+                            const SizedBox(height: 10),
+
+                            // Zoom In Button
+                            FloatingActionButton.small(
+                              heroTag: 'btn_zoom_in',
+                              onPressed: () {
+                                final zoom = _mapController.camera.zoom;
+                                _mapController.move(_currentSelectedLocation, zoom + 1);
+                              },
+                              backgroundColor: Colors.white,
+                              foregroundColor: const Color(0xFF475569),
+                              elevation: 3,
+                              child: const Icon(Icons.add_rounded, size: 20),
+                            ),
+                            const SizedBox(height: 6),
+
+                            // Zoom Out Button
+                            FloatingActionButton.small(
+                              heroTag: 'btn_zoom_out',
+                              onPressed: () {
+                                final zoom = _mapController.camera.zoom;
+                                _mapController.move(_currentSelectedLocation, zoom - 1);
+                              },
+                              backgroundColor: Colors.white,
+                              foregroundColor: const Color(0xFF475569),
+                              elevation: 3,
+                              child: const Icon(Icons.remove_rounded, size: 20),
+                            ),
+                          ],
+                        ),
+                      ),
+
+                      // 4. Top Header with Drag Handle & Location Search Bar
+                      Positioned(
+                        top: 0,
+                        left: 0,
+                        right: 0,
+                        child: Container(
+                          padding: const EdgeInsets.fromLTRB(16, 12, 16, 16),
+                          decoration: BoxDecoration(
+                            gradient: LinearGradient(
+                              begin: Alignment.topCenter,
+                              end: Alignment.bottomCenter,
+                              colors: [
+                                Colors.white,
+                                Colors.white.withValues(alpha: 0.95),
+                                Colors.white.withValues(alpha: 0.0),
+                              ],
+                              stops: const [0.0, 0.75, 1.0],
+                            ),
+                          ),
+                          child: Column(
+                            mainAxisSize: MainAxisSize.min,
+                            children: [
+                              // Drag Handle Bar
+                              Center(
+                                child: Container(
+                                  width: 40,
+                                  height: 4,
+                                  margin: const EdgeInsets.only(bottom: 12),
+                                  decoration: BoxDecoration(
+                                    color: const Color(0xFFCBD5E1),
+                                    borderRadius: BorderRadius.circular(2),
+                                  ),
+                                ),
+                              ),
+
+                              // Search Bar Row
+                              Row(
+                                children: [
+                                  // Search Input Field
+                                  Expanded(
+                                    child: Container(
+                                      height: 48,
+                                      decoration: BoxDecoration(
+                                        color: Colors.white,
+                                        borderRadius: BorderRadius.circular(14),
+                                        boxShadow: [
+                                          BoxShadow(
+                                            color: Colors.black.withValues(alpha: 0.08),
+                                            blurRadius: 12,
+                                            offset: const Offset(0, 3),
+                                          ),
+                                        ],
+                                        border: Border.all(
+                                          color: const Color(0xFFE2E8F0),
+                                          width: 1,
+                                        ),
+                                      ),
+                                      child: TextField(
+                                        controller: _searchController,
+                                        focusNode: _searchFocusNode,
+                                        textInputAction: TextInputAction.search,
+                                        onSubmitted: _searchLocationByName,
+                                        decoration: InputDecoration(
+                                          hintText: 'Search place / address by name...',
+                                          hintStyle: const TextStyle(
+                                            color: Color(0xFF94A3B8),
+                                            fontSize: 13.5,
+                                          ),
+                                          prefixIcon: _isSearching
+                                              ? const Padding(
+                                                  padding: EdgeInsets.all(12.0),
+                                                  child: SizedBox(
+                                                    width: 18,
+                                                    height: 18,
+                                                    child: CircularProgressIndicator(
+                                                      strokeWidth: 2,
+                                                      valueColor:
+                                                          AlwaysStoppedAnimation<Color>(
+                                                        AppColors.primaryNavy,
+                                                      ),
+                                                    ),
+                                                  ),
+                                                )
+                                              : const Icon(
+                                                  Icons.search_rounded,
+                                                  color: Color(0xFF64748B),
+                                                  size: 22,
+                                                ),
+                                          suffixIcon: _searchController.text.isNotEmpty
+                                              ? IconButton(
+                                                  icon: const Icon(
+                                                    Icons.clear_rounded,
+                                                    size: 18,
+                                                    color: Color(0xFF94A3B8),
+                                                  ),
+                                                  onPressed: () {
+                                                    _searchController.clear();
+                                                    setState(() {});
+                                                  },
+                                                )
+                                              : null,
+                                          border: InputBorder.none,
+                                          contentPadding: const EdgeInsets.symmetric(
+                                            horizontal: 14,
+                                            vertical: 12,
+                                          ),
+                                        ),
+                                        onChanged: (val) {
+                                          setState(() {});
+                                        },
+                                      ),
+                                    ),
+                                  ),
+                                  const SizedBox(width: 10),
+
+                                  // Search Button
+                                  Container(
+                                    height: 48,
+                                    decoration: BoxDecoration(
+                                      color: AppColors.primaryNavy,
+                                      borderRadius: BorderRadius.circular(14),
+                                      boxShadow: [
+                                        BoxShadow(
+                                          color: AppColors.primaryNavy
+                                              .withValues(alpha: 0.25),
+                                          blurRadius: 8,
+                                          offset: const Offset(0, 3),
+                                        ),
+                                      ],
+                                    ),
+                                    child: IconButton(
+                                      icon: const Icon(
+                                        Icons.arrow_forward_rounded,
+                                        color: Colors.white,
+                                      ),
+                                      tooltip: 'Search Location',
+                                      onPressed: () =>
+                                          _searchLocationByName(_searchController.text),
+                                    ),
+                                  ),
+                                  const SizedBox(width: 8),
+
+                                  // Close Button
+                                  Container(
+                                    height: 48,
+                                    width: 48,
+                                    decoration: BoxDecoration(
+                                      color: Colors.white,
+                                      borderRadius: BorderRadius.circular(14),
+                                      border:
+                                          Border.all(color: const Color(0xFFE2E8F0)),
+                                      boxShadow: [
+                                        BoxShadow(
+                                          color: Colors.black.withValues(alpha: 0.05),
+                                          blurRadius: 6,
+                                          offset: const Offset(0, 2),
+                                        ),
+                                      ],
+                                    ),
+                                    child: IconButton(
+                                      icon: const Icon(
+                                        Icons.close_rounded,
+                                        color: Color(0xFF475569),
+                                        size: 20,
+                                      ),
+                                      onPressed: () => Navigator.of(context).pop(),
+                                    ),
+                                  ),
+                                ],
+                              ),
+
+                              const SizedBox(height: 8),
+                              // Help Hint Badge
+                              Container(
+                                padding: const EdgeInsets.symmetric(
+                                  horizontal: 12,
+                                  vertical: 5,
+                                ),
+                                decoration: BoxDecoration(
+                                  color: Colors.white.withValues(alpha: 0.9),
+                                  borderRadius: BorderRadius.circular(20),
+                                  border: Border.all(color: const Color(0xFFE2E8F0)),
+                                ),
+                                child: const Row(
+                                  mainAxisSize: MainAxisSize.min,
+                                  children: [
+                                    Icon(
+                                      Icons.touch_app_outlined,
+                                      size: 14,
+                                      color: Color(0xFF64748B),
+                                    ),
+                                    SizedBox(width: 6),
+                                    Text(
+                                      'Drag map or search location name to position pin',
+                                      style: TextStyle(
+                                        fontSize: 11.5,
+                                        color: Color(0xFF475569),
+                                        fontWeight: FontWeight.w500,
+                                      ),
+                                    ),
+                                  ],
                                 ),
                               ),
                             ],
@@ -575,296 +849,20 @@ class _LocationPickerDialogState extends State<LocationPickerDialog> {
                     ],
                   ),
                 ),
-              ),
 
-              // 3. Floating Action Buttons (Current Location & Zoom)
-              Positioned(
-                top: 112,
-                right: 16,
-                child: Column(
-                  mainAxisSize: MainAxisSize.min,
-                  children: [
-                    // Current GPS Location Button
-                    FloatingActionButton.small(
-                      heroTag: 'btn_current_location',
-                      onPressed: _isLocatingUser ? null : _getCurrentLocation,
-                      backgroundColor: Colors.white,
-                      foregroundColor: AppColors.primaryNavy,
-                      elevation: 4,
-                      child: _isLocatingUser
-                          ? const SizedBox(
-                              width: 18,
-                              height: 18,
-                              child: CircularProgressIndicator(
-                                strokeWidth: 2,
-                                valueColor: AlwaysStoppedAnimation<Color>(
-                                  AppColors.primaryNavy,
-                                ),
-                              ),
-                            )
-                          : const Icon(Icons.my_location_rounded, size: 20),
-                    ),
-                    const SizedBox(height: 10),
-
-                    // Zoom In Button
-                    FloatingActionButton.small(
-                      heroTag: 'btn_zoom_in',
-                      onPressed: () {
-                        final zoom = _mapController.camera.zoom;
-                        _mapController.move(_currentSelectedLocation, zoom + 1);
-                      },
-                      backgroundColor: Colors.white,
-                      foregroundColor: const Color(0xFF475569),
-                      elevation: 3,
-                      child: const Icon(Icons.add_rounded, size: 20),
-                    ),
-                    const SizedBox(height: 6),
-
-                    // Zoom Out Button
-                    FloatingActionButton.small(
-                      heroTag: 'btn_zoom_out',
-                      onPressed: () {
-                        final zoom = _mapController.camera.zoom;
-                        _mapController.move(_currentSelectedLocation, zoom - 1);
-                      },
-                      backgroundColor: Colors.white,
-                      foregroundColor: const Color(0xFF475569),
-                      elevation: 3,
-                      child: const Icon(Icons.remove_rounded, size: 20),
-                    ),
-                  ],
-                ),
-              ),
-
-              // 4. Top Header with Drag Handle & Location Search Bar
-              Positioned(
-                top: 0,
-                left: 0,
-                right: 0,
-                child: Container(
-                  padding: const EdgeInsets.fromLTRB(16, 12, 16, 16),
-                  decoration: BoxDecoration(
-                    gradient: LinearGradient(
-                      begin: Alignment.topCenter,
-                      end: Alignment.bottomCenter,
-                      colors: [
-                        Colors.white,
-                        Colors.white.withValues(alpha: 0.95),
-                        Colors.white.withValues(alpha: 0.0),
-                      ],
-                      stops: const [0.0, 0.75, 1.0],
-                    ),
-                  ),
-                  child: Column(
-                    mainAxisSize: MainAxisSize.min,
-                    children: [
-                      // Drag Handle Bar
-                      Center(
-                        child: Container(
-                          width: 40,
-                          height: 4,
-                          margin: const EdgeInsets.only(bottom: 12),
-                          decoration: BoxDecoration(
-                            color: const Color(0xFFCBD5E1),
-                            borderRadius: BorderRadius.circular(2),
-                          ),
-                        ),
-                      ),
-
-                      // Search Bar Row
-                      Row(
-                        children: [
-                          // Search Input Field
-                          Expanded(
-                            child: Container(
-                              height: 48,
-                              decoration: BoxDecoration(
-                                color: Colors.white,
-                                borderRadius: BorderRadius.circular(14),
-                                boxShadow: [
-                                  BoxShadow(
-                                    color: Colors.black.withValues(alpha: 0.08),
-                                    blurRadius: 12,
-                                    offset: const Offset(0, 3),
-                                  ),
-                                ],
-                                border: Border.all(
-                                  color: const Color(0xFFE2E8F0),
-                                  width: 1,
-                                ),
-                              ),
-                              child: TextField(
-                                controller: _searchController,
-                                focusNode: _searchFocusNode,
-                                textInputAction: TextInputAction.search,
-                                onSubmitted: _searchLocationByName,
-                                decoration: InputDecoration(
-                                  hintText: 'Search place / address by name...',
-                                  hintStyle: const TextStyle(
-                                    color: Color(0xFF94A3B8),
-                                    fontSize: 13.5,
-                                  ),
-                                  prefixIcon: _isSearching
-                                      ? const Padding(
-                                          padding: EdgeInsets.all(12.0),
-                                          child: SizedBox(
-                                            width: 18,
-                                            height: 18,
-                                            child: CircularProgressIndicator(
-                                              strokeWidth: 2,
-                                              valueColor:
-                                                  AlwaysStoppedAnimation<Color>(
-                                                AppColors.primaryNavy,
-                                              ),
-                                            ),
-                                          ),
-                                        )
-                                      : const Icon(
-                                          Icons.search_rounded,
-                                          color: Color(0xFF64748B),
-                                          size: 22,
-                                        ),
-                                  suffixIcon: _searchController.text.isNotEmpty
-                                      ? IconButton(
-                                          icon: const Icon(
-                                            Icons.clear_rounded,
-                                            size: 18,
-                                            color: Color(0xFF94A3B8),
-                                          ),
-                                          onPressed: () {
-                                            _searchController.clear();
-                                            setState(() {});
-                                          },
-                                        )
-                                      : null,
-                                  border: InputBorder.none,
-                                  contentPadding: const EdgeInsets.symmetric(
-                                    horizontal: 14,
-                                    vertical: 12,
-                                  ),
-                                ),
-                                onChanged: (val) {
-                                  setState(() {});
-                                },
-                              ),
-                            ),
-                          ),
-                          const SizedBox(width: 10),
-
-                          // Search Button
-                          Container(
-                            height: 48,
-                            decoration: BoxDecoration(
-                              color: AppColors.primaryNavy,
-                              borderRadius: BorderRadius.circular(14),
-                              boxShadow: [
-                                BoxShadow(
-                                  color: AppColors.primaryNavy
-                                      .withValues(alpha: 0.25),
-                                  blurRadius: 8,
-                                  offset: const Offset(0, 3),
-                                ),
-                              ],
-                            ),
-                            child: IconButton(
-                              icon: const Icon(
-                                Icons.arrow_forward_rounded,
-                                color: Colors.white,
-                              ),
-                              tooltip: 'Search Location',
-                              onPressed: () =>
-                                  _searchLocationByName(_searchController.text),
-                            ),
-                          ),
-                          const SizedBox(width: 8),
-
-                          // Close Button
-                          Container(
-                            height: 48,
-                            width: 48,
-                            decoration: BoxDecoration(
-                              color: Colors.white,
-                              borderRadius: BorderRadius.circular(14),
-                              border:
-                                  Border.all(color: const Color(0xFFE2E8F0)),
-                              boxShadow: [
-                                BoxShadow(
-                                  color: Colors.black.withValues(alpha: 0.05),
-                                  blurRadius: 6,
-                                  offset: const Offset(0, 2),
-                                ),
-                              ],
-                            ),
-                            child: IconButton(
-                              icon: const Icon(
-                                Icons.close_rounded,
-                                color: Color(0xFF475569),
-                                size: 20,
-                              ),
-                              onPressed: () => Navigator.of(context).pop(),
-                            ),
-                          ),
-                        ],
-                      ),
-
-                      const SizedBox(height: 8),
-                      // Help Hint Badge
-                      Container(
-                        padding: const EdgeInsets.symmetric(
-                          horizontal: 12,
-                          vertical: 5,
-                        ),
-                        decoration: BoxDecoration(
-                          color: Colors.white.withValues(alpha: 0.9),
-                          borderRadius: BorderRadius.circular(20),
-                          border: Border.all(color: const Color(0xFFE2E8F0)),
-                        ),
-                        child: const Row(
-                          mainAxisSize: MainAxisSize.min,
-                          children: [
-                            Icon(
-                              Icons.touch_app_outlined,
-                              size: 14,
-                              color: Color(0xFF64748B),
-                            ),
-                            SizedBox(width: 6),
-                            Text(
-                              'Drag map or search location name to position pin',
-                              style: TextStyle(
-                                fontSize: 11.5,
-                                color: Color(0xFF475569),
-                                fontWeight: FontWeight.w500,
-                              ),
-                            ),
-                          ],
-                        ),
-                      ),
-                    ],
-                  ),
-                ),
-              ),
-
-              // 5. Bottom Selected Location Details, Inputs & Confirm Action
-              AnimatedPositioned(
-                duration: const Duration(milliseconds: 200),
-                curve: Curves.easeOut,
-                left: 0,
-                right: 0,
-                bottom: bottomInset,
-                child: Container(
-                  constraints: BoxConstraints(
-                    maxHeight: sheetHeight * 0.58,
-                  ),
+                // 2. Bottom Details Card
+                Container(
                   padding: const EdgeInsets.fromLTRB(18, 14, 18, 18),
                   decoration: BoxDecoration(
                     color: Colors.white,
-                    borderRadius:
-                        const BorderRadius.vertical(top: Radius.circular(24)),
+                    border: const Border(
+                      top: BorderSide(color: Color(0xFFE2E8F0), width: 1),
+                    ),
                     boxShadow: [
                       BoxShadow(
-                        color: Colors.black.withValues(alpha: 0.12),
-                        blurRadius: 18,
-                        offset: const Offset(0, -4),
+                        color: Colors.black.withValues(alpha: 0.08),
+                        blurRadius: 10,
+                        offset: const Offset(0, -3),
                       ),
                     ],
                   ),
@@ -1209,8 +1207,8 @@ class _LocationPickerDialogState extends State<LocationPickerDialog> {
                     ),
                   ),
                 ),
-              ),
-            ],
+              ],
+            ),
           ),
         ),
       ),

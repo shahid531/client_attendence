@@ -219,12 +219,12 @@ class ApprovalsScreenState extends State<ApprovalsScreen> {
                   const SizedBox(height: 16),
 
                   // Metrics Header Card
-                  _buildMetricsCard(
-                    totalPending: totalPending,
-                    regCount: regPending,
-                    wfhCount: wfhPending,
-                  ),
-                  const SizedBox(height: 16),
+                  // _buildMetricsCard(
+                  //   totalPending: totalPending,
+                  //   regCount: regPending,
+                  //   wfhCount: wfhPending,
+                  // ),
+                  // const SizedBox(height: 16),
 
                   // Tab Toggle (Pending / Completed)
                   _buildTabToggle(

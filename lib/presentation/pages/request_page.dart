@@ -271,8 +271,8 @@ class RequestPageState extends State<RequestPage> {
             const SizedBox(height: 16),
 
             // Search Bar
-            _buildSearchBar(),
-            const SizedBox(height: 16),
+            // _buildSearchBar(),
+            // const SizedBox(height: 16),
 
             // Tab View Content with Bloc
             BlocConsumer<LeaveBloc, LeaveState>(
