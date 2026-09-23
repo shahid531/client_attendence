@@ -423,7 +423,7 @@ class ClientLocationsPageState extends State<ClientLocationsPage> {
             onSubmitted: (_) => _performSearch(),
             textInputAction: TextInputAction.search,
             decoration: InputDecoration(
-              hintText: 'Search by Client Name or City...',
+              hintText: 'Type Client Name or City',
               hintStyle: const TextStyle(
                 color: AppColors.textLight,
                 fontSize: 13,

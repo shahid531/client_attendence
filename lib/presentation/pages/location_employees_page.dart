@@ -467,7 +467,7 @@ class _LocationEmployeesPageState extends State<LocationEmployeesPage> {
             onSubmitted: (_) => _performSearch(),
             textInputAction: TextInputAction.search,
             decoration: InputDecoration(
-              hintText: 'Search employee name...',
+              hintText: 'Type Employee Name',
               hintStyle: const TextStyle(
                 color: AppColors.textLight,
                 fontSize: 13,
@@ -754,6 +754,10 @@ class _UpdateLocationSheetState extends State<_UpdateLocationSheet> {
 
   @override
   Widget build(BuildContext context) {
+    final mediaQuery = MediaQuery.of(context);
+    final keyboardHeight = mediaQuery.viewInsets.bottom;
+    final availableHeight = mediaQuery.size.height * 0.88;
+
     return BlocConsumer<AdminBloc, AdminState>(
       listener: (context, state) {
         if (state is UpdateLocationSuccessState) {
@@ -766,424 +770,433 @@ class _UpdateLocationSheetState extends State<_UpdateLocationSheet> {
       builder: (context, state) {
         final isLoading = state is UpdateLocationLoadingState;
 
-        return Material(
-          color: Colors.white,
-          borderRadius: const BorderRadius.vertical(top: Radius.circular(24)),
-          clipBehavior: Clip.antiAlias,
-          child: SizedBox(
-            height: MediaQuery.of(context).size.height * 0.88,
-            child: Column(
-              children: [
-                // Drag Handle
-                const SizedBox(height: 12),
-                Container(
-                  width: 40,
-                  height: 4,
-                  decoration: BoxDecoration(
-                    color: const Color(0xFFCBD5E1),
-                    borderRadius: BorderRadius.circular(2),
-                  ),
-                ),
-                const SizedBox(height: 12),
-
-                // Header
-                Padding(
-                  padding: const EdgeInsets.symmetric(horizontal: 20.0),
-                  child: Row(
-                    mainAxisAlignment: MainAxisAlignment.spaceBetween,
-                    children: [
-                      Column(
-                        crossAxisAlignment: CrossAxisAlignment.start,
-                        children: [
-                          const Text(
-                            'Update Location & Coordinates',
-                            style: TextStyle(
-                              fontSize: 18,
-                              fontWeight: FontWeight.bold,
-                              color: Color(0xFF0F172A),
-                            ),
-                          ),
-                          const SizedBox(height: 2),
-                          Text(
-                            'Edit site info or pick on map',
-                            style: TextStyle(
-                              fontSize: 12,
-                              color: Colors.grey.shade600,
-                            ),
-                          ),
-                        ],
-                      ),
-                      IconButton(
-                        onPressed: () => Navigator.of(context).pop(),
-                        icon: const Icon(
-                          Icons.close_rounded,
-                          color: Color(0xFF64748B),
-                        ),
-                      ),
-                    ],
-                  ),
-                ),
-                const Divider(height: 16, color: Color(0xFFE2E8F0)),
-
-                // Scrollable Form Body
-                Expanded(
-                  child: SingleChildScrollView(
-                    padding: const EdgeInsets.all(20.0),
-                    child: Form(
-                      key: _formKey,
-                      child: Column(
-                        crossAxisAlignment: CrossAxisAlignment.start,
-                        children: [
-                          // Pick on Google Map Action Banner
-                          InkWell(
-                            onTap: isLoading ? null : _pickOnGoogleMap,
-                            borderRadius: BorderRadius.circular(12),
-                            child: Container(
-                              width: double.infinity,
-                              padding: const EdgeInsets.symmetric(
-                                horizontal: 16,
-                                vertical: 14,
-                              ),
-                              decoration: BoxDecoration(
-                                color: AppColors.primaryNavy
-                                    .withValues(alpha: 0.05),
-                                borderRadius: BorderRadius.circular(12),
-                                border: Border.all(
-                                  color: AppColors.primaryNavy
-                                      .withValues(alpha: 0.3),
-                                ),
-                              ),
-                              child: Row(
-                                children: [
-                                  Container(
-                                    padding: const EdgeInsets.all(8),
-                                    decoration: BoxDecoration(
-                                      color: AppColors.primaryNavy,
-                                      borderRadius: BorderRadius.circular(8),
-                                    ),
-                                    child: const Icon(
-                                      Icons.map_rounded,
-                                      color: Colors.white,
-                                      size: 20,
-                                    ),
-                                  ),
-                                  const SizedBox(width: 12),
-                                  Expanded(
-                                    child: Column(
-                                      crossAxisAlignment:
-                                          CrossAxisAlignment.start,
-                                      children: const [
-                                        Text(
-                                          'Pick / Adjust on Google Map',
-                                          style: TextStyle(
-                                            fontSize: 13.5,
-                                            fontWeight: FontWeight.bold,
-                                            color: AppColors.primaryNavy,
-                                          ),
-                                        ),
-                                        SizedBox(height: 2),
-                                        Text(
-                                          'Update coordinates & address via interactive map',
-                                          style: TextStyle(
-                                            fontSize: 11.5,
-                                            color: Color(0xFF64748B),
-                                          ),
-                                        ),
-                                      ],
-                                    ),
-                                  ),
-                                  const Icon(
-                                    Icons.arrow_forward_ios_rounded,
-                                    size: 14,
-                                    color: AppColors.primaryNavy,
-                                  ),
-                                ],
-                              ),
-                            ),
-                          ),
-                          const SizedBox(height: 18),
-
-                          // Client Name
-                          _buildFieldLabel('Client Name'),
-                          _buildTextInputField(
-                            controller: _clientNameController,
-                            hint: 'e.g. Global Enterprise Corp',
-                            icon: Icons.business_outlined,
-                            validator: (val) {
-                              if (val == null || val.trim().isEmpty) {
-                                return 'Client name is required';
-                              }
-                              return null;
-                            },
-                          ),
-
-                          // Address
-                          _buildFieldLabel('Address'),
-                          _buildTextInputField(
-                            controller: _addressController,
-                            hint: 'e.g. Building 3, Sector 5, Mindspace, Mumbai',
-                            icon: Icons.place_outlined,
-                            enabled: false,
-                            validator: (val) {
-                              if (val == null || val.trim().isEmpty) {
-                                return 'Address is required';
-                              }
-                              return null;
-                            },
-                          ),
-
-                          // City
-                          _buildFieldLabel('City'),
-                          _buildTextInputField(
-                            controller: _cityController,
-                            hint: 'e.g. Mumbai',
-                            icon: Icons.location_on_outlined,
-                            enabled: false,
-                          ),
-
-                          // Latitude & Longitude
-                          Row(
-                            children: [
-                              Expanded(
-                                child: Column(
-                                  crossAxisAlignment: CrossAxisAlignment.start,
-                                  children: [
-                                    _buildFieldLabel('Latitude'),
-                                    _buildTextInputField(
-                                      controller: _latController,
-                                      hint: '19.0760',
-                                      enabled: false,
-                                      keyboardType: const TextInputType.numberWithOptions(
-                                        decimal: true,
-                                        signed: true,
-                                      ),
-                                      icon: Icons.explore_outlined,
-                                      validator: (val) {
-                                        if (val == null || val.trim().isEmpty) {
-                                          return 'Required';
-                                        }
-                                        if (double.tryParse(val) == null) {
-                                          return 'Invalid';
-                                        }
-                                        return null;
-                                      },
-                                    ),
-                                  ],
-                                ),
-                              ),
-                              const SizedBox(width: 12),
-                              Expanded(
-                                child: Column(
-                                  crossAxisAlignment: CrossAxisAlignment.start,
-                                  children: [
-                                    _buildFieldLabel('Longitude'),
-                                    _buildTextInputField(
-                                      controller: _lngController,
-                                      hint: '72.8777',
-                                      enabled: false,
-                                      keyboardType: const TextInputType.numberWithOptions(
-                                        decimal: true,
-                                        signed: true,
-                                      ),
-                                      icon: Icons.explore_outlined,
-                                      validator: (val) {
-                                        if (val == null || val.trim().isEmpty) {
-                                          return 'Required';
-                                        }
-                                        if (double.tryParse(val) == null) {
-                                          return 'Invalid';
-                                        }
-                                        return null;
-                                      },
-                                    ),
-                                  ],
-                                ),
-                              ),
-                            ],
-                          ),
-
-                          // Allowed Radius & Status
-                          Row(
-                            children: [
-                              Expanded(
-                                child: Column(
-                                  crossAxisAlignment: CrossAxisAlignment.start,
-                                  children: [
-                                    _buildFieldLabel('Allowed Radius (m)'),
-                                    _buildTextInputField(
-                                      controller: _radiusController,
-                                      hint: '120.0',
-                                      keyboardType: const TextInputType.numberWithOptions(
-                                        decimal: true,
-                                      ),
-                                      icon: Icons.radar_rounded,
-                                      validator: (val) {
-                                        if (val == null || val.trim().isEmpty) {
-                                          return 'Required';
-                                        }
-                                        if (double.tryParse(val) == null) {
-                                          return 'Invalid';
-                                        }
-                                        return null;
-                                      },
-                                    ),
-                                  ],
-                                ),
-                              ),
-                              const SizedBox(width: 12),
-                              Expanded(
-                                child: Column(
-                                  crossAxisAlignment: CrossAxisAlignment.start,
-                                  children: [
-                                    _buildFieldLabel('Status'),
-                                    Container(
-                                      height: 48,
-                                      padding: const EdgeInsets.symmetric(
-                                        horizontal: 12,
-                                      ),
-                                      decoration: BoxDecoration(
-                                        color: const Color(0xFFF8FAFC),
-                                        borderRadius: BorderRadius.circular(12),
-                                        border: Border.all(
-                                          color: const Color(0xFFCBD5E1),
-                                        ),
-                                      ),
-                                      child: DropdownButtonHideUnderline(
-                                        child: DropdownButton<String>(
-                                          value: _status,
-                                          isExpanded: true,
-                                          icon: const Icon(
-                                            Icons.keyboard_arrow_down_rounded,
-                                            color: Color(0xFF64748B),
-                                          ),
-                                          items: const [
-                                            DropdownMenuItem(
-                                              value: 'ACTIVE',
-                                              child: Text(
-                                                'ACTIVE',
-                                                style: TextStyle(
-                                                  fontSize: 13.5,
-                                                  fontWeight: FontWeight.bold,
-                                                  color: Color(0xFF15803D),
-                                                ),
-                                              ),
-                                            ),
-                                            DropdownMenuItem(
-                                              value: 'INACTIVE',
-                                              child: Text(
-                                                'INACTIVE',
-                                                style: TextStyle(
-                                                  fontSize: 13.5,
-                                                  fontWeight: FontWeight.bold,
-                                                  color: Color(0xFF64748B),
-                                                ),
-                                              ),
-                                            ),
-                                          ],
-                                          onChanged: (val) {
-                                            if (val != null) {
-                                              setState(() => _status = val);
-                                            }
-                                          },
-                                        ),
-                                      ),
-                                    ),
-                                  ],
-                                ),
-                              ),
-                            ],
-                          ),
-                          const SizedBox(height: 14),
-
-                          // Half-Day & Full-Day Hours
-                          Row(
-                            children: [
-                              Expanded(
-                                child: Column(
-                                  crossAxisAlignment: CrossAxisAlignment.start,
-                                  children: [
-                                    _buildFieldLabel('Half Day Hrs'),
-                                    _buildTextInputField(
-                                      controller: _halfDayController,
-                                      hint: '5.0',
-                                      keyboardType: const TextInputType.numberWithOptions(
-                                        decimal: true,
-                                      ),
-                                      icon: Icons.timelapse_rounded,
-                                    ),
-                                  ],
-                                ),
-                              ),
-                              const SizedBox(width: 12),
-                              Expanded(
-                                child: Column(
-                                  crossAxisAlignment: CrossAxisAlignment.start,
-                                  children: [
-                                    _buildFieldLabel('Full Day Hrs'),
-                                    _buildTextInputField(
-                                      controller: _fullDayController,
-                                      hint: '9.0',
-                                      keyboardType: const TextInputType.numberWithOptions(
-                                        decimal: true,
-                                      ),
-                                      icon: Icons.access_time_filled_rounded,
-                                    ),
-                                  ],
-                                ),
-                              ),
-                            ],
-                          ),
-                          const SizedBox(height: 10),
-                        ],
-                      ),
+        return Padding(
+          padding: EdgeInsets.only(bottom: keyboardHeight),
+          child: Material(
+            color: Colors.white,
+            borderRadius: const BorderRadius.vertical(top: Radius.circular(24)),
+            clipBehavior: Clip.antiAlias,
+            child: ConstrainedBox(
+              constraints: BoxConstraints(
+                maxHeight: availableHeight,
+              ),
+              child: Column(
+                mainAxisSize: MainAxisSize.min,
+                children: [
+                  // Drag Handle
+                  const SizedBox(height: 12),
+                  Container(
+                    width: 40,
+                    height: 4,
+                    decoration: BoxDecoration(
+                      color: const Color(0xFFCBD5E1),
+                      borderRadius: BorderRadius.circular(2),
                     ),
                   ),
-                ),
+                  const SizedBox(height: 12),
 
-                // Bottom Action Button
-                Container(
-                  padding: const EdgeInsets.all(16.0),
-                  decoration: const BoxDecoration(
-                    color: Colors.white,
-                    border: Border(
-                      top: BorderSide(color: Color(0xFFE2E8F0)),
-                    ),
-                  ),
-                  child: SizedBox(
-                    width: double.infinity,
-                    height: 48,
-                    child: ElevatedButton(
-                      onPressed: isLoading ? null : _onSavePressed,
-                      style: ElevatedButton.styleFrom(
-                        backgroundColor: AppColors.primaryNavy,
-                        elevation: 0,
-                        shape: RoundedRectangleBorder(
-                          borderRadius: BorderRadius.circular(12),
-                        ),
-                      ),
-                      child: isLoading
-                          ? const SizedBox(
-                              width: 22,
-                              height: 22,
-                              child: CircularProgressIndicator(
-                                strokeWidth: 2.5,
-                                valueColor: AlwaysStoppedAnimation<Color>(
-                                  Colors.white,
-                                ),
-                              ),
-                            )
-                          : const Text(
-                              'Update Location and Coordinates',
+                  // Header
+                  Padding(
+                    padding: const EdgeInsets.symmetric(horizontal: 20.0),
+                    child: Row(
+                      mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                      children: [
+                        Column(
+                          crossAxisAlignment: CrossAxisAlignment.start,
+                          children: [
+                            const Text(
+                              'Update Location & Coordinates',
                               style: TextStyle(
-                                fontSize: 14.5,
+                                fontSize: 18,
                                 fontWeight: FontWeight.bold,
-                                color: Colors.white,
+                                color: Color(0xFF0F172A),
                               ),
                             ),
+                            const SizedBox(height: 2),
+                            Text(
+                              'Edit site info or pick on map',
+                              style: TextStyle(
+                                fontSize: 12,
+                                color: Colors.grey.shade600,
+                              ),
+                            ),
+                          ],
+                        ),
+                        IconButton(
+                          onPressed: () => Navigator.of(context).pop(),
+                          icon: const Icon(
+                            Icons.close_rounded,
+                            color: Color(0xFF64748B),
+                          ),
+                        ),
+                      ],
                     ),
                   ),
-                ),
-              ],
+                  const Divider(height: 16, color: Color(0xFFE2E8F0)),
+
+                  // Scrollable Form Body
+                  Expanded(
+                    child: SingleChildScrollView(
+                      padding: const EdgeInsets.all(20.0),
+                      child: Form(
+                        key: _formKey,
+                        child: Column(
+                          crossAxisAlignment: CrossAxisAlignment.start,
+                          children: [
+                            // Pick on Google Map Action Banner
+                            InkWell(
+                              onTap: isLoading ? null : _pickOnGoogleMap,
+                              borderRadius: BorderRadius.circular(12),
+                              child: Container(
+                                width: double.infinity,
+                                padding: const EdgeInsets.symmetric(
+                                  horizontal: 16,
+                                  vertical: 14,
+                                ),
+                                decoration: BoxDecoration(
+                                  color: AppColors.primaryNavy
+                                      .withValues(alpha: 0.05),
+                                  borderRadius: BorderRadius.circular(12),
+                                  border: Border.all(
+                                    color: AppColors.primaryNavy
+                                        .withValues(alpha: 0.3),
+                                  ),
+                                ),
+                                child: Row(
+                                  children: [
+                                    Container(
+                                      padding: const EdgeInsets.all(8),
+                                      decoration: BoxDecoration(
+                                        color: AppColors.primaryNavy,
+                                        borderRadius: BorderRadius.circular(8),
+                                      ),
+                                      child: const Icon(
+                                        Icons.map_rounded,
+                                        color: Colors.white,
+                                        size: 20,
+                                      ),
+                                    ),
+                                    const SizedBox(width: 12),
+                                    Expanded(
+                                      child: Column(
+                                        crossAxisAlignment:
+                                            CrossAxisAlignment.start,
+                                        children: const [
+                                          Text(
+                                            'Pick / Adjust on Google Map',
+                                            style: TextStyle(
+                                              fontSize: 13.5,
+                                              fontWeight: FontWeight.bold,
+                                              color: AppColors.primaryNavy,
+                                            ),
+                                          ),
+                                          SizedBox(height: 2),
+                                          Text(
+                                            'Update coordinates & address via interactive map',
+                                            style: TextStyle(
+                                              fontSize: 11.5,
+                                              color: Color(0xFF64748B),
+                                            ),
+                                          ),
+                                        ],
+                                      ),
+                                    ),
+                                    const Icon(
+                                      Icons.arrow_forward_ios_rounded,
+                                      size: 14,
+                                      color: AppColors.primaryNavy,
+                                    ),
+                                  ],
+                                ),
+                              ),
+                            ),
+                            const SizedBox(height: 18),
+
+                            // Client Name
+                            _buildFieldLabel('Client Name'),
+                            _buildTextInputField(
+                              controller: _clientNameController,
+                              hint: 'e.g. Global Enterprise Corp',
+                              icon: Icons.business_outlined,
+                              validator: (val) {
+                                if (val == null || val.trim().isEmpty) {
+                                  return 'Client name is required';
+                                }
+                                return null;
+                              },
+                            ),
+
+                            // Address
+                            _buildFieldLabel('Address'),
+                            _buildTextInputField(
+                              controller: _addressController,
+                              hint: 'e.g. Building 3, Sector 5, Mindspace, Mumbai',
+                              icon: Icons.place_outlined,
+                              enabled: false,
+                              validator: (val) {
+                                if (val == null || val.trim().isEmpty) {
+                                  return 'Address is required';
+                                }
+                                return null;
+                              },
+                            ),
+
+                            // City
+                            _buildFieldLabel('City'),
+                            _buildTextInputField(
+                              controller: _cityController,
+                              hint: 'e.g. Mumbai',
+                              icon: Icons.location_on_outlined,
+                              enabled: false,
+                            ),
+
+                            // Latitude & Longitude
+                            Row(
+                              children: [
+                                Expanded(
+                                  child: Column(
+                                    crossAxisAlignment: CrossAxisAlignment.start,
+                                    children: [
+                                      _buildFieldLabel('Latitude'),
+                                      _buildTextInputField(
+                                        controller: _latController,
+                                        hint: '19.0760',
+                                        enabled: false,
+                                        keyboardType: const TextInputType.numberWithOptions(
+                                          decimal: true,
+                                          signed: true,
+                                        ),
+                                        icon: Icons.explore_outlined,
+                                        validator: (val) {
+                                          if (val == null || val.trim().isEmpty) {
+                                            return 'Required';
+                                          }
+                                          if (double.tryParse(val) == null) {
+                                            return 'Invalid';
+                                          }
+                                          return null;
+                                        },
+                                      ),
+                                    ],
+                                  ),
+                                ),
+                                const SizedBox(width: 12),
+                                Expanded(
+                                  child: Column(
+                                    crossAxisAlignment: CrossAxisAlignment.start,
+                                    children: [
+                                      _buildFieldLabel('Longitude'),
+                                      _buildTextInputField(
+                                        controller: _lngController,
+                                        hint: '72.8777',
+                                        enabled: false,
+                                        keyboardType: const TextInputType.numberWithOptions(
+                                          decimal: true,
+                                          signed: true,
+                                        ),
+                                        icon: Icons.explore_outlined,
+                                        validator: (val) {
+                                          if (val == null || val.trim().isEmpty) {
+                                            return 'Required';
+                                          }
+                                          if (double.tryParse(val) == null) {
+                                            return 'Invalid';
+                                          }
+                                          return null;
+                                        },
+                                      ),
+                                    ],
+                                  ),
+                                ),
+                              ],
+                            ),
+
+                            // Allowed Radius & Status
+                            Row(
+                              children: [
+                                Expanded(
+                                  child: Column(
+                                    crossAxisAlignment: CrossAxisAlignment.start,
+                                    children: [
+                                      _buildFieldLabel('Allowed Radius (m)'),
+                                      _buildTextInputField(
+                                        controller: _radiusController,
+                                        hint: '120.0',
+                                        keyboardType: const TextInputType.numberWithOptions(
+                                          decimal: true,
+                                        ),
+                                        icon: Icons.radar_rounded,
+                                        validator: (val) {
+                                          if (val == null || val.trim().isEmpty) {
+                                            return 'Required';
+                                          }
+                                          if (double.tryParse(val) == null) {
+                                            return 'Invalid';
+                                          }
+                                          return null;
+                                        },
+                                      ),
+                                    ],
+                                  ),
+                                ),
+                                const SizedBox(width: 12),
+                                Expanded(
+                                  child: Column(
+                                    crossAxisAlignment: CrossAxisAlignment.start,
+                                    children: [
+                                      _buildFieldLabel('Status'),
+                                      Container(
+                                        height: 48,
+                                        padding: const EdgeInsets.symmetric(
+                                          horizontal: 12,
+                                        ),
+                                        decoration: BoxDecoration(
+                                          color: const Color(0xFFF8FAFC),
+                                          borderRadius: BorderRadius.circular(12),
+                                          border: Border.all(
+                                            color: const Color(0xFFCBD5E1),
+                                          ),
+                                        ),
+                                        child: DropdownButtonHideUnderline(
+                                          child: DropdownButton<String>(
+                                            value: _status,
+                                            isExpanded: true,
+                                            icon: const Icon(
+                                              Icons.keyboard_arrow_down_rounded,
+                                              color: Color(0xFF64748B),
+                                            ),
+                                            items: const [
+                                              DropdownMenuItem(
+                                                value: 'ACTIVE',
+                                                child: Text(
+                                                  'ACTIVE',
+                                                  style: TextStyle(
+                                                    fontSize: 13.5,
+                                                    fontWeight: FontWeight.bold,
+                                                    color: Color(0xFF15803D),
+                                                  ),
+                                                ),
+                                              ),
+                                              DropdownMenuItem(
+                                                value: 'INACTIVE',
+                                                child: Text(
+                                                  'INACTIVE',
+                                                  style: TextStyle(
+                                                    fontSize: 13.5,
+                                                    fontWeight: FontWeight.bold,
+                                                    color: Color(0xFF64748B),
+                                                  ),
+                                                ),
+                                              ),
+                                            ],
+                                            onChanged: (val) {
+                                              if (val != null) {
+                                                setState(() => _status = val);
+                                              }
+                                            },
+                                          ),
+                                        ),
+                                      ),
+                                    ],
+                                  ),
+                                ),
+                              ],
+                            ),
+                            const SizedBox(height: 14),
+
+                            // Half-Day & Full-Day Hours
+                            Row(
+                              children: [
+                                Expanded(
+                                  child: Column(
+                                    crossAxisAlignment: CrossAxisAlignment.start,
+                                    children: [
+                                      _buildFieldLabel('Half Day Hrs'),
+                                      _buildTextInputField(
+                                        controller: _halfDayController,
+                                        hint: '5.0',
+                                        keyboardType: const TextInputType.numberWithOptions(
+                                          decimal: true,
+                                        ),
+                                        icon: Icons.timelapse_rounded,
+                                      ),
+                                    ],
+                                  ),
+                                ),
+                                const SizedBox(width: 12),
+                                Expanded(
+                                  child: Column(
+                                    crossAxisAlignment: CrossAxisAlignment.start,
+                                    children: [
+                                      _buildFieldLabel('Full Day Hrs'),
+                                      _buildTextInputField(
+                                        controller: _fullDayController,
+                                        hint: '9.0',
+                                        keyboardType: const TextInputType.numberWithOptions(
+                                          decimal: true,
+                                        ),
+                                        icon: Icons.access_time_filled_rounded,
+                                      ),
+                                    ],
+                                  ),
+                                ),
+                              ],
+                            ),
+                            const SizedBox(height: 10),
+                          ],
+                        ),
+                      ),
+                    ),
+                  ),
+
+                  // Bottom Action Button
+                  SafeArea(
+                    top: false,
+                    child: Container(
+                      padding: const EdgeInsets.all(16.0),
+                      decoration: const BoxDecoration(
+                        color: Colors.white,
+                        border: Border(
+                          top: BorderSide(color: Color(0xFFE2E8F0)),
+                        ),
+                      ),
+                      child: SizedBox(
+                        width: double.infinity,
+                        height: 48,
+                        child: ElevatedButton(
+                          onPressed: isLoading ? null : _onSavePressed,
+                          style: ElevatedButton.styleFrom(
+                            backgroundColor: AppColors.primaryNavy,
+                            elevation: 0,
+                            shape: RoundedRectangleBorder(
+                              borderRadius: BorderRadius.circular(12),
+                            ),
+                          ),
+                          child: isLoading
+                              ? const SizedBox(
+                                  width: 22,
+                                  height: 22,
+                                  child: CircularProgressIndicator(
+                                    strokeWidth: 2.5,
+                                    valueColor: AlwaysStoppedAnimation<Color>(
+                                      Colors.white,
+                                    ),
+                                  ),
+                                )
+                              : const Text(
+                                  'Update Location and Coordinates',
+                                  style: TextStyle(
+                                    fontSize: 14.5,
+                                    fontWeight: FontWeight.bold,
+                                    color: Colors.white,
+                                  ),
+                                ),
+                        ),
+                      ),
+                    ),
+                  ),
+                ],
+              ),
             ),
           ),
         );
