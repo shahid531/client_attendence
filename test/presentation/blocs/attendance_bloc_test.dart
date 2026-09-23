@@ -99,6 +99,7 @@ class MockAttendanceRepository implements AttendanceRepository {
   @override
   Future<Either<Failure, List<int>>> exportAttendance({
     String? employeeId,
+    String? search,
     String? fromDate,
     String? toDate,
   }) async {
@@ -320,6 +321,7 @@ class FailingAttendanceRepository implements AttendanceRepository {
   @override
   Future<Either<Failure, List<int>>> exportAttendance({
     String? employeeId,
+    String? search,
     String? fromDate,
     String? toDate,
   }) async {

@@ -26,6 +26,7 @@ import '../../domain/usecases/admin/download_bulk_upload_sample_usecase.dart';
 import '../../domain/usecases/admin/get_employees_usecase.dart';
 import '../../domain/usecases/admin/get_locations_usecase.dart';
 import '../../domain/usecases/admin/update_location_usecase.dart';
+import '../../domain/usecases/admin/update_employee_usecase.dart';
 import '../../domain/usecases/app_config/check_app_version_usecase.dart';
 import '../../domain/usecases/attendance/check_in_usecase.dart';
 import '../../domain/usecases/attendance/check_out_usecase.dart';
@@ -172,6 +173,7 @@ Future<void> initServiceLocator() async {
   sl.registerLazySingleton(() => UpdateLocationUseCase(sl()));
   sl.registerLazySingleton(() => DownloadBulkUploadSampleUseCase(sl()));
   sl.registerLazySingleton(() => BulkUploadEmployeesUseCase(sl()));
+  sl.registerLazySingleton(() => UpdateEmployeeUseCase(sl()));
   sl.registerLazySingleton(() => CheckAppVersionUseCase(sl()));
 
   //! Blocs
@@ -218,6 +220,7 @@ Future<void> initServiceLocator() async {
       getLocationsUseCase: sl(),
       downloadBulkUploadSampleUseCase: sl(),
       bulkUploadEmployeesUseCase: sl(),
+      updateEmployeeUseCase: sl(),
     ),
   );
   sl.registerFactory(

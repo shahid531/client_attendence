@@ -172,6 +172,70 @@ class CreateEmployeeSuccessState extends AdminState {
       ];
 }
 
+class UpdateEmployeeLoadingState extends AdminState {
+  const UpdateEmployeeLoadingState({
+    super.employees,
+    super.isLoadingEmployees,
+    super.employeesError,
+    super.locations,
+    super.isLoadingLocations,
+    super.locationsError,
+  });
+}
+
+class UpdateEmployeeSuccessState extends AdminState {
+  final CreatedEmployee employee;
+  final String message;
+
+  const UpdateEmployeeSuccessState({
+    required this.employee,
+    this.message = 'Employee updated successfully',
+    super.employees,
+    super.isLoadingEmployees,
+    super.employeesError,
+    super.locations,
+    super.isLoadingLocations,
+    super.locationsError,
+  });
+
+  @override
+  List<Object?> get props => [
+        employee,
+        message,
+        employees,
+        isLoadingEmployees,
+        employeesError,
+        locations,
+        isLoadingLocations,
+        locationsError,
+      ];
+}
+
+class UpdateEmployeeFailureState extends AdminState {
+  final String message;
+
+  const UpdateEmployeeFailureState(
+    this.message, {
+    super.employees,
+    super.isLoadingEmployees,
+    super.employeesError,
+    super.locations,
+    super.isLoadingLocations,
+    super.locationsError,
+  });
+
+  @override
+  List<Object?> get props => [
+        message,
+        employees,
+        isLoadingEmployees,
+        employeesError,
+        locations,
+        isLoadingLocations,
+        locationsError,
+      ];
+}
+
 class AdminFailureState extends AdminState {
   final String message;
 

@@ -1,3 +1,4 @@
+import 'dart:convert';
 import 'package:dio/dio.dart';
 import 'exceptions.dart';
 
@@ -9,15 +10,9 @@ class ErrorHandler {
   }) {
     // 1. Check if backend returned structured JSON error message
     final data = e.response?.data;
-    if (data is Map<String, dynamic>) {
-      final msg = data['message'] ?? data['error'] ?? data['msg'];
-      if (msg != null && msg.toString().trim().isNotEmpty) {
-        final cleanMsg = msg.toString().trim();
-        // Avoid raw HTML or internal technical traces
-        if (!cleanMsg.startsWith('<') && !cleanMsg.contains('<!DOCTYPE')) {
-          return ServerException(cleanMsg);
-        }
-      }
+    final extractedMsg = _extractErrorMessage(data);
+    if (extractedMsg != null && extractedMsg.isNotEmpty) {
+      return ServerException(extractedMsg);
     }
 
     // 2. Check HTTP status codes (especially HTML / Gateway errors like 502, 503, 500)
@@ -56,5 +51,44 @@ class ErrorHandler {
       default:
         return ServerException(fallbackMessage);
     }
+  }
+
+  static String? _extractErrorMessage(dynamic data) {
+    if (data == null) return null;
+
+    if (data is Map) {
+      final msg = data['message'] ?? data['error'] ?? data['msg'] ?? data['detail'];
+      if (msg != null && msg.toString().trim().isNotEmpty) {
+        final cleanMsg = msg.toString().trim();
+        if (!cleanMsg.startsWith('<') && !cleanMsg.contains('<!DOCTYPE')) {
+          return cleanMsg;
+        }
+      }
+      if (data['errors'] is Map) {
+        final errorsMap = data['errors'] as Map;
+        final firstKey = errorsMap.keys.firstOrNull;
+        if (firstKey != null) {
+          final firstVal = errorsMap[firstKey];
+          if (firstVal is List && firstVal.isNotEmpty) {
+            return firstVal.first.toString();
+          } else if (firstVal != null) {
+            return firstVal.toString();
+          }
+        }
+      }
+    } else if (data is String) {
+      final trimmed = data.trim();
+      if (trimmed.startsWith('{') && trimmed.endsWith('}')) {
+        try {
+          final decoded = jsonDecode(trimmed);
+          return _extractErrorMessage(decoded);
+        } catch (_) {}
+      }
+      if (!trimmed.startsWith('<') && !trimmed.contains('<!DOCTYPE') && trimmed.length < 300) {
+        return trimmed;
+      }
+    }
+
+    return null;
   }
 }
