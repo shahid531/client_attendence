@@ -46,6 +46,8 @@ class ErrorHandler {
         return const ServerException('Connection timed out. Please check your internet connection.');
       case DioExceptionType.connectionError:
         return const ServerException('Unable to connect to the server. Please check your internet connection.');
+      case DioExceptionType.badCertificate:
+        return const ServerException('SSL Certificate verification failed.');
       case DioExceptionType.cancel:
         return const ServerException('Request was cancelled.');
       default:

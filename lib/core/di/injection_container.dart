@@ -1,4 +1,6 @@
+import 'dart:io';
 import 'package:dio/dio.dart';
+import 'package:dio/io.dart';
 import 'package:flutter/cupertino.dart';
 import 'package:get_it/get_it.dart';
 import 'package:shared_preferences/shared_preferences.dart';
@@ -66,6 +68,16 @@ Future<void> initServiceLocator() async {
     ),
   );
 
+  dio.httpClientAdapter = IOHttpClientAdapter(
+    createHttpClient: () {
+      final client = HttpClient();
+      client.badCertificateCallback =
+          (X509Certificate cert, String host, int port) => true;
+      return client;
+    },
+    validateCertificate: (cert, host, port) => true,
+  );
+
   dio.interceptors.add(
     InterceptorsWrapper(
       onRequest: (options, handler) {
@@ -88,7 +100,9 @@ Future<void> initServiceLocator() async {
       onError: (DioException e, handler) {
         print('\n==================== [API ERROR] ====================');
         print('<-- ERROR ${e.response?.statusCode} ${e.requestOptions.uri}');
+        print('Error Type: ${e.type}');
         print('Error Message: ${e.message}');
+        print('Error Under: ${e.error}');
         print('Error Data: ${e.response?.data}');
         print('=====================================================\n');
         return handler.next(e);

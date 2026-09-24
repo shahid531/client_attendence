@@ -1,5 +1,6 @@
 import 'package:dio/dio.dart';
 import 'package:shared_preferences/shared_preferences.dart';
+import '../../core/constants/api_constants.dart';
 import '../../core/errors/error_handler.dart';
 import '../../core/errors/exceptions.dart';
 import '../../domain/entities/leave_request.dart';
@@ -42,7 +43,7 @@ class LeaveRemoteDataSourceImpl implements LeaveRemoteDataSource {
   final Dio? dio;
   final SharedPreferences? sharedPreferences;
 
-  static const String _baseUrl = 'https://clause-unpinned-wikipedia.ngrok-free.dev/api';
+  static const String _baseUrl = ApiConstants.baseUrl;
 
   LeaveRemoteDataSourceImpl({
     this.dio,

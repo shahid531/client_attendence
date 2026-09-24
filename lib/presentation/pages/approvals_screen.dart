@@ -838,28 +838,51 @@ class ApprovalsScreenState extends State<ApprovalsScreen> {
             ),
           ],
           const SizedBox(height: 14),
-          SizedBox(
-            width: double.infinity,
-            height: 40,
-            child: ElevatedButton(
-              onPressed: () => _onTakeAction(item),
-              style: ElevatedButton.styleFrom(
-                backgroundColor: AppColors.primaryNavy,
-                shape: RoundedRectangleBorder(
-                  borderRadius: BorderRadius.circular(10),
+          Row(
+            mainAxisAlignment: MainAxisAlignment.end,
+            children: [
+              ElevatedButton(
+                onPressed: () => _onTakeAction(item),
+                style: ElevatedButton.styleFrom(
+                  backgroundColor: AppColors.primaryNavy,
+                  shape: RoundedRectangleBorder(
+                    borderRadius: BorderRadius.circular(10),
+                  ),
+                  elevation: 0,
                 ),
-                elevation: 0,
-              ),
-              child: const Text(
-                'Take Action',
-                style: TextStyle(
-                  color: Colors.white,
-                  fontWeight: FontWeight.bold,
-                  fontSize: 14,
+                child: const Text(
+                  'Take Action',
+                  style: TextStyle(
+                    color: Colors.white,
+                    fontWeight: FontWeight.bold,
+                    fontSize: 14,
+                  ),
                 ),
-              ),
-            ),
+              )
+            ],
           ),
+          // SizedBox(
+          //   width: 120,
+          //   height: 40,
+          //   child: ElevatedButton(
+          //     onPressed: () => _onTakeAction(item),
+          //     style: ElevatedButton.styleFrom(
+          //       backgroundColor: AppColors.primaryNavy,
+          //       shape: RoundedRectangleBorder(
+          //         borderRadius: BorderRadius.circular(10),
+          //       ),
+          //       elevation: 0,
+          //     ),
+          //     child: const Text(
+          //       'Take Action',
+          //       style: TextStyle(
+          //         color: Colors.white,
+          //         fontWeight: FontWeight.bold,
+          //         fontSize: 14,
+          //       ),
+          //     ),
+          //   ),
+          // ),
         ],
       ),
     );
@@ -1089,261 +1112,327 @@ class _ApprovalsEmployeeSearchModalState
       return nameMatches || idMatches || emailMatches || roleMatches;
     }).toList();
 
-    return Material(
-      color: Colors.white,
-      borderRadius: const BorderRadius.vertical(top: Radius.circular(24)),
-      clipBehavior: Clip.antiAlias,
-      child: SizedBox(
-        height: MediaQuery.of(context).size.height * 0.78,
-        child: Column(
-          children: [
-            // Drag Handle
-            const SizedBox(height: 12),
-            Container(
-              width: 40,
-              height: 4,
-              decoration: BoxDecoration(
-                color: const Color(0xFFCBD5E1),
-                borderRadius: BorderRadius.circular(2),
-              ),
-            ),
-            const SizedBox(height: 12),
-
-            // Header
-            Padding(
-              padding: const EdgeInsets.symmetric(horizontal: 20.0),
-              child: Row(
-                mainAxisAlignment: MainAxisAlignment.spaceBetween,
-                children: [
-                  Column(
-                    crossAxisAlignment: CrossAxisAlignment.start,
-                    children: [
-                      const Text(
-                        'Select Employee',
-                        style: TextStyle(
-                          fontSize: 18,
-                          fontWeight: FontWeight.bold,
-                          color: Color(0xFF0F172A),
-                        ),
-                      ),
-                      // const SizedBox(height: 2),
-                      // Text(
-                      //   'Search by full name, ID, or designation',
-                      //   style: TextStyle(
-                      //     fontSize: 12,
-                      //     color: Colors.grey.shade600,
-                      //   ),
-                      // ),
-                    ],
-                  ),
-                  IconButton(
-                    onPressed: () => Navigator.of(context).pop(),
-                    icon: const Icon(
-                      Icons.close_rounded,
-                      color: Color(0xFF64748B),
-                    ),
-                  ),
-                ],
-              ),
-            ),
-            const SizedBox(height: 12),
-
-            // Search Bar
-            Padding(
-              padding: const EdgeInsets.symmetric(horizontal: 16.0),
-              child: Container(
+    return GestureDetector(
+      behavior: HitTestBehavior.translucent,
+      onTap: () => FocusScope.of(context).unfocus(),
+      child: Material(
+        color: Colors.white,
+        borderRadius: const BorderRadius.vertical(top: Radius.circular(24)),
+        clipBehavior: Clip.antiAlias,
+        child: SizedBox(
+          height: MediaQuery.of(context).size.height * 0.78,
+          child: Column(
+            children: [
+              // Drag Handle
+              const SizedBox(height: 12),
+              Container(
+                width: 40,
+                height: 4,
                 decoration: BoxDecoration(
-                  color: const Color(0xFFF1F5F9),
-                  borderRadius: BorderRadius.circular(14),
-                  border: Border.all(color: const Color(0xFFE2E8F0)),
+                  color: const Color(0xFFCBD5E1),
+                  borderRadius: BorderRadius.circular(2),
                 ),
-                child: TextField(
-                  controller: _searchController,
-                  autofocus: false,
-                  onChanged: (val) {
-                    setState(() {
-                      _searchQuery = val;
-                    });
-                  },
-                  decoration: InputDecoration(
-                    hintText: 'Type Employee Name or ID',
-                    hintStyle: const TextStyle(
-                      fontSize: 14,
-                      color: Color(0xFF94A3B8),
+              ),
+              const SizedBox(height: 12),
+
+              // Header
+              Padding(
+                padding: const EdgeInsets.symmetric(horizontal: 20.0),
+                child: Row(
+                  mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                  children: [
+                    Column(
+                      crossAxisAlignment: CrossAxisAlignment.start,
+                      children: [
+                        const Text(
+                          'Select Employee',
+                          style: TextStyle(
+                            fontSize: 18,
+                            fontWeight: FontWeight.bold,
+                            color: Color(0xFF0F172A),
+                          ),
+                        ),
+                      ],
                     ),
-                    prefixIcon: const Icon(
-                      Icons.search_rounded,
-                      color: AppColors.primaryNavy,
-                      size: 22,
+                    IconButton(
+                      onPressed: () => Navigator.of(context).pop(),
+                      icon: const Icon(
+                        Icons.close_rounded,
+                        color: Color(0xFF64748B),
+                      ),
                     ),
-                    suffixIcon: _searchQuery.isNotEmpty
-                        ? IconButton(
-                            icon: const Icon(
-                              Icons.cancel_rounded,
-                              color: Color(0xFF94A3B8),
-                              size: 18,
-                            ),
-                            onPressed: () {
-                              _searchController.clear();
-                              setState(() {
-                                _searchQuery = '';
-                              });
-                            },
-                          )
-                        : null,
-                    border: InputBorder.none,
-                    contentPadding: const EdgeInsets.symmetric(
-                      horizontal: 16,
-                      vertical: 14,
+                  ],
+                ),
+              ),
+              const SizedBox(height: 12),
+
+              // Search Bar
+              Padding(
+                padding: const EdgeInsets.symmetric(horizontal: 16.0),
+                child: Container(
+                  decoration: BoxDecoration(
+                    color: const Color(0xFFF1F5F9),
+                    borderRadius: BorderRadius.circular(14),
+                    border: Border.all(color: const Color(0xFFE2E8F0)),
+                  ),
+                  child: TextField(
+                    controller: _searchController,
+                    autofocus: false,
+                    onChanged: (val) {
+                      setState(() {
+                        _searchQuery = val;
+                      });
+                    },
+                    decoration: InputDecoration(
+                      hintText: 'Type Employee Name or ID',
+                      hintStyle: const TextStyle(
+                        fontSize: 14,
+                        color: Color(0xFF94A3B8),
+                      ),
+                      prefixIcon: const Icon(
+                        Icons.search_rounded,
+                        color: AppColors.primaryNavy,
+                        size: 22,
+                      ),
+                      suffixIcon: _searchQuery.isNotEmpty
+                          ? IconButton(
+                              icon: const Icon(
+                                Icons.cancel_rounded,
+                                color: Color(0xFF94A3B8),
+                                size: 18,
+                              ),
+                              onPressed: () {
+                                _searchController.clear();
+                                setState(() {
+                                  _searchQuery = '';
+                                });
+                              },
+                            )
+                          : null,
+                      border: InputBorder.none,
+                      contentPadding: const EdgeInsets.symmetric(
+                        horizontal: 16,
+                        vertical: 14,
+                      ),
                     ),
                   ),
                 ),
               ),
-            ),
-            const SizedBox(height: 12),
-            const Divider(height: 1, color: Color(0xFFE2E8F0)),
+              const SizedBox(height: 12),
+              const Divider(height: 1, color: Color(0xFFE2E8F0)),
 
-            // Body List
-            Expanded(
-              child: widget.isLoading && widget.employees.isEmpty
-                  ? const Center(
-                      child: Column(
-                        mainAxisSize: MainAxisSize.min,
-                        children: [
-                          CircularProgressIndicator(strokeWidth: 2.5),
-                          SizedBox(height: 12),
-                          Text(
-                            'Loading employees...',
-                            style: TextStyle(
-                              color: Color(0xFF64748B),
-                              fontSize: 13,
+              // Body List
+              Expanded(
+                child: widget.isLoading && widget.employees.isEmpty
+                    ? const Center(
+                        child: Column(
+                          mainAxisSize: MainAxisSize.min,
+                          children: [
+                            CircularProgressIndicator(strokeWidth: 2.5),
+                            SizedBox(height: 12),
+                            Text(
+                              'Loading employees...',
+                              style: TextStyle(
+                                color: Color(0xFF64748B),
+                                fontSize: 13,
+                              ),
                             ),
-                          ),
-                        ],
-                      ),
-                    )
-                  : widget.error != null && widget.employees.isEmpty
-                      ? Center(
-                          child: Padding(
-                            padding: const EdgeInsets.all(24.0),
-                            child: Column(
-                              mainAxisSize: MainAxisSize.min,
-                              children: [
-                                const Icon(
-                                  Icons.error_outline_rounded,
-                                  color: AppColors.dangerRose,
-                                  size: 40,
-                                ),
-                                const SizedBox(height: 10),
-                                Text(
-                                  widget.error!,
-                                  textAlign: TextAlign.center,
-                                  style: const TextStyle(
-                                    fontSize: 13,
-                                    color: Color(0xFF64748B),
+                          ],
+                        ),
+                      )
+                    : widget.error != null && widget.employees.isEmpty
+                        ? Center(
+                            child: Padding(
+                              padding: const EdgeInsets.all(24.0),
+                              child: Column(
+                                mainAxisSize: MainAxisSize.min,
+                                children: [
+                                  const Icon(
+                                    Icons.error_outline_rounded,
+                                    color: AppColors.dangerRose,
+                                    size: 40,
+                                  ),
+                                  const SizedBox(height: 10),
+                                  Text(
+                                    widget.error!,
+                                    textAlign: TextAlign.center,
+                                    style: const TextStyle(
+                                      fontSize: 13,
+                                      color: Color(0xFF64748B),
+                                    ),
+                                  ),
+                                  const SizedBox(height: 14),
+                                  ElevatedButton.icon(
+                                    onPressed: widget.onRetry,
+                                    icon: const Icon(Icons.refresh, size: 16),
+                                    label: const Text('Retry'),
+                                    style: ElevatedButton.styleFrom(
+                                      backgroundColor: AppColors.primaryNavy,
+                                      foregroundColor: Colors.white,
+                                    ),
+                                  ),
+                                ],
+                              ),
+                            ),
+                          )
+                        : filteredEmployees.isEmpty && query.isNotEmpty
+                            ? Center(
+                                child: Padding(
+                                  padding: const EdgeInsets.all(24.0),
+                                  child: Column(
+                                    mainAxisSize: MainAxisSize.min,
+                                    children: [
+                                      Icon(
+                                        Icons.person_search_rounded,
+                                        size: 48,
+                                        color: Colors.grey.shade400,
+                                      ),
+                                      const SizedBox(height: 12),
+                                      Text(
+                                        'No employees found matching "$query"',
+                                        textAlign: TextAlign.center,
+                                        style: const TextStyle(
+                                          fontSize: 14,
+                                          fontWeight: FontWeight.w600,
+                                          color: Color(0xFF475569),
+                                        ),
+                                      ),
+                                      const SizedBox(height: 4),
+                                      const Text(
+                                        'Try searching with a different name or ID.',
+                                        textAlign: TextAlign.center,
+                                        style: TextStyle(
+                                          fontSize: 12,
+                                          color: Color(0xFF94A3B8),
+                                        ),
+                                      ),
+                                    ],
                                   ),
                                 ),
-                                const SizedBox(height: 14),
-                                ElevatedButton.icon(
-                                  onPressed: widget.onRetry,
-                                  icon: const Icon(Icons.refresh, size: 16),
-                                  label: const Text('Retry'),
-                                  style: ElevatedButton.styleFrom(
-                                    backgroundColor: AppColors.primaryNavy,
-                                    foregroundColor: Colors.white,
-                                  ),
+                              )
+                            : ListView.separated(
+                                keyboardDismissBehavior:
+                                    ScrollViewKeyboardDismissBehavior.onDrag,
+                                padding: const EdgeInsets.symmetric(
+                                  horizontal: 16,
+                                  vertical: 12,
                                 ),
-                              ],
-                            ),
-                          ),
-                        )
-                      : filteredEmployees.isEmpty && query.isNotEmpty
-                          ? Center(
-                              child: Padding(
-                                padding: const EdgeInsets.all(24.0),
-                                child: Column(
-                                  mainAxisSize: MainAxisSize.min,
-                                  children: [
-                                    Icon(
-                                      Icons.person_search_rounded,
-                                      size: 48,
-                                      color: Colors.grey.shade400,
-                                    ),
-                                    const SizedBox(height: 12),
-                                    Text(
-                                      'No employees found matching "$query"',
-                                      textAlign: TextAlign.center,
-                                      style: const TextStyle(
-                                        fontSize: 14,
-                                        fontWeight: FontWeight.w600,
-                                        color: Color(0xFF475569),
-                                      ),
-                                    ),
-                                    const SizedBox(height: 4),
-                                    const Text(
-                                      'Try searching with a different name or ID.',
-                                      textAlign: TextAlign.center,
-                                      style: TextStyle(
-                                        fontSize: 12,
-                                        color: Color(0xFF94A3B8),
-                                      ),
-                                    ),
-                                  ],
+                                itemCount: filteredEmployees.length + 1,
+                                separatorBuilder: (_, __) => const Divider(
+                                  height: 1,
+                                  indent: 64,
+                                  color: Color(0xFFF1F5F9),
                                 ),
-                              ),
-                            )
-                          : ListView.separated(
-                              padding: const EdgeInsets.symmetric(
-                                horizontal: 16,
-                                vertical: 12,
-                              ),
-                              itemCount: filteredEmployees.length + 1,
-                              separatorBuilder: (_, __) => const Divider(
-                                height: 1,
-                                indent: 64,
-                                color: Color(0xFFF1F5F9),
-                              ),
-                              itemBuilder: (context, index) {
-                                if (index == 0) {
-                                  final isSelectedAll =
-                                      widget.initialSelected == null;
+                                itemBuilder: (context, index) {
+                                  if (index == 0) {
+                                    final isSelectedAll =
+                                        widget.initialSelected == null;
+                                    return ListTile(
+                                      contentPadding:
+                                          const EdgeInsets.symmetric(
+                                        horizontal: 12,
+                                        vertical: 4,
+                                      ),
+                                      shape: RoundedRectangleBorder(
+                                        borderRadius:
+                                            BorderRadius.circular(12),
+                                      ),
+                                      leading: Container(
+                                        width: 42,
+                                        height: 42,
+                                        decoration: BoxDecoration(
+                                          color: const Color(0xFFEEF2FF),
+                                          borderRadius:
+                                              BorderRadius.circular(10),
+                                        ),
+                                        child: const Icon(
+                                          Icons.people_alt_outlined,
+                                          color: AppColors.primaryNavy,
+                                          size: 20,
+                                        ),
+                                      ),
+                                      title: const Text(
+                                        'All Employees',
+                                        style: TextStyle(
+                                          fontSize: 14,
+                                          fontWeight: FontWeight.bold,
+                                          color: Color(0xFF1E293B),
+                                        ),
+                                      ),
+                                      subtitle: const Text(
+                                        'View requests for all employees',
+                                        style: TextStyle(
+                                          fontSize: 12,
+                                          color: Color(0xFF64748B),
+                                        ),
+                                      ),
+                                      trailing: isSelectedAll
+                                          ? const Icon(
+                                              Icons.check_circle_rounded,
+                                              color: AppColors.primaryNavy,
+                                              size: 22,
+                                            )
+                                          : null,
+                                      onTap: () {
+                                        Navigator.of(context).pop(
+                                          const _ApprovalsEmployeeSelectionResult(
+                                            isCleared: true,
+                                          ),
+                                        );
+                                      },
+                                    );
+                                  }
+
+                                  final employee = filteredEmployees[index - 1];
+                                  final isSelected =
+                                      widget.initialSelected?.employeeId ==
+                                          employee.employeeId;
+
                                   return ListTile(
-                                    contentPadding: const EdgeInsets.symmetric(
+                                    contentPadding:
+                                        const EdgeInsets.symmetric(
                                       horizontal: 12,
                                       vertical: 4,
                                     ),
                                     shape: RoundedRectangleBorder(
-                                      borderRadius: BorderRadius.circular(12),
+                                      borderRadius:
+                                          BorderRadius.circular(12),
                                     ),
                                     leading: Container(
                                       width: 42,
                                       height: 42,
                                       decoration: BoxDecoration(
-                                        color: const Color(0xFFEEF2FF),
-                                        borderRadius: BorderRadius.circular(10),
+                                        color: AppColors.primaryNavy
+                                            .withValues(alpha: 0.1),
+                                        borderRadius:
+                                            BorderRadius.circular(10),
                                       ),
-                                      child: const Icon(
-                                        Icons.people_alt_outlined,
-                                        color: AppColors.primaryNavy,
-                                        size: 20,
+                                      alignment: Alignment.center,
+                                      child: Text(
+                                        _getInitials(employee.fullName),
+                                        style: const TextStyle(
+                                          fontSize: 14,
+                                          fontWeight: FontWeight.bold,
+                                          color: AppColors.primaryNavy,
+                                        ),
                                       ),
                                     ),
-                                    title: const Text(
-                                      'All Employees',
-                                      style: TextStyle(
-                                        fontSize: 14,
+                                    title: Text(
+                                      employee.fullName,
+                                      style: const TextStyle(
+                                        fontSize: 14.5,
                                         fontWeight: FontWeight.bold,
-                                        color: Color(0xFF1E293B),
+                                        color: Color(0xFF0F172A),
                                       ),
                                     ),
-                                    subtitle: const Text(
-                                      'View requests for all employees',
-                                      style: TextStyle(
+                                    subtitle: Text(
+                                      'ID: ${employee.employeeId}  •  ${employee.role}',
+                                      style: const TextStyle(
                                         fontSize: 12,
                                         color: Color(0xFF64748B),
                                       ),
                                     ),
-                                    trailing: isSelectedAll
+                                    trailing: isSelected
                                         ? const Icon(
                                             Icons.check_circle_rounded,
                                             color: AppColors.primaryNavy,
@@ -1352,79 +1441,17 @@ class _ApprovalsEmployeeSearchModalState
                                         : null,
                                     onTap: () {
                                       Navigator.of(context).pop(
-                                        const _ApprovalsEmployeeSelectionResult(
-                                          isCleared: true,
+                                        _ApprovalsEmployeeSelectionResult(
+                                          employee: employee,
                                         ),
                                       );
                                     },
                                   );
-                                }
-
-                                final employee = filteredEmployees[index - 1];
-                                final isSelected =
-                                    widget.initialSelected?.employeeId ==
-                                        employee.employeeId;
-
-                                return ListTile(
-                                  contentPadding: const EdgeInsets.symmetric(
-                                    horizontal: 12,
-                                    vertical: 4,
-                                  ),
-                                  shape: RoundedRectangleBorder(
-                                    borderRadius: BorderRadius.circular(12),
-                                  ),
-                                  leading: Container(
-                                    width: 42,
-                                    height: 42,
-                                    decoration: BoxDecoration(
-                                      color: AppColors.primaryNavy
-                                          .withValues(alpha: 0.1),
-                                      borderRadius: BorderRadius.circular(10),
-                                    ),
-                                    alignment: Alignment.center,
-                                    child: Text(
-                                      _getInitials(employee.fullName),
-                                      style: const TextStyle(
-                                        fontSize: 14,
-                                        fontWeight: FontWeight.bold,
-                                        color: AppColors.primaryNavy,
-                                      ),
-                                    ),
-                                  ),
-                                  title: Text(
-                                    employee.fullName,
-                                    style: const TextStyle(
-                                      fontSize: 14.5,
-                                      fontWeight: FontWeight.bold,
-                                      color: Color(0xFF0F172A),
-                                    ),
-                                  ),
-                                  subtitle: Text(
-                                    'ID: ${employee.employeeId}  •  ${employee.role}',
-                                    style: const TextStyle(
-                                      fontSize: 12,
-                                      color: Color(0xFF64748B),
-                                    ),
-                                  ),
-                                  trailing: isSelected
-                                      ? const Icon(
-                                          Icons.check_circle_rounded,
-                                          color: AppColors.primaryNavy,
-                                          size: 22,
-                                        )
-                                      : null,
-                                  onTap: () {
-                                    Navigator.of(context).pop(
-                                      _ApprovalsEmployeeSelectionResult(
-                                        employee: employee,
-                                      ),
-                                    );
-                                  },
-                                );
-                              },
-                            ),
-            ),
-          ],
+                                },
+                              ),
+              ),
+            ],
+          ),
         ),
       ),
     );

@@ -775,82 +775,85 @@ class _UpdateLocationSheetState extends State<_UpdateLocationSheet> {
       builder: (context, state) {
         final isLoading = state is UpdateLocationLoadingState;
 
-        return Padding(
-          padding: EdgeInsets.only(bottom: keyboardHeight),
-          child: Material(
-            color: Colors.white,
-            borderRadius: const BorderRadius.vertical(top: Radius.circular(24)),
-            clipBehavior: Clip.antiAlias,
-            child: ConstrainedBox(
-              constraints: BoxConstraints(
-                maxHeight: availableHeight,
-              ),
-              child: Column(
-                mainAxisSize: MainAxisSize.min,
-                children: [
-                  // Drag Handle
-                  const SizedBox(height: 12),
-                  Container(
-                    width: 40,
-                    height: 4,
-                    decoration: BoxDecoration(
-                      color: const Color(0xFFCBD5E1),
-                      borderRadius: BorderRadius.circular(2),
+        return GestureDetector(
+          behavior: HitTestBehavior.translucent,
+          onTap: () => FocusScope.of(context).unfocus(),
+          child: Padding(
+            padding: EdgeInsets.only(bottom: keyboardHeight),
+            child: Material(
+              color: Colors.white,
+              borderRadius: const BorderRadius.vertical(top: Radius.circular(24)),
+              clipBehavior: Clip.antiAlias,
+              child: ConstrainedBox(
+                constraints: BoxConstraints(
+                  maxHeight: availableHeight,
+                ),
+                child: Column(
+                  mainAxisSize: MainAxisSize.min,
+                  children: [
+                    // Drag Handle
+                    const SizedBox(height: 12),
+                    Container(
+                      width: 40,
+                      height: 4,
+                      decoration: BoxDecoration(
+                        color: const Color(0xFFCBD5E1),
+                        borderRadius: BorderRadius.circular(2),
+                      ),
                     ),
-                  ),
-                  const SizedBox(height: 12),
+                    const SizedBox(height: 12),
 
-                  // Header
-                  Padding(
-                    padding: const EdgeInsets.symmetric(horizontal: 20.0),
-                    child: Row(
-                      mainAxisAlignment: MainAxisAlignment.spaceBetween,
-                      children: [
-                        Column(
-                          crossAxisAlignment: CrossAxisAlignment.start,
-                          children: [
-                            const Text(
-                              'Update Location & Coordinates',
-                              style: TextStyle(
-                                fontSize: 18,
-                                fontWeight: FontWeight.bold,
-                                color: Color(0xFF0F172A),
+                    // Header
+                    Padding(
+                      padding: const EdgeInsets.symmetric(horizontal: 20.0),
+                      child: Row(
+                        mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                        children: [
+                          Column(
+                            crossAxisAlignment: CrossAxisAlignment.start,
+                            children: [
+                              const Text(
+                                'Update Location & Coordinates',
+                                style: TextStyle(
+                                  fontSize: 18,
+                                  fontWeight: FontWeight.bold,
+                                  color: Color(0xFF0F172A),
+                                ),
                               ),
-                            ),
-                            const SizedBox(height: 2),
-                            Text(
-                              'Edit site info or pick on map',
-                              style: TextStyle(
-                                fontSize: 12,
-                                color: Colors.grey.shade600,
+                              const SizedBox(height: 2),
+                              Text(
+                                'Edit site info or pick on map',
+                                style: TextStyle(
+                                  fontSize: 12,
+                                  color: Colors.grey.shade600,
+                                ),
                               ),
-                            ),
-                          ],
-                        ),
-                        IconButton(
-                          onPressed: () => Navigator.of(context).pop(),
-                          icon: const Icon(
-                            Icons.close_rounded,
-                            color: Color(0xFF64748B),
+                            ],
                           ),
-                        ),
-                      ],
+                          IconButton(
+                            onPressed: () => Navigator.of(context).pop(),
+                            icon: const Icon(
+                              Icons.close_rounded,
+                              color: Color(0xFF64748B),
+                            ),
+                          ),
+                        ],
+                      ),
                     ),
-                  ),
-                  const Divider(height: 16, color: Color(0xFFE2E8F0)),
+                    const Divider(height: 16, color: Color(0xFFE2E8F0)),
 
-                  // Scrollable Form Body
-                  Expanded(
-                    child: GestureDetector(
-                      behavior: HitTestBehavior.opaque,
-                      onTap: () => FocusScope.of(context).unfocus(),
+                    // Scrollable Form Body
+                    Expanded(
                       child: SingleChildScrollView(
                         keyboardDismissBehavior:
                             ScrollViewKeyboardDismissBehavior.onDrag,
                         padding: const EdgeInsets.all(20.0),
-                        child: Form(
-                          key: _formKey,
-                          child: Column(
+                        child: GestureDetector(
+                          behavior: HitTestBehavior.translucent,
+                          onTap: () => FocusScope.of(context).unfocus(),
+                          child: Form(
+                            key: _formKey,
+                            child: Column(
                             crossAxisAlignment: CrossAxisAlignment.start,
                             children: [
                             // Pick on Google Map Action Banner
@@ -1160,8 +1163,9 @@ class _UpdateLocationSheetState extends State<_UpdateLocationSheet> {
               ),
             ),
           ),
-        );
-      },
+        ),
+      );
+    },
     );
   }
 
@@ -1654,9 +1658,12 @@ class _UpdateEmployeeDialogState extends State<_UpdateEmployeeDialog> {
                       keyboardDismissBehavior:
                           ScrollViewKeyboardDismissBehavior.onDrag,
                       padding: const EdgeInsets.all(20),
-                    child: Form(
-                      key: _formKey,
-                      child: Column(
+                      child: GestureDetector(
+                        behavior: HitTestBehavior.translucent,
+                        onTap: () => FocusScope.of(context).unfocus(),
+                        child: Form(
+                          key: _formKey,
+                          child: Column(
                         crossAxisAlignment: CrossAxisAlignment.start,
                         children: [
                           // Full Name Field
@@ -1843,6 +1850,7 @@ class _UpdateEmployeeDialogState extends State<_UpdateEmployeeDialog> {
                     ),
                   ),
                 ),
+              ),
 
                 // Dialog Action Buttons (Edit and Update in a Row)
                 Container(
@@ -2367,12 +2375,15 @@ class _ReportingManagerSearchModalState
       return nameMatches || idMatches || emailMatches || roleMatches;
     }).toList();
 
-    return Material(
-      color: Colors.white,
-      borderRadius: const BorderRadius.vertical(top: Radius.circular(24)),
-      clipBehavior: Clip.antiAlias,
-      child: SizedBox(
-        height: MediaQuery.of(context).size.height * 0.78,
+    return GestureDetector(
+      behavior: HitTestBehavior.translucent,
+      onTap: () => FocusScope.of(context).unfocus(),
+      child: Material(
+        color: Colors.white,
+        borderRadius: const BorderRadius.vertical(top: Radius.circular(24)),
+        clipBehavior: Clip.antiAlias,
+        child: SizedBox(
+          height: MediaQuery.of(context).size.height * 0.78,
         child: Column(
           children: [
             const SizedBox(height: 12),
@@ -2516,6 +2527,8 @@ class _ReportingManagerSearchModalState
                           ),
                         )
                       : ListView.separated(
+                          keyboardDismissBehavior:
+                              ScrollViewKeyboardDismissBehavior.onDrag,
                           padding: const EdgeInsets.symmetric(
                             horizontal: 16,
                             vertical: 12,
@@ -2571,7 +2584,7 @@ class _ReportingManagerSearchModalState
                                         Icons.check_circle_rounded,
                                         color: AppColors.primaryNavy,
                                         size: 22,
-                                      )
+                                    )
                                     : null,
                                 onTap: () {
                                   Navigator.of(context).pop(
@@ -2654,6 +2667,7 @@ class _ReportingManagerSearchModalState
           ],
         ),
       ),
+      ),
     );
   }
 }
@@ -2709,12 +2723,15 @@ class _LocationSearchModalState extends State<_LocationSearchModal> {
       return nameMatches || clientMatches || addressMatches || cityMatches;
     }).toList();
 
-    return Material(
-      color: Colors.white,
-      borderRadius: const BorderRadius.vertical(top: Radius.circular(24)),
-      clipBehavior: Clip.antiAlias,
-      child: SizedBox(
-        height: MediaQuery.of(context).size.height * 0.78,
+    return GestureDetector(
+      behavior: HitTestBehavior.translucent,
+      onTap: () => FocusScope.of(context).unfocus(),
+      child: Material(
+        color: Colors.white,
+        borderRadius: const BorderRadius.vertical(top: Radius.circular(24)),
+        clipBehavior: Clip.antiAlias,
+        child: SizedBox(
+          height: MediaQuery.of(context).size.height * 0.78,
         child: Column(
           children: [
             const SizedBox(height: 12),
@@ -2858,6 +2875,8 @@ class _LocationSearchModalState extends State<_LocationSearchModal> {
                           ),
                         )
                       : ListView.separated(
+                          keyboardDismissBehavior:
+                              ScrollViewKeyboardDismissBehavior.onDrag,
                           padding: const EdgeInsets.symmetric(
                             horizontal: 16,
                             vertical: 12,
@@ -2954,6 +2973,7 @@ class _LocationSearchModalState extends State<_LocationSearchModal> {
             ),
           ],
         ),
+      ),
       ),
     );
   }

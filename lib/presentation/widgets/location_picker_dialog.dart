@@ -451,55 +451,60 @@ class _LocationPickerDialogState extends State<LocationPickerDialog> {
 
     return Padding(
       padding: EdgeInsets.only(bottom: bottomInset),
-      child: Scaffold(
-        backgroundColor: Colors.transparent,
-        resizeToAvoidBottomInset: false,
-        body: Align(
-          alignment: Alignment.bottomCenter,
-          child: Container(
-            height: sheetHeight,
-            decoration: const BoxDecoration(
-              color: Colors.white,
-              borderRadius: BorderRadius.vertical(top: Radius.circular(24)),
-            ),
-            clipBehavior: Clip.antiAlias,
-            child: Column(
-              children: [
-                // 1. Interactive Map Viewport (Expanded)
-                Expanded(
-                  child: Stack(
-                    children: [
-                      // Interactive Flutter Map
-                      Positioned.fill(
-                        child: FlutterMap(
-                          mapController: _mapController,
-                          options: MapOptions(
-                            initialCenter: _currentSelectedLocation,
-                            initialZoom: 15.0,
-                            onPositionChanged: (camera, hasGesture) {
-                              if (hasGesture) {
-                                if (!_isDraggingMap) {
-                                  setState(() {
-                                    _isDraggingMap = true;
+      child: GestureDetector(
+        behavior: HitTestBehavior.translucent,
+        onTap: () => FocusScope.of(context).unfocus(),
+        child: Scaffold(
+          backgroundColor: Colors.transparent,
+          resizeToAvoidBottomInset: false,
+          body: Align(
+            alignment: Alignment.bottomCenter,
+            child: Container(
+              height: sheetHeight,
+              decoration: const BoxDecoration(
+                color: Colors.white,
+                borderRadius: BorderRadius.vertical(top: Radius.circular(24)),
+              ),
+              clipBehavior: Clip.antiAlias,
+              child: Column(
+                children: [
+                  // 1. Interactive Map Viewport (Expanded)
+                  Expanded(
+                    child: Stack(
+                      children: [
+                        // Interactive Flutter Map
+                        Positioned.fill(
+                          child: FlutterMap(
+                            mapController: _mapController,
+                            options: MapOptions(
+                              initialCenter: _currentSelectedLocation,
+                              initialZoom: 15.0,
+                              onPositionChanged: (camera, hasGesture) {
+                                if (hasGesture) {
+                                  FocusScope.of(context).unfocus();
+                                  if (!_isDraggingMap) {
+                                    setState(() {
+                                      _isDraggingMap = true;
+                                    });
+                                  }
+                                  _currentSelectedLocation = camera.center;
+                                  _debounceTimer?.cancel();
+                                  _debounceTimer =
+                                      Timer(const Duration(milliseconds: 300), () {
+                                    if (mounted) {
+                                      setState(() {
+                                        _isDraggingMap = false;
+                                      });
+                                      _reverseGeocode(_currentSelectedLocation);
+                                    }
                                   });
                                 }
-                                _currentSelectedLocation = camera.center;
-                                _debounceTimer?.cancel();
-                                _debounceTimer =
-                                    Timer(const Duration(milliseconds: 300), () {
-                                  if (mounted) {
-                                    setState(() {
-                                      _isDraggingMap = false;
-                                    });
-                                    _reverseGeocode(_currentSelectedLocation);
-                                  }
-                                });
-                              }
-                            },
-                            onTap: (tapPosition, point) {
-                              _updateSelectedLocation(point, animateMap: true);
-                            },
-                          ),
+                              },
+                              onTap: (tapPosition, point) {
+                                FocusScope.of(context).unfocus();
+                                _updateSelectedLocation(point, animateMap: true);
+                              },
+                            ),
                           children: [
                             TileLayer(
                               urlTemplate:
@@ -870,6 +875,8 @@ class _LocationPickerDialogState extends State<LocationPickerDialog> {
                     top: false,
                     child: SingleChildScrollView(
                       physics: const ClampingScrollPhysics(),
+                      keyboardDismissBehavior:
+                          ScrollViewKeyboardDismissBehavior.onDrag,
                       child: Column(
                         mainAxisSize: MainAxisSize.min,
                         crossAxisAlignment: CrossAxisAlignment.start,
@@ -1212,8 +1219,9 @@ class _LocationPickerDialogState extends State<LocationPickerDialog> {
           ),
         ),
       ),
-    );
-  }
+    ),
+  );
+}
 
   Future<void> _handleConfirmLocation() async {
     if (!widget.enableCreateLocation) {
