@@ -4,6 +4,7 @@ class ApiConstants {
 
   // Auth Endpoints
   static const String login = '$baseUrl/auth/login';
+  static const String microsoftLogin = '$baseUrl/auth/microsoft';
   static const String userProfile = '$baseUrl/employee/profile';
   static const String changePassword = '$baseUrl/auth/change-password';
 

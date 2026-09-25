@@ -40,6 +40,7 @@ import '../../domain/usecases/auth/change_password_usecase.dart';
 import '../../domain/usecases/auth/get_current_user_usecase.dart';
 import '../../domain/usecases/auth/login_usecase.dart';
 import '../../domain/usecases/auth/logout_usecase.dart';
+import '../../domain/usecases/auth/microsoft_login_usecase.dart';
 import '../../domain/usecases/dashboard/get_dashboard_stats_usecase.dart';
 import '../../domain/usecases/leave/get_leave_requests_usecase.dart';
 import '../../domain/usecases/leave/submit_leave_request_usecase.dart';
@@ -167,6 +168,7 @@ Future<void> initServiceLocator() async {
 
   //! Use Cases
   sl.registerLazySingleton(() => LoginUseCase(sl()));
+  sl.registerLazySingleton(() => MicrosoftLoginUseCase(sl()));
   sl.registerLazySingleton(() => LogoutUseCase(sl()));
   sl.registerLazySingleton(() => GetCurrentUserUseCase(sl()));
   sl.registerLazySingleton(() => CheckInUseCase(sl()));
@@ -194,6 +196,7 @@ Future<void> initServiceLocator() async {
   sl.registerFactory(
     () => AuthBloc(
       loginUseCase: sl(),
+      microsoftLoginUseCase: sl(),
       logoutUseCase: sl(),
       getCurrentUserUseCase: sl(),
     ),

@@ -29,6 +29,19 @@ class MockAuthRepositoryForBlocTest implements AuthRepository {
   }
 
   @override
+  Future<Either<Failure, User>> loginWithMicrosoft(Map<String, dynamic> payload) async {
+    return const Right(
+      User(
+        id: '1',
+        name: 'User',
+        email: 'user@test.com',
+        role: 'RM',
+        company: 'ClientSite HQ',
+      ),
+    );
+  }
+
+  @override
   Future<Either<Failure, void>> logout() async {
     return const Right(null);
   }

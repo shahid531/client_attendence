@@ -3,6 +3,7 @@ import '../../../core/usecases/usecase.dart';
 import '../../../domain/usecases/auth/get_current_user_usecase.dart';
 import '../../../domain/usecases/auth/login_usecase.dart';
 import '../../../domain/usecases/auth/logout_usecase.dart';
+import '../../../domain/usecases/auth/microsoft_login_usecase.dart';
 import 'auth_event.dart';
 import 'auth_state.dart';
 
@@ -10,16 +11,19 @@ class AuthBloc extends Bloc<AuthEvent, AuthState> {
   final LoginUseCase loginUseCase;
   final LogoutUseCase logoutUseCase;
   final GetCurrentUserUseCase getCurrentUserUseCase;
+  final MicrosoftLoginUseCase microsoftLoginUseCase;
 
   AuthBloc({
     required this.loginUseCase,
     required this.logoutUseCase,
     required this.getCurrentUserUseCase,
+    required this.microsoftLoginUseCase,
   }) : super(AuthInitialState()) {
     on<AppStartedEvent>(_onAppStarted);
     on<LoginSubmittedEvent>(_onLoginSubmitted);
     on<LogoutRequestedEvent>(_onLogoutRequested);
     on<LoadUserProfileEvent>(_onLoadUserProfile);
+    on<MicrosoftLoginSubmittedEvent>(_onMicrosoftLoginSubmitted);
   }
 
   Future<void> _onAppStarted(
@@ -70,7 +74,7 @@ class AuthBloc extends Bloc<AuthEvent, AuthState> {
       ),
     );
 
-    print('RESULT: 12345: ${result}');
+    print('RESULT: 12345: $result');
 
     result.fold(
       (failure) => emit(AuthFailureState(failure.message)),
@@ -85,5 +89,18 @@ class AuthBloc extends Bloc<AuthEvent, AuthState> {
     emit(AuthLoadingState());
     await logoutUseCase(NoParams());
     emit(UnauthenticatedState());
+  }
+
+  Future<void> _onMicrosoftLoginSubmitted(
+    MicrosoftLoginSubmittedEvent event,
+    Emitter<AuthState> emit,
+  ) async {
+    emit(AuthLoadingState());
+    final result = await microsoftLoginUseCase(event.payload);
+
+    result.fold(
+      (failure) => emit(AuthFailureState(failure.message)),
+      (user) => emit(AuthenticatedState(user)),
+    );
   }
 }

@@ -10,6 +10,7 @@ abstract class AuthRepository {
     String deviceModel,
     String operatingSystem,
   });
+  Future<Either<Failure, User>> loginWithMicrosoft(Map<String, dynamic> payload);
   Future<Either<Failure, void>> logout();
   Future<Either<Failure, User?>> getCurrentUser();
   Future<Either<Failure, void>> changePassword({

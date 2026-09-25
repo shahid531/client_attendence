@@ -31,3 +31,12 @@ class LoginSubmittedEvent extends AuthEvent {
 class LogoutRequestedEvent extends AuthEvent {}
 
 class LoadUserProfileEvent extends AuthEvent {}
+
+class MicrosoftLoginSubmittedEvent extends AuthEvent {
+  final Map<String, dynamic> payload;
+
+  const MicrosoftLoginSubmittedEvent({required this.payload});
+
+  @override
+  List<Object?> get props => [payload];
+}

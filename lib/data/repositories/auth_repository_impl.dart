@@ -35,6 +35,18 @@ class AuthRepositoryImpl implements AuthRepository {
   }
 
   @override
+  Future<Either<Failure, User>> loginWithMicrosoft(Map<String, dynamic> payload) async {
+    try {
+      final userModel = await remoteDataSource.loginWithMicrosoft(payload);
+      return Right(userModel);
+    } on ServerException catch (e) {
+      return Left(ServerFailure(e.message));
+    } catch (e) {
+      return Left(ServerFailure(e.toString()));
+    }
+  }
+
+  @override
   Future<Either<Failure, void>> logout() async {
     try {
       await remoteDataSource.logout();

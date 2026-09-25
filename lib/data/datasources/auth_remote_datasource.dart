@@ -14,6 +14,7 @@ abstract class AuthRemoteDataSource {
     String deviceModel = 'Mobile',
     String operatingSystem = 'Android',
   });
+  Future<UserModel> loginWithMicrosoft(Map<String, dynamic> payload);
   Future<void> logout();
   Future<UserModel?> getCurrentUser();
   Future<void> changePassword({
@@ -30,6 +31,74 @@ class AuthRemoteDataSourceImpl implements AuthRemoteDataSource {
     required this.dio,
     required this.sharedPreferences,
   });
+
+  Future<UserModel> _processAuthResponse(
+    dynamic data, {
+    String? username,
+    String? password,
+  }) async {
+    if (data is Map<String, dynamic>) {
+      if (data['success'] == false) {
+        throw ServerException(data['message'] ?? 'Authentication failed');
+      }
+
+      final responseData = (data['data'] is Map<String, dynamic>)
+          ? data['data'] as Map<String, dynamic>
+          : data;
+
+      final token = responseData['token']?.toString();
+      if (token != null) {
+        await sharedPreferences.setString('auth_bearer_token', token);
+      }
+
+      final user = UserModel.fromJson(responseData);
+
+      await sharedPreferences.setString('cached_user_id', user.id);
+      await sharedPreferences.setString('cached_user_email', user.email);
+      await sharedPreferences.setString('cached_user_name', user.name);
+      await sharedPreferences.setString('cached_user_role', user.role);
+      await sharedPreferences.setString('cached_user_company', user.company);
+      if (user.locationName != null) {
+        await sharedPreferences.setString('cached_user_location_name', user.locationName!);
+      }
+      if (user.address != null) {
+        await sharedPreferences.setString('cached_user_address', user.address!);
+      }
+      await sharedPreferences.setBool('cached_first_login', user.firstLogin);
+      if (user.latitude != null) await sharedPreferences.setDouble('cached_user_lat', user.latitude!);
+      if (user.longitude != null) await sharedPreferences.setDouble('cached_user_lng', user.longitude!);
+      if (user.radius != null) await sharedPreferences.setDouble('cached_user_radius', user.radius!);
+      if (user.timeIn != null) await sharedPreferences.setString('cached_user_time_in', user.timeIn!);
+      if (user.timeOut != null) await sharedPreferences.setString('cached_user_time_out', user.timeOut!);
+      if (user.totalHours != null) {
+        await sharedPreferences.setString('cached_user_total_hours', user.totalHours.toString());
+      }
+      if (user.attendanceType != null) {
+        await sharedPreferences.setString('cached_user_attendance_type', user.attendanceType!);
+      }
+      if (user.timeInDescription != null) {
+        await sharedPreferences.setString('cached_user_time_in_description', user.timeInDescription!);
+      }
+      if (user.timeOutDescription != null) {
+        await sharedPreferences.setString('cached_user_time_out_description', user.timeOutDescription!);
+      }
+
+      if (username != null && password != null) {
+        final rememberMe = sharedPreferences.getBool('remember_me') ?? false;
+        if (rememberMe) {
+          await sharedPreferences.setString('last_logged_in_username', username);
+          await sharedPreferences.setString('last_logged_in_password', password);
+        } else {
+          await sharedPreferences.remove('last_logged_in_username');
+          await sharedPreferences.remove('last_logged_in_password');
+        }
+      }
+
+      return user;
+    }
+
+    throw const ServerException('Invalid server response format');
+  }
 
   @override
   Future<UserModel> login({
@@ -75,57 +144,48 @@ class AuthRemoteDataSourceImpl implements AuthRemoteDataSource {
 
       final data = response.data;
       print('[AuthRemoteDataSource] Login response: $data');
-      if (data is Map<String, dynamic>) {
-        if (data['success'] == false) {
-          throw ServerException(data['message'] ?? 'Authentication failed');
-        }
-
-        final responseData = (data['data'] is Map<String, dynamic>)
-            ? data['data'] as Map<String, dynamic>
-            : data;
-
-        final token = responseData['token']?.toString();
-        if (token != null) {
-          await sharedPreferences.setString('auth_bearer_token', token);
-        }
-
-        final user = UserModel.fromJson(responseData);
-
-        await sharedPreferences.setString('cached_user_id', user.id);
-        await sharedPreferences.setString('cached_user_email', user.email);
-        await sharedPreferences.setString('cached_user_name', user.name);
-        await sharedPreferences.setString('cached_user_role', user.role);
-        await sharedPreferences.setString('cached_user_company', user.company);
-        if (user.locationName != null) await sharedPreferences.setString('cached_user_location_name', user.locationName!);
-        if (user.address != null) await sharedPreferences.setString('cached_user_address', user.address!);
-        await sharedPreferences.setBool('cached_first_login', user.firstLogin);
-        if (user.latitude != null) await sharedPreferences.setDouble('cached_user_lat', user.latitude!);
-        if (user.longitude != null) await sharedPreferences.setDouble('cached_user_lng', user.longitude!);
-        if (user.radius != null) await sharedPreferences.setDouble('cached_user_radius', user.radius!);
-        if (user.timeIn != null) await sharedPreferences.setString('cached_user_time_in', user.timeIn!);
-        if (user.timeOut != null) await sharedPreferences.setString('cached_user_time_out', user.timeOut!);
-        if (user.totalHours != null) await sharedPreferences.setString('cached_user_total_hours', user.totalHours.toString());
-        if (user.attendanceType != null) await sharedPreferences.setString('cached_user_attendance_type', user.attendanceType!);
-        if (user.timeInDescription != null) await sharedPreferences.setString('cached_user_time_in_description', user.timeInDescription!);
-        if (user.timeOutDescription != null) await sharedPreferences.setString('cached_user_time_out_description', user.timeOutDescription!);
-        final rememberMe = sharedPreferences.getBool('remember_me') ?? false;
-        if (rememberMe) {
-          await sharedPreferences.setString('last_logged_in_username', username);
-          await sharedPreferences.setString('last_logged_in_password', password);
-        } else {
-          await sharedPreferences.remove('last_logged_in_username');
-          await sharedPreferences.remove('last_logged_in_password');
-        }
-
-        return user;
-      }
-
-      throw const ServerException('Invalid server response format');
+      return await _processAuthResponse(data, username: username, password: password);
     } on DioException catch (e) {
       print('[AuthRemoteDataSource] Login DioException: ${e.response?.data ?? e.message}');
       throw ErrorHandler.handleDioError(e, fallbackMessage: 'Authentication failed. Please try again.');
     } catch (e) {
       print('[AuthRemoteDataSource] Login Exception: $e');
+      if (e is ServerException) rethrow;
+      throw ServerException(e.toString());
+    }
+  }
+
+  @override
+  Future<UserModel> loginWithMicrosoft(Map<String, dynamic> payload) async {
+    try {
+      final cachedToken = sharedPreferences.getString('auth_bearer_token');
+
+      final headers = <String, String>{
+        'Content-Type': 'application/json',
+        'Accept': '*/*',
+        'ngrok-skip-browser-warning': 'true',
+      };
+      if (cachedToken != null && cachedToken.isNotEmpty) {
+        headers['Authorization'] = 'Bearer $cachedToken';
+      }
+
+      final response = await dio.post(
+        ApiConstants.microsoftLogin,
+        options: Options(headers: headers),
+        data: payload,
+      );
+
+      final data = response.data;
+      print('[AuthRemoteDataSource] Microsoft Login response: $data');
+      return await _processAuthResponse(data);
+    } on DioException catch (e) {
+      print('[AuthRemoteDataSource] Microsoft Login DioException: ${e.response?.data ?? e.message}');
+      throw ErrorHandler.handleDioError(
+        e,
+        fallbackMessage: 'Microsoft authentication failed. Please try again.',
+      );
+    } catch (e) {
+      print('[AuthRemoteDataSource] Microsoft Login Exception: $e');
       if (e is ServerException) rethrow;
       throw ServerException(e.toString());
     }

@@ -30,6 +30,19 @@ class MockAuthRepository implements AuthRepository {
   }
 
   @override
+  Future<Either<Failure, User>> loginWithMicrosoft(Map<String, dynamic> payload) async {
+    return const Right(
+      User(
+        id: '1',
+        name: 'ADMIN001',
+        email: 'ADMIN001@test.com',
+        role: 'Administrator',
+        company: 'ClientSite HQ',
+      ),
+    );
+  }
+
+  @override
   Future<Either<Failure, void>> logout() async {
     return const Right(null);
   }
