@@ -1,30 +1,43 @@
+import 'package:flutter/foundation.dart';
+
 /// Azure AD (Microsoft Entra ID) SSO Configuration Constants.
 ///
-/// Fill in your Tenant ID, Client ID, and Secret ID below.
+/// Supports both Mobile (Android/iOS) and Web (Browser) environments.
 class SsoConstants {
   /// Your Azure AD Tenant ID (Directory ID).
-  /// Example: 'xxxxxxxx-xxxx-xxxx-xxxx-xxxxxxxxxxxx'
   static const String tenantId = '571c8018-2e13-4657-af22-5b95a5e78fcd';
 
   /// Your Azure AD Application (Client) ID.
-  /// Example: 'xxxxxxxx-xxxx-xxxx-xxxx-xxxxxxxxxxxx'
   static const String clientId = '0fb470f6-f520-4627-8ec1-ac7d45f808ca';
 
-  /// Your Azure AD Client Secret (Secret ID / Value).
-  /// Note: The mobile app uses OAuth 2.0 PKCE, but this field is kept here
-  /// for your backend developer reference and testing.
+  /// Your Azure AD Client Secret (kept for backend reference/testing).
   static const String secretId = '';
 
   /// The Redirect URI configured in Azure Portal -> App Registration -> Authentication -> Android.
-  //static const String redirectUri = 'msauth://com.idealake.client_attendence/tbtv1SZ9Br0moPeYUQ5kOZAgBKc%3D';
-  static const String redirectUri = 'msauth://com.idealake.client_attendence/2jmj7l5rSw0yVb%2FvlWAYkK%2FYBwk%3D';
+  static const String mobileRedirectUri =
+      'msauth://com.idealake.client_attendence/2jmj7l5rSw0yVb%2FvlWAYkK%2FYBwk%3D';
+
+  /// Optional override for Web Redirect URI (e.g. 'http://localhost:5000' or 'https://attendence.idealake.com').
+  /// If not specified, dynamically defaults to current browser origin.
+  static String? customWebRedirectUri;
+
+  /// Web Redirect URI resolving to the browser origin.
+  static String get webRedirectUri {
+    if (customWebRedirectUri != null && customWebRedirectUri!.isNotEmpty) {
+      return customWebRedirectUri!;
+    }
+    final base = Uri.base;
+    final portSuffix = (base.hasPort && base.port != 80 && base.port != 443) ? ':${base.port}' : '';
+    return '${base.scheme}://${base.host}$portSuffix';
+  }
+
+  /// Platform-aware redirect URI: returns web origin on Flutter Web, and msauth deep-link on Mobile.
+  static String get redirectUri => kIsWeb ? webRedirectUri : mobileRedirectUri;
 
   /// Attendance Backend API Scope configured in Azure Portal -> Expose an API.
   static const String attendanceApiScope = 'api://$clientId/access_as_user';
 
   /// Standard OAuth Scopes requested from Microsoft.
-  /// Requesting openid, profile, email, offline_access, and the Attendance API scope.
-  /// This ensures Azure issues an access_token whose audience ('aud') matches your Backend API.
   static const List<String> scopes = [
     'openid',
     'profile',

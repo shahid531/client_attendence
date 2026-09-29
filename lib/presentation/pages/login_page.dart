@@ -1,3 +1,4 @@
+import 'package:flutter/foundation.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_bloc/flutter_bloc.dart';
 import 'package:shared_preferences/shared_preferences.dart';
@@ -47,6 +48,21 @@ class _LoginPageState extends State<LoginPage> {
     _usernameController = TextEditingController(text: widget.initialUsername ?? '');
     _passwordController = TextEditingController(text: widget.initialPassword ?? '');
     _loadSavedCredentials();
+    if (kIsWeb) {
+      _checkWebSsoCallback();
+    }
+  }
+
+  Future<void> _checkWebSsoCallback() async {
+    try {
+      final ssoService = AzureSsoService();
+      final result = await ssoService.checkRedirectCallback();
+      if (result != null && mounted) {
+        _processSsoSuccess(result);
+      }
+    } catch (e) {
+      debugPrint('[LoginPage] Web SSO redirect callback error: $e');
+    }
   }
 
   Future<void> _loadSavedCredentials() async {
@@ -224,9 +240,7 @@ class _LoginPageState extends State<LoginPage> {
               child: LayoutBuilder(
                 builder: (context, constraints) {
                   return SingleChildScrollView(
-                    physics: isWideScreen
-                        ? const NeverScrollableScrollPhysics()
-                        : null,
+                    physics: const ClampingScrollPhysics(),
                     child: ConstrainedBox(
                       constraints: BoxConstraints(
                         minHeight: constraints.maxHeight,
@@ -547,7 +561,26 @@ class _LoginPageState extends State<LoginPage> {
       final result = await ssoService.signIn();
 
       if (!mounted) return;
+      await _processSsoSuccess(result);
+    } catch (e) {
+      if (mounted) {
+        setState(() {
+          _isSsoLoading = false;
+        });
+        SnackbarHelper.showError(
+          context,
+          'SSO Authentication: ${e.toString().replaceAll('Exception: ', '')}',
+        );
+      }
+    }
+  }
 
+  Future<void> _processSsoSuccess(AzureSsoResult result) async {
+    setState(() {
+      _isSsoLoading = true;
+    });
+
+    try {
       // Print full untruncated SSO access token for developer verification
       AzureSsoService.printFullToken(result.accessToken, label: 'SSO_ACCESS_TOKEN');
 
@@ -594,7 +627,7 @@ class _LoginPageState extends State<LoginPage> {
         });
         SnackbarHelper.showError(
           context,
-          'SSO Authentication: ${e.toString().replaceAll('Exception: ', '')}',
+          'SSO Processing: ${e.toString().replaceAll('Exception: ', '')}',
         );
       }
     }
