@@ -19,13 +19,18 @@ class SsoConstants {
   //static const String redirectUri = 'msauth://com.idealake.client_attendence/tbtv1SZ9Br0moPeYUQ5kOZAgBKc%3D';
   static const String redirectUri = 'msauth://com.idealake.client_attendence/2jmj7l5rSw0yVb%2FvlWAYkK%2FYBwk%3D';
 
+  /// Attendance Backend API Scope configured in Azure Portal -> Expose an API.
+  static const String attendanceApiScope = 'api://$clientId/access_as_user';
+
   /// Standard OAuth Scopes requested from Microsoft.
+  /// Requesting openid, profile, email, offline_access, and the Attendance API scope.
+  /// This ensures Azure issues an access_token whose audience ('aud') matches your Backend API.
   static const List<String> scopes = [
     'openid',
     'profile',
     'email',
     'offline_access',
-    'User.Read',
+    attendanceApiScope,
   ];
 
   /// OpenID Discovery URL for this tenant.

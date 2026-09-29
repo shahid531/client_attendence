@@ -1,21 +1,23 @@
+import '../config/app_config.dart';
+
 class ApiConstants {
   // Base URL
-  static const String baseUrl = 'https://attendence-dev-api.idealake.com/api';
+  static String get baseUrl => AppConfig.shared.baseUrl;
 
   // Auth Endpoints
-  static const String login = '$baseUrl/auth/login';
-  static const String microsoftLogin = '$baseUrl/auth/microsoft';
-  static const String userProfile = '$baseUrl/employee/profile';
-  static const String changePassword = '$baseUrl/auth/change-password';
+  static String get login => '$baseUrl/auth/login';
+  static String get microsoftLogin => '$baseUrl/auth/microsoft';
+  static String get userProfile => '$baseUrl/employee/profile';
+  static String get changePassword => '$baseUrl/auth/change-password';
 
   // Attendance Endpoints
-  static const String attendance = '$baseUrl/attendance';
-  static const String attendanceExport = '$baseUrl/attendance/export';
+  static String get attendance => '$baseUrl/attendance';
+  static String get attendanceExport => '$baseUrl/attendance/export';
   static String attendanceRegularization(String attendanceId) =>
       '$baseUrl/attendance/$attendanceId/regularization';
 
   // Leave & WFH Request Endpoints
-  static const String requests = '$baseUrl/requests';
+  static String get requests => '$baseUrl/requests';
 
   static String updateRequest({
     required String role,
@@ -33,10 +35,10 @@ class ApiConstants {
   }
 
   // Admin Endpoints
-  static const String adminEmployees = '$baseUrl/admin/employees';
-  static const String adminBulkUpload = '$baseUrl/admin/employees/bulk-upload';
-  static const String adminBulkUploadSample = '$baseUrl/admin/employees/bulk-upload/sample';
-  static const String adminLocations = '$baseUrl/admin/locations';
+  static String get adminEmployees => '$baseUrl/admin/employees';
+  static String get adminBulkUpload => '$baseUrl/admin/employees/bulk-upload';
+  static String get adminBulkUploadSample => '$baseUrl/admin/employees/bulk-upload/sample';
+  static String get adminLocations => '$baseUrl/admin/locations';
   static String adminLocationUpdate(dynamic id) => '$baseUrl/admin/locations/$id';
 
   // App Version / Force Update Endpoints

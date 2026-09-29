@@ -27,6 +27,23 @@ android {
         manifestPlaceholders["appAuthRedirectScheme"] = "msauth"
     }
 
+    buildFeatures {
+        resValues = true
+    }
+
+    flavorDimensions += "default"
+
+    productFlavors {
+        create("dev") {
+            dimension = "default"
+            resValue("string", "app_name", "Attendance (Dev)")
+        }
+        create("staging") {
+            dimension = "default"
+            resValue("string", "app_name", "Attendance (Testing)")
+        }
+    }
+
     buildTypes {
         release {
             // TODO: Add your own signing config for the release build.

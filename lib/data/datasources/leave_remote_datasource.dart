@@ -43,7 +43,7 @@ class LeaveRemoteDataSourceImpl implements LeaveRemoteDataSource {
   final Dio? dio;
   final SharedPreferences? sharedPreferences;
 
-  static const String _baseUrl = ApiConstants.baseUrl;
+  static String get _baseUrl => ApiConstants.baseUrl;
 
   LeaveRemoteDataSourceImpl({
     this.dio,

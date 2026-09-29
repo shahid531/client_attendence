@@ -213,245 +213,317 @@ class _LoginPageState extends State<LoginPage> {
       },
       builder: (context, state) {
         final isLoading = state is AuthLoadingState;
+        final screenWidth = MediaQuery.of(context).size.width;
+        final isWideScreen = screenWidth > 650;
 
         return Scaffold(
+          backgroundColor: isWideScreen ? const Color(0xFFF8FAFC) : null,
           body: SafeArea(
-            child: SingleChildScrollView(
-              padding: const EdgeInsets.all(24.0),
-              child: Form(
-                key: _formKey,
-                child: Column(
-                  crossAxisAlignment: CrossAxisAlignment.start,
-                  children: [
-                    const SizedBox(height: 40),
-                    const Center(
-                      child: FlowerpotCrackerLogo(),
-                    ),
-                    const SizedBox(height: 24),
-                    const Center(
-                      child: Text(
-                        'Attendance',
-                        style: TextStyle(
-                          fontSize: 26,
-                          fontWeight: FontWeight.bold,
-                          color: AppColors.textDark,
-                        ),
+            child: ScrollConfiguration(
+              behavior: ScrollConfiguration.of(context).copyWith(scrollbars: !isWideScreen),
+              child: LayoutBuilder(
+                builder: (context, constraints) {
+                  return SingleChildScrollView(
+                    physics: isWideScreen
+                        ? const NeverScrollableScrollPhysics()
+                        : null,
+                    child: ConstrainedBox(
+                      constraints: BoxConstraints(
+                        minHeight: constraints.maxHeight,
                       ),
-                    ),
-                    const SizedBox(height: 8),
-                    const Center(
-                      child: Text(
-                        'Sign in to manage your daily attendance',
-                        style: TextStyle(
-                          fontSize: 14,
-                          color: AppColors.textMuted,
-                        ),
-                      ),
-                    ),
-                    const SizedBox(height: 40),
-                    const Text(
-                      'Username / Employee ID',
-                      style: TextStyle(
-                        fontSize: 14,
-                        fontWeight: FontWeight.bold,
-                        color: AppColors.textDark,
-                      ),
-                    ),
-                    const SizedBox(height: 8),
-                    TextFormField(
-                      controller: _usernameController,
-                      keyboardType: TextInputType.text,
-                      decoration: const InputDecoration(
-                        hintText: 'Enter username or employee ID',
-                        prefixIcon: Icon(Icons.person_outline),
-                      ),
-                      validator: (val) {
-                        if (val == null || val.isEmpty) {
-                          return 'Please enter your username';
-                        }
-                        return null;
-                      },
-                    ),
-                    const SizedBox(height: 20),
-                    const Text(
-                      'Password',
-                      style: TextStyle(
-                        fontSize: 14,
-                        fontWeight: FontWeight.bold,
-                        color: AppColors.textDark,
-                      ),
-                    ),
-                    const SizedBox(height: 8),
-                    TextFormField(
-                      controller: _passwordController,
-                      obscureText: _obscurePassword,
-                      decoration: InputDecoration(
-                        hintText: 'Enter your password',
-                        prefixIcon: const Icon(Icons.lock_outline),
-                        suffixIcon: IconButton(
-                          icon: Icon(
-                            _obscurePassword
-                                ? Icons.visibility_off_outlined
-                                : Icons.visibility_outlined,
-                          ),
-                          onPressed: () {
-                            setState(() {
-                              _obscurePassword = !_obscurePassword;
-                            });
-                          },
-                        ),
-                      ),
-                      validator: (val) {
-                        if (val == null || val.isEmpty) {
-                          return 'Please enter password';
-                        }
-                        return null;
-                      },
-                    ),
-                    const SizedBox(height: 12),
-                    InkWell(
-                      onTap: () {
-                        final newVal = !_rememberMe;
-                        setState(() {
-                          _rememberMe = newVal;
-                        });
-                        _onRememberMeChanged(newVal);
-                      },
-                      borderRadius: BorderRadius.circular(6),
-                      child: Padding(
-                        padding: const EdgeInsets.symmetric(vertical: 4),
-                        child: Row(
-                          mainAxisSize: MainAxisSize.min,
-                          children: [
-                            SizedBox(
-                              width: 22,
-                              height: 22,
-                              child: Checkbox(
-                                value: _rememberMe,
-                                activeColor: AppColors.primaryNavy,
-                                shape: RoundedRectangleBorder(
-                                  borderRadius: BorderRadius.circular(4),
-                                ),
-                                onChanged: (val) {
-                                  final newVal = val ?? false;
-                                  setState(() {
-                                    _rememberMe = newVal;
-                                  });
-                                  _onRememberMeChanged(newVal);
-                                },
+                      child: IntrinsicHeight(
+                        child: Center(
+                          child: Padding(
+                            padding: EdgeInsets.symmetric(
+                              horizontal: 24.0,
+                              vertical: isWideScreen ? 16.0 : 24.0,
+                            ),
+                            child: ConstrainedBox(
+                              constraints: BoxConstraints(
+                                maxWidth: isWideScreen ? 440 : double.infinity,
                               ),
-                            ),
-                            const SizedBox(width: 8),
-                            const Text(
-                              'Remember me',
-                              style: TextStyle(
-                                fontSize: 13,
-                                fontWeight: FontWeight.w500,
-                                color: AppColors.textDark,
-                              ),
-                            ),
-                          ],
-                        ),
-                      ),
-                    ),
-                    const SizedBox(height: 24),
-                    SizedBox(
-                      width: double.infinity,
-                      height: 52,
-                      child: ElevatedButton(
-                        onPressed: (isLoading || _isSsoLoading) ? null : _onLoginPressed,
-                        child: (isLoading && !_isSsoLoading)
-                            ? const SizedBox(
-                                width: 24,
-                                height: 24,
-                                child: CircularProgressIndicator(
-                                  strokeWidth: 2.5,
-                                  valueColor:
-                                      AlwaysStoppedAnimation<Color>(Colors.white),
-                                ),
-                              )
-                            : const Text('Sign In'),
-                      ),
-                    ),
-                    const SizedBox(height: 20),
-                    Row(
-                      children: const [
-                        Expanded(child: Divider(color: Color(0xFFE2E8F0))),
-                        Padding(
-                          padding: EdgeInsets.symmetric(horizontal: 14),
-                          child: Text(
-                            'OR',
-                            style: TextStyle(
-                              color: Color(0xFF94A3B8),
-                              fontSize: 12,
-                              fontWeight: FontWeight.bold,
-                            ),
-                          ),
-                        ),
-                        Expanded(child: Divider(color: Color(0xFFE2E8F0))),
-                      ],
-                    ),
-                    const SizedBox(height: 20),
+                              child: Container(
+                                padding: isWideScreen
+                                    ? const EdgeInsets.symmetric(
+                                        horizontal: 32.0,
+                                        vertical: 24.0,
+                                      )
+                                    : EdgeInsets.zero,
+                                decoration: isWideScreen
+                                    ? BoxDecoration(
+                                        color: Colors.white,
+                                        borderRadius: BorderRadius.circular(20),
+                                        border: Border.all(
+                                          color: const Color(0xFFE2E8F0),
+                                        ),
+                                        boxShadow: [
+                                          BoxShadow(
+                                            color: Colors.black.withValues(alpha: 0.04),
+                                            blurRadius: 20,
+                                            offset: const Offset(0, 8),
+                                          ),
+                                        ],
+                                      )
+                                    : null,
+                                child: Form(
+                                  key: _formKey,
+                                  child: Column(
+                                    mainAxisSize: MainAxisSize.min,
+                                    crossAxisAlignment: CrossAxisAlignment.start,
+                                    children: [
+                                      SizedBox(height: isWideScreen ? 0 : 40),
+                                      const Center(
+                                        child: FlowerpotCrackerLogo(),
+                                      ),
+                                      SizedBox(height: isWideScreen ? 12 : 24),
+                                      const Center(
+                                        child: Text(
+                                          'Attendance',
+                                          style: TextStyle(
+                                            fontSize: 26,
+                                            fontWeight: FontWeight.bold,
+                                            color: AppColors.textDark,
+                                          ),
+                                        ),
+                                      ),
+                                      const SizedBox(height: 6),
+                                      const Center(
+                                        child: Text(
+                                          'Sign in to manage your daily attendance',
+                                          style: TextStyle(
+                                            fontSize: 14,
+                                            color: AppColors.textMuted,
+                                          ),
+                                        ),
+                                      ),
+                                      SizedBox(height: isWideScreen ? 18 : 40),
+                                      const Text(
+                                        'Username / Employee ID',
+                                        style: TextStyle(
+                                          fontSize: 14,
+                                          fontWeight: FontWeight.bold,
+                                          color: AppColors.textDark,
+                                        ),
+                                      ),
+                                      const SizedBox(height: 6),
+                                      TextFormField(
+                                        controller: _usernameController,
+                                        keyboardType: TextInputType.text,
+                                        decoration: InputDecoration(
+                                          hintText: 'Enter username or employee ID',
+                                          prefixIcon: const Icon(Icons.person_outline),
+                                          contentPadding: isWideScreen
+                                              ? const EdgeInsets.symmetric(horizontal: 14, vertical: 12)
+                                              : null,
+                                        ),
+                                        validator: (val) {
+                                          if (val == null || val.isEmpty) {
+                                            return 'Please enter your username';
+                                          }
+                                          return null;
+                                        },
+                                      ),
+                                      SizedBox(height: isWideScreen ? 14 : 20),
+                                      const Text(
+                                        'Password',
+                                        style: TextStyle(
+                                          fontSize: 14,
+                                          fontWeight: FontWeight.bold,
+                                          color: AppColors.textDark,
+                                        ),
+                                      ),
+                                      const SizedBox(height: 6),
+                                      TextFormField(
+                                        controller: _passwordController,
+                                        obscureText: _obscurePassword,
+                                        decoration: InputDecoration(
+                                          hintText: 'Enter your password',
+                                          prefixIcon: const Icon(Icons.lock_outline),
+                                          contentPadding: isWideScreen
+                                              ? const EdgeInsets.symmetric(horizontal: 14, vertical: 12)
+                                              : null,
+                                          suffixIcon: IconButton(
+                                            icon: Icon(
+                                              _obscurePassword
+                                                  ? Icons.visibility_off_outlined
+                                                  : Icons.visibility_outlined,
+                                            ),
+                                            onPressed: () {
+                                              setState(() {
+                                                _obscurePassword = !_obscurePassword;
+                                              });
+                                            },
+                                          ),
+                                        ),
+                                        validator: (val) {
+                                          if (val == null || val.isEmpty) {
+                                            return 'Please enter password';
+                                          }
+                                          return null;
+                                        },
+                                      ),
+                                      SizedBox(height: isWideScreen ? 8 : 12),
+                                      InkWell(
+                                        onTap: () {
+                                          final newVal = !_rememberMe;
+                                          setState(() {
+                                            _rememberMe = newVal;
+                                          });
+                                          _onRememberMeChanged(newVal);
+                                        },
+                                        borderRadius: BorderRadius.circular(6),
+                                        child: Padding(
+                                          padding: const EdgeInsets.symmetric(vertical: 4),
+                                          child: Row(
+                                            mainAxisSize: MainAxisSize.min,
+                                            children: [
+                                              SizedBox(
+                                                width: 22,
+                                                height: 22,
+                                                child: Checkbox(
+                                                  value: _rememberMe,
+                                                  activeColor: AppColors.primaryNavy,
+                                                  shape: RoundedRectangleBorder(
+                                                    borderRadius: BorderRadius.circular(4),
+                                                  ),
+                                                  onChanged: (val) {
+                                                    final newVal = val ?? false;
+                                                    setState(() {
+                                                      _rememberMe = newVal;
+                                                    });
+                                                    _onRememberMeChanged(newVal);
+                                                  },
+                                                ),
+                                              ),
+                                              const SizedBox(width: 8),
+                                              const Text(
+                                                'Remember me',
+                                                style: TextStyle(
+                                                  fontSize: 13,
+                                                  fontWeight: FontWeight.w500,
+                                                  color: AppColors.textDark,
+                                                ),
+                                              ),
+                                            ],
+                                          ),
+                                        ),
+                                      ),
+                                      SizedBox(height: isWideScreen ? 16 : 24),
+                                      Center(
+                                        child: SizedBox(
+                                          width: isWideScreen ? 240 : double.infinity,
+                                          height: isWideScreen ? 44 : 50,
+                                          child: ElevatedButton(
+                                            onPressed: (isLoading || _isSsoLoading) ? null : _onLoginPressed,
+                                            child: (isLoading && !_isSsoLoading)
+                                                ? const SizedBox(
+                                                    width: 24,
+                                                    height: 24,
+                                                    child: CircularProgressIndicator(
+                                                      strokeWidth: 2.5,
+                                                      valueColor:
+                                                          AlwaysStoppedAnimation<Color>(Colors.white),
+                                                    ),
+                                                  )
+                                                : const Text('Sign In'),
+                                          ),
+                                        ),
+                                      ),
+                                      SizedBox(height: isWideScreen ? 12 : 20),
+                                      Center(
+                                        child: SizedBox(
+                                          width: isWideScreen ? 240 : double.infinity,
+                                          child: Row(
+                                            children: const [
+                                              Expanded(child: Divider(color: Color(0xFFE2E8F0))),
+                                              Padding(
+                                                padding: EdgeInsets.symmetric(horizontal: 14),
+                                                child: Text(
+                                                  'OR',
+                                                  style: TextStyle(
+                                                    color: Color(0xFF94A3B8),
+                                                    fontSize: 12,
+                                                    fontWeight: FontWeight.bold,
+                                                  ),
+                                                ),
+                                              ),
+                                              Expanded(child: Divider(color: Color(0xFFE2E8F0))),
+                                            ],
+                                          ),
+                                        ),
+                                      ),
+                                      SizedBox(height: isWideScreen ? 12 : 20),
 
-                    // Microsoft SSO Sign In Button
-                    SizedBox(
-                      width: double.infinity,
-                      height: 52,
-                      child: OutlinedButton(
-                        onPressed:
-                            (_isSsoLoading || isLoading) ? null : _handleMicrosoftSso,
-                        style: OutlinedButton.styleFrom(
-                          backgroundColor: Colors.white,
-                          side: const BorderSide(
-                            color: Color(0xFFCBD5E1),
-                            width: 1.2,
-                          ),
-                          shape: RoundedRectangleBorder(
-                            borderRadius: BorderRadius.circular(12),
-                          ),
-                          elevation: 0,
-                        ),
-                        child: _isSsoLoading
-                            ? const SizedBox(
-                                width: 22,
-                                height: 22,
-                                child: CircularProgressIndicator(
-                                  strokeWidth: 2.2,
-                                  valueColor: AlwaysStoppedAnimation<Color>(
-                                    Color(0xFF0078D4),
+                                      // Microsoft SSO Sign In Button
+                                      Center(
+                                        child: SizedBox(
+                                          width: isWideScreen ? 260 : double.infinity,
+                                          height: isWideScreen ? 44 : 50,
+                                          child: OutlinedButton(
+                                            onPressed:
+                                                (_isSsoLoading || isLoading) ? null : _handleMicrosoftSso,
+                                            style: OutlinedButton.styleFrom(
+                                              backgroundColor: Colors.white,
+                                              side: const BorderSide(
+                                                color: Color(0xFFCBD5E1),
+                                                width: 1.2,
+                                              ),
+                                              shape: RoundedRectangleBorder(
+                                                borderRadius: BorderRadius.circular(12),
+                                              ),
+                                              elevation: 0,
+                                            ),
+                                            child: _isSsoLoading
+                                                ? const SizedBox(
+                                                    width: 22,
+                                                    height: 22,
+                                                    child: CircularProgressIndicator(
+                                                      strokeWidth: 2.2,
+                                                      valueColor: AlwaysStoppedAnimation<Color>(
+                                                        Color(0xFF0078D4),
+                                                      ),
+                                                    ),
+                                                  )
+                                                : Row(
+                                                    mainAxisAlignment: MainAxisAlignment.center,
+                                                    children: [
+                                                      _buildMicrosoftLogo(),
+                                                      const SizedBox(width: 12),
+                                                      const Text(
+                                                        'Sign in with Microsoft',
+                                                        style: TextStyle(
+                                                          color: Color(0xFF1E293B),
+                                                          fontSize: 14.5,
+                                                          fontWeight: FontWeight.w600,
+                                                        ),
+                                                      ),
+                                                    ],
+                                                  ),
+                                          ),
+                                        ),
+                                      ),
+                                      SizedBox(height: isWideScreen ? 8 : 10),
+                                      Center(
+                                        child: Text(
+                                          'Company Single Sign-On (SSO)',
+                                          style: TextStyle(
+                                            fontSize: 11.5,
+                                            color: Colors.grey.shade500,
+                                            fontWeight: FontWeight.w500,
+                                          ),
+                                        ),
+                                      ),
+                                    ],
                                   ),
                                 ),
-                              )
-                            : Row(
-                                mainAxisAlignment: MainAxisAlignment.center,
-                                children: [
-                                  _buildMicrosoftLogo(),
-                                  const SizedBox(width: 12),
-                                  const Text(
-                                    'Sign in with Microsoft',
-                                    style: TextStyle(
-                                      color: Color(0xFF1E293B),
-                                      fontSize: 15,
-                                      fontWeight: FontWeight.w600,
-                                    ),
-                                  ),
-                                ],
                               ),
-                      ),
-                    ),
-                    const SizedBox(height: 10),
-                    Center(
-                      child: Text(
-                        'Company Single Sign-On (SSO)',
-                        style: TextStyle(
-                          fontSize: 11.5,
-                          color: Colors.grey.shade500,
-                          fontWeight: FontWeight.w500,
+                            ),
+                          ),
                         ),
                       ),
                     ),
-                  ],
-                ),
+                  );
+                },
               ),
             ),
           ),
@@ -476,6 +548,18 @@ class _LoginPageState extends State<LoginPage> {
 
       if (!mounted) return;
 
+      // Print full untruncated SSO access token for developer verification
+      AzureSsoService.printFullToken(result.accessToken, label: 'SSO_ACCESS_TOKEN');
+
+      if (result.accessToken != null && result.accessToken!.isNotEmpty) {
+        final prefs = await SharedPreferences.getInstance();
+        await prefs.setString('auth_bearer_token', result.accessToken!);
+        await prefs.setString('microsoft_access_token', result.accessToken!);
+        if (result.refreshToken != null && result.refreshToken!.isNotEmpty) {
+          await prefs.setString('microsoft_refresh_token', result.refreshToken!);
+        }
+      }
+
       final deviceId = await DeviceInfoUtil.getDeviceId();
       final deviceModel = await DeviceInfoUtil.getDeviceModel();
       final operatingSystem = await DeviceInfoUtil.getOperatingSystem();
@@ -491,6 +575,8 @@ class _LoginPageState extends State<LoginPage> {
         'refresh_token': result.refreshToken ?? '',
         'refresh_token_expires_in': result.refreshTokenExpiresIn ?? 86399,
         'id_token': result.idToken ?? '',
+        'email': result.email,
+        'name': result.displayName,
         'client_info': result.clientInfo ?? '',
         'device_id': deviceId,
         'device_model': deviceModel,

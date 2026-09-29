@@ -217,7 +217,7 @@ class AttendanceRemoteDataSourceImpl implements AttendanceRemoteDataSource {
         }
 
         final isWfh = workType.toUpperCase() == 'WFH';
-        const endpoint = ApiConstants.attendance;
+        final endpoint = ApiConstants.attendance;
 
         final effectiveDeviceId = (deviceId != null && deviceId.isNotEmpty && deviceId != 'string')
             ? deviceId
@@ -321,7 +321,7 @@ class AttendanceRemoteDataSourceImpl implements AttendanceRemoteDataSource {
         }
 
         final isWfh = workType.toUpperCase() == 'WFH';
-        const endpoint = ApiConstants.attendance;
+        final endpoint = ApiConstants.attendance;
 
         final effectiveDeviceId = (deviceId != null && deviceId.isNotEmpty && deviceId != 'string')
             ? deviceId
@@ -480,7 +480,7 @@ class AttendanceRemoteDataSourceImpl implements AttendanceRemoteDataSource {
           queryParams['toDate'] = endDate;
         }
 
-        const endpoint = ApiConstants.attendance;
+        final endpoint = ApiConstants.attendance;
 
         final response = await dio!.get(
           endpoint,

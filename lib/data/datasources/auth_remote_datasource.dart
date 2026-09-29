@@ -158,6 +158,11 @@ class AuthRemoteDataSourceImpl implements AuthRemoteDataSource {
   @override
   Future<UserModel> loginWithMicrosoft(Map<String, dynamic> payload) async {
     try {
+      final ssoToken = payload['access_token']?.toString();
+      if (ssoToken != null && ssoToken.isNotEmpty) {
+        await sharedPreferences.setString('auth_bearer_token', ssoToken);
+      }
+
       final cachedToken = sharedPreferences.getString('auth_bearer_token');
 
       final headers = <String, String>{

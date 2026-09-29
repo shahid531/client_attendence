@@ -1,0 +1,36 @@
+{
+  "version": "0.2.0",
+  "configurations": [
+    {
+      "name": "Attendance (Dev)",
+      "request": "launch",
+      "type": "dart",
+      "program": "lib/main_dev.dart",
+      "args": [
+        "--flavor",
+        "dev"
+      ]
+    },
+    {
+      "name": "Attendance (Testing)",
+      "request": "launch",
+      "type": "dart",
+      "program": "lib/main_testing.dart",
+      "args": [
+        "--flavor",
+        "staging"
+      ]
+    },
+    {
+      "name": "Attendance (Testing - Chrome)",
+      "request": "launch",
+      "type": "dart",
+      "deviceId": "chrome",
+      "program": "lib/main_testing.dart",
+      "args": [
+        "--web-browser-flag",
+        "--disable-web-security"
+      ]
+    }
+  ]
+}

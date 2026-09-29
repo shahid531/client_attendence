@@ -1,5 +1,5 @@
 import 'dart:convert';
-import 'package:dio/dio.dart';
+import 'dart:developer' as dev;
 import 'package:flutter/foundation.dart';
 import 'package:flutter_appauth/flutter_appauth.dart';
 import '../constants/sso_constants.dart';
@@ -17,7 +17,7 @@ class AzureSsoResult {
   final int? refreshTokenExpiresIn;
   final String? clientInfo;
   final Map<String, dynamic> idTokenClaims;
-  final Map<String, dynamic>? graphUserProfile;
+  final Map<String, dynamic>? accessTokenClaims;
   final Map<String, dynamic> fullResponseMap;
 
   const AzureSsoResult({
@@ -32,7 +32,7 @@ class AzureSsoResult {
     this.refreshTokenExpiresIn,
     this.clientInfo,
     required this.idTokenClaims,
-    this.graphUserProfile,
+    this.accessTokenClaims,
     required this.fullResponseMap,
   });
 
@@ -46,19 +46,17 @@ class AzureSsoResult {
     }
   }
 
-  /// User's display name extracted from Graph API or ID Token claims.
+  /// User's display name extracted from ID Token claims.
   String get displayName {
-    return graphUserProfile?['displayName']?.toString() ??
-        idTokenClaims['name']?.toString() ??
-        'User';
+    return idTokenClaims['name']?.toString() ?? 'User';
   }
 
-  /// User's email extracted from Graph API or ID Token claims.
+  /// User's email extracted from ID Token claims.
   String get email {
-    return graphUserProfile?['mail']?.toString() ??
-        graphUserProfile?['userPrincipalName']?.toString() ??
-        idTokenClaims['preferred_username']?.toString() ??
+    return idTokenClaims['preferred_username']?.toString() ??
         idTokenClaims['email']?.toString() ??
+        idTokenClaims['upn']?.toString() ??
+        idTokenClaims['unique_name']?.toString() ??
         '';
   }
 }
@@ -66,11 +64,9 @@ class AzureSsoResult {
 /// Service that handles OAuth 2.0 PKCE authentication with Azure AD / Microsoft Entra ID.
 class AzureSsoService {
   final FlutterAppAuth _appAuth;
-  final Dio _dio;
 
-  AzureSsoService({FlutterAppAuth? appAuth, Dio? dio})
-      : _appAuth = appAuth ?? const FlutterAppAuth(),
-        _dio = dio ?? Dio();
+  AzureSsoService({FlutterAppAuth? appAuth})
+      : _appAuth = appAuth ?? const FlutterAppAuth();
 
   /// Initiates the Microsoft Single Sign-On flow.
   ///
@@ -117,16 +113,11 @@ class AzureSsoService {
           int.tryParse(tokenAdditional['refresh_token_expires_in']?.toString() ?? '') ?? 86399;
       final clientInfo = tokenAdditional['client_info']?.toString() ?? '';
 
-      // 1. Decode ID Token JWT claims
+      // 1. Decode ID Token & Access Token JWT claims
       final idTokenClaims = _decodeJwtClaims(idToken);
+      final accessTokenClaims = _decodeJwtClaims(accessToken);
 
-      // 2. Fetch User Profile from Microsoft Graph if access token exists
-      Map<String, dynamic>? graphUserProfile;
-      if (accessToken != null && accessToken.isNotEmpty) {
-        graphUserProfile = await _fetchGraphUserProfile(accessToken);
-      }
-
-      // 3. Compile full response map for the backend team
+      // 2. Compile full response map for the backend team
       final fullResponseMap = <String, dynamic>{
         'provider': 'Microsoft Azure AD (Entra ID)',
         'tenantId': SsoConstants.tenantId,
@@ -135,14 +126,14 @@ class AzureSsoService {
         'scope': scope,
         'expires_in': expiresIn,
         'ext_expires_in': extExpiresIn,
-        'access_token': accessToken,
+        'accessToken': accessToken,
         'refresh_token': refreshToken,
         'refresh_token_expires_in': refreshTokenExpiresIn,
         'id_token': idToken,
         'client_info': clientInfo,
         'tokenExpiration': tokenExpiration?.toIso8601String(),
         'idTokenClaims': idTokenClaims,
-        'graphUserProfile': graphUserProfile,
+        if (accessTokenClaims.isNotEmpty) 'accessTokenClaims': accessTokenClaims,
       };
 
       final result = AzureSsoResult(
@@ -157,13 +148,24 @@ class AzureSsoService {
         refreshTokenExpiresIn: refreshTokenExpiresIn,
         clientInfo: clientInfo,
         idTokenClaims: idTokenClaims,
-        graphUserProfile: graphUserProfile,
+        accessTokenClaims: accessTokenClaims,
         fullResponseMap: fullResponseMap,
       );
 
       debugPrint('==================== [AZURE SSO SUCCESS] ====================');
+      if (accessTokenClaims.containsKey('aud')) {
+        debugPrint('[AzureSsoService] Access Token audience (aud): ${accessTokenClaims['aud']}');
+      }
+      if (accessTokenClaims.containsKey('scp')) {
+        debugPrint('[AzureSsoService] Access Token scopes (scp): ${accessTokenClaims['scp']}');
+      }
+      debugPrint('[AzureSsoService] ID Token user: ${idTokenClaims['name']} (${idTokenClaims['preferred_username'] ?? idTokenClaims['email'] ?? idTokenClaims['upn']})');
       debugPrint(result.toPrettyJson());
       debugPrint('=============================================================');
+
+      // Print the complete, untruncated Access Token and ID Token
+      printFullToken(accessToken, label: 'AZURE_SSO_ACCESS_TOKEN');
+      printFullToken(idToken, label: 'AZURE_SSO_ID_TOKEN');
 
       return result;
     } catch (e) {
@@ -195,24 +197,31 @@ class AzureSsoService {
     }
   }
 
-  /// Fetch user profile from Microsoft Graph API v1.0.
-  Future<Map<String, dynamic>?> _fetchGraphUserProfile(String accessToken) async {
-    try {
-      final response = await _dio.get<Map<String, dynamic>>(
-        'https://graph.microsoft.com/v1.0/me',
-        options: Options(
-          headers: {
-            'Authorization': 'Bearer $accessToken',
-            'Accept': 'application/json',
-          },
-          sendTimeout: const Duration(seconds: 10),
-          receiveTimeout: const Duration(seconds: 10),
-        ),
-      );
-      return response.data;
-    } catch (e) {
-      debugPrint('[AzureSsoService] Graph API error: $e');
-      return null;
+  /// Safely prints the full token without truncation by Android Logcat, IDE buffers, or terminal limits.
+  static void printFullToken(String? token, {String label = 'ACCESS_TOKEN'}) {
+    if (token == null || token.isEmpty) {
+      debugPrint('==================== [$label is NULL / EMPTY] ====================');
+      return;
     }
+
+    debugPrint('');
+    debugPrint('==================== [FULL $label START] ====================');
+    debugPrint('[$label] Length: ${token.length} characters');
+
+    // 1. dart:developer log for IDE debug console & DevTools (unlimited line length)
+    dev.log(token, name: label);
+
+    // 2. Chunked logcat/terminal printing to prevent 1024-byte truncation
+    const chunkSize = 500;
+    int chunkIndex = 1;
+    final totalChunks = (token.length / chunkSize).ceil();
+    for (int i = 0; i < token.length; i += chunkSize) {
+      final end = (i + chunkSize < token.length) ? i + chunkSize : token.length;
+      debugPrint('[$label Part $chunkIndex/$totalChunks] ${token.substring(i, end)}');
+      chunkIndex++;
+    }
+
+    debugPrint('==================== [FULL $label END] ====================');
+    debugPrint('');
   }
 }

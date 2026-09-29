@@ -1,5 +1,6 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_bloc/flutter_bloc.dart';
+import 'core/config/app_config.dart';
 import 'core/di/injection_container.dart';
 import 'core/theme/app_theme.dart';
 import 'presentation/blocs/admin/admin_bloc.dart';
@@ -13,6 +14,7 @@ import 'presentation/pages/splash_page.dart';
 
 void main() async {
   WidgetsFlutterBinding.ensureInitialized();
+  AppConfig.shared;
   await initServiceLocator();
   runApp(const MyApp());
 }
@@ -48,7 +50,7 @@ class MyApp extends StatelessWidget {
       ],
       child: MaterialApp(
         debugShowCheckedModeBanner: false,
-        title: 'ClientSite Attendance',
+        title: AppConfig.shared.appName,
         theme: AppTheme.lightTheme,
         home: const SplashPage(),
       ),
