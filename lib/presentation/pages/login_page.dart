@@ -13,7 +13,6 @@ import 'dart:developer' as dev;
 import '../blocs/auth/auth_state.dart';
 import '../../core/utils/device_info_util.dart';
 import '../../core/utils/snackbar_helper.dart';
-import '../widgets/flowerpot_cracker_effect.dart';
 import 'main_navigation_page.dart';
 import 'change_password_page.dart';
 
@@ -211,20 +210,24 @@ class _LoginPageState extends State<LoginPage> {
                   crossAxisAlignment: CrossAxisAlignment.start,
                   children: [
                     const SizedBox(height: 40),
-                    const Center(
-                      child: FlowerpotCrackerLogo(),
-                    ),
-                    const SizedBox(height: 24),
-                    const Center(
-                      child: Text(
-                        'Attendance',
-                        style: TextStyle(
-                          fontSize: 26,
-                          fontWeight: FontWeight.bold,
-                          color: AppColors.textDark,
-                        ),
+                    Center(
+                      child: Image.asset(
+                        'assets/images/idealake_logo.png',
+                        height: 48,
+                        fit: BoxFit.contain,
                       ),
                     ),
+                    // const SizedBox(height: 24),
+                    // const Center(
+                    //   child: Text(
+                    //     'Attendance',
+                    //     style: TextStyle(
+                    //       fontSize: 26,
+                    //       fontWeight: FontWeight.bold,
+                    //       color: AppColors.textDark,
+                    //     ),
+                    //   ),
+                    // ),
                     const SizedBox(height: 8),
                     const Center(
                       child: Text(

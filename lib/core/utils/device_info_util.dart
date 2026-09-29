@@ -140,7 +140,7 @@ class DeviceInfoUtil {
       _cachedOperatingSystem = os;
       return os;
     } catch (_) {
-      return _cachedOperatingSystem ?? Platform.operatingSystem;
+      return _cachedOperatingSystem ?? (kIsWeb ? 'Web' : Platform.operatingSystem);
     }
   }
 }

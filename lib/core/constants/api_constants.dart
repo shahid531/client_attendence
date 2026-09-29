@@ -1,6 +1,7 @@
 class ApiConstants {
   // Base URL
   static const String baseUrl = 'https://attendence-dev-api.idealake.com/api';
+  //static const String baseUrl = 'https://clause-unpinned-wikipedia.ngrok-free.dev/api';
 
   // Auth Endpoints
   static const String login = '$baseUrl/auth/login';

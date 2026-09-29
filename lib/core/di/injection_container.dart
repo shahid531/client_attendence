@@ -2,6 +2,7 @@ import 'dart:io';
 import 'package:dio/dio.dart';
 import 'package:dio/io.dart';
 import 'package:flutter/cupertino.dart';
+import 'package:flutter/foundation.dart';
 import 'package:get_it/get_it.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 import '../../data/datasources/admin_remote_datasource.dart';
@@ -68,15 +69,17 @@ Future<void> initServiceLocator() async {
     ),
   );
 
-  dio.httpClientAdapter = IOHttpClientAdapter(
-    createHttpClient: () {
-      final client = HttpClient();
-      client.badCertificateCallback =
-          (X509Certificate cert, String host, int port) => true;
-      return client;
-    },
-    validateCertificate: (cert, host, port) => true,
-  );
+  if (!kIsWeb) {
+    dio.httpClientAdapter = IOHttpClientAdapter(
+      createHttpClient: () {
+        final client = HttpClient();
+        client.badCertificateCallback =
+            (X509Certificate cert, String host, int port) => true;
+        return client;
+      },
+      validateCertificate: (cert, host, port) => true,
+    );
+  }
 
   dio.interceptors.add(
     InterceptorsWrapper(

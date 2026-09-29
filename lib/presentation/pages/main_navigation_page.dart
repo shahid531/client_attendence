@@ -54,7 +54,7 @@ class _MainNavigationPageState extends State<MainNavigationPage> {
               barItem: const BottomNavigationBarItem(
                 icon: Icon(Icons.location_on_outlined),
                 activeIcon: Icon(Icons.location_on),
-                label: 'Location',
+                label: 'Locations',
               ),
               onSelected: () {
                 _clientLocationsPageKey.currentState?.resetToLocationsList();
